@@ -5,6 +5,7 @@ import Navbar from "./components/Navbar";
 import Login from "./components/auth/Login";
 import PrivateRoute from "./components/PrivateRoute";
 import { useAuth } from "./context/AuthContext";
+import Footer from "./components/Footer";
 
 // Example protected pages (create these later)
 const Profile = () => <div>Profile Page</div>;
@@ -39,6 +40,7 @@ export default function App() {
         />
         {/* Add more protected routes as needed */}
       </Routes>
+      <Footer/>
     </>
   );
 }
