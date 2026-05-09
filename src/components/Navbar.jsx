@@ -18,12 +18,12 @@ const Navbar = () => {
   const [isLocating, setIsLocating] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchAddress, setSearchAddress] = useState('');
+  const [isAddressSearching, setIsAddressSearching] = useState(false);
 
   // Map related states
-  const [mapLat, setMapLat] = useState(28.6139); // default Delhi
+  const [mapLat, setMapLat] = useState(28.6139);
   const [mapLng, setMapLng] = useState(77.2090);
   const [showMap, setShowMap] = useState(false);
-  const [mapInitialized, setMapInitialized] = useState(false);
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markerRef = useRef(null);
@@ -32,7 +32,7 @@ const Navbar = () => {
   const searchRef = useRef(null);
   const locationRef = useRef(null);
 
-  // Preload Leaflet once on component mount
+  // Preload Leaflet
   useEffect(() => {
     if (!document.getElementById('leaflet-css')) {
       const link = document.createElement('link');
@@ -45,22 +45,16 @@ const Navbar = () => {
       const script = document.createElement('script');
       script.id = 'leaflet-js';
       script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-      script.onload = () => {
-        // Script ready
-      };
       document.body.appendChild(script);
     }
   }, []);
 
-  // Initialize or update map when showMap becomes true and container is ready
+  // Initialize or update map
   useEffect(() => {
     if (!showMap || !mapContainerRef.current) return;
     if (!window.L) {
-      // If Leaflet not yet loaded, retry after a short delay
       const timer = setTimeout(() => {
-        if (window.L && mapContainerRef.current && showMap) {
-          initOrUpdateMap();
-        }
+        if (window.L && mapContainerRef.current && showMap) initOrUpdateMap();
       }, 200);
       return () => clearTimeout(timer);
     }
@@ -70,14 +64,13 @@ const Navbar = () => {
   const initOrUpdateMap = () => {
     if (!mapContainerRef.current || !window.L) return;
 
-    // If map instance exists, just update view and marker position
     if (mapInstanceRef.current) {
       mapInstanceRef.current.setView([mapLat, mapLng], 15);
       if (markerRef.current) {
         markerRef.current.setLatLng([mapLat, mapLng]);
       } else {
         markerRef.current = window.L.marker([mapLat, mapLng], { draggable: true }).addTo(mapInstanceRef.current);
-        markerRef.current.on('dragend', async (e) => {
+        markerRef.current.on('dragend', async () => {
           const newLatLng = markerRef.current.getLatLng();
           setMapLat(newLatLng.lat);
           setMapLng(newLatLng.lng);
@@ -93,14 +86,13 @@ const Navbar = () => {
       return;
     }
 
-    // Create new map and marker
     const map = window.L.map(mapContainerRef.current).setView([mapLat, mapLng], 15);
     window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
 
     const marker = window.L.marker([mapLat, mapLng], { draggable: true }).addTo(map);
-    marker.on('dragend', async (e) => {
+    marker.on('dragend', async () => {
       const newLatLng = marker.getLatLng();
       setMapLat(newLatLng.lat);
       setMapLng(newLatLng.lng);
@@ -114,7 +106,6 @@ const Navbar = () => {
 
     mapInstanceRef.current = map;
     markerRef.current = marker;
-    setMapInitialized(true);
   };
 
   const servicePlaceholders = [
@@ -139,9 +130,7 @@ const Navbar = () => {
     let placeholderIndex = 0;
     const interval = setInterval(() => {
       placeholderIndex = (placeholderIndex + 1) % servicePlaceholders.length;
-      if (!isSearchFocused) {
-        setSearchPlaceholder(servicePlaceholders[placeholderIndex]);
-      }
+      if (!isSearchFocused) setSearchPlaceholder(servicePlaceholders[placeholderIndex]);
     }, 3000);
     return () => clearInterval(interval);
   }, [isSearchFocused]);
@@ -163,12 +152,10 @@ const Navbar = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // When location picker opens, initialize map with current location (auto-fetch if needed)
+  // When location picker opens, show map and load saved/current location
   useEffect(() => {
     if (showLocationPicker) {
-      // Ensure map is shown
       setShowMap(true);
-      // If we have saved coordinates, use them
       const savedCoords = localStorage.getItem('userCoords');
       if (savedCoords) {
         const coords = JSON.parse(savedCoords);
@@ -176,20 +163,15 @@ const Navbar = () => {
         setMapLng(coords.lng);
         setCurrentCoords(coords);
       } else if (!currentCoords) {
-        // No coordinates known, try to get current location automatically
         autoDetectLocation();
       }
     } else {
-      // Optionally reset map flag? Keep map but hide, no need to destroy
       setShowMap(false);
     }
   }, [showLocationPicker]);
 
   const autoDetectLocation = () => {
-    if (!navigator.geolocation) {
-      console.log('Geolocation not supported');
-      return;
-    }
+    if (!navigator.geolocation) return;
     setIsLocating(true);
     navigator.geolocation.getCurrentPosition(
       async (position) => {
@@ -208,9 +190,8 @@ const Navbar = () => {
         setIsLocating(false);
       },
       (error) => {
-        console.error('Auto location error:', error);
+        console.error(error);
         setIsLocating(false);
-        // Fallback: keep default Delhi coords
         setMapLat(28.6139);
         setMapLng(77.2090);
       },
@@ -236,7 +217,6 @@ const Navbar = () => {
           const data = await response.json();
           setSearchResults(data.services || []);
         } catch (error) {
-          console.error('Search error:', error);
           const mockResults = [
             { id: 1, name: 'Plumbing Services', category: 'Plumber', rating: 4.5, price: 500 },
             { id: 2, name: 'Electrical Repair', category: 'Electrician', rating: 4.8, price: 600 },
@@ -272,7 +252,6 @@ const Navbar = () => {
       }
       return null;
     } catch (err) {
-      console.error('BigDataCloud error:', err);
       return null;
     }
   };
@@ -287,7 +266,6 @@ const Navbar = () => {
       }
       return null;
     } catch (err) {
-      console.error(err);
       return null;
     }
   };
@@ -313,7 +291,6 @@ const Navbar = () => {
           setLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
         }
         localStorage.setItem('userCoords', JSON.stringify({ lat: latitude, lng: longitude }));
-        setShowLocationPicker(false);
         setIsLocating(false);
       },
       (error) => {
@@ -338,7 +315,6 @@ const Navbar = () => {
       setLocation(shortName);
       localStorage.setItem('userLocation', shortName);
       localStorage.setItem('userCoords', JSON.stringify({ lat: result.lat, lng: result.lng }));
-      setShowLocationPicker(false);
     } else {
       alert('Address not found. Try adding city/state name.');
     }
@@ -347,7 +323,6 @@ const Navbar = () => {
 
   const confirmMapLocation = () => {
     if (currentCoords) {
-      setLocation(location);
       setShowLocationPicker(false);
     } else {
       alert('Please select a location first');
@@ -384,9 +359,6 @@ const Navbar = () => {
     window.location.href = `/service/${service.id}`;
   };
 
-  // Address search loading state
-  const [isAddressSearching, setIsAddressSearching] = useState(false);
-
   return (
     <>
       <nav className="navbar-white">
@@ -419,7 +391,7 @@ const Navbar = () => {
               <Link to="/providers" className="nav-link">Providers</Link>
               <Link to="/register-as-professional" className="register-btn">Register as Professional</Link>
             </div>
-            <div className="user-actions desktop-only bg-orange-500 rounded-md px-2  ">
+            <div className="user-actions desktop-only rounded-md px-2">
               {user ? (
                 <div className="user-dropdown">
                   <button className="user-dropdown-btn uppercase">
@@ -429,28 +401,31 @@ const Navbar = () => {
                     </svg>
                   </button>
                   <div className="dropdown-menu p-3">
-                    <Link to="/profile" className="  flex items-center gap-3 hover:bg-orange-400 p-2">
+                    <Link to="/profile" className="flex items-center gap-3 hover:bg-orange-400 p-2">
                       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-user-round-icon lucide-user-round"><circle cx="12" cy="8" r="5" /><path d="M20 21a8 8 0 0 0-16 0" /></svg>
                       Profile
                     </Link>
-                    <Link to="/my-bookings" className="  flex items-center gap-3 hover:bg-orange-400 p-2">
+                    <Link to="/my-bookings" className="flex items-center gap-3 hover:bg-orange-400 p-2">
                       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-book-marked-icon lucide-book-marked"><path d="M10 2v8l3-3 3 3V2" /><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20" /></svg>
                       Bookings
                     </Link>
                     {user.role === 'provider' && (
                       <>
-                        <Link to="/provider/profile" className="  flex items-center gap-3 w-full hover:bg-orange-400 p-2">
+                        <Link to="/provider/profile" className="flex items-center gap-3 w-full hover:bg-orange-400 p-2">
                           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-toolbox-icon lucide-toolbox"><path d="M16 12v4" /><path d="M16 6a2 2 0 0 1 1.414.586l4 4A2 2 0 0 1 22 12v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 .586-1.414l4-4A2 2 0 0 1 8 6z" /><path d="M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" /><path d="M2 14h20" /><path d="M8 12v4" /></svg>
                           My Services
                         </Link>
-                        <Link to="/provider/stats" className="  flex items-center gap-3 w-full hover:bg-orange-400 p-2">Stats</Link>
+                        <Link to="/provider/stats" className="flex items-center gap-3 w-full hover:bg-orange-400 p-2">Stats</Link>
                       </>
                     )}
-                    {user.role === 'admin' && <Link to="/admin" className="  flex items-center gap-3 w-full hover:bg-orange-400 p-2">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-shield-user-icon lucide-shield-user"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /><path d="M6.376 18.91a6 6 0 0 1 11.249.003" /><circle cx="12" cy="11" r="4" /></svg>
-                      Admin Panel
-                    </Link>}
-                    <button onClick={logout} className="  flex items-center w-full gap-3 hover:bg-orange-400 p-2">
+                    {/* Admin Panel Link - only for admin */}
+                    {user.role === 'admin' && (
+                      <Link to="/admin" className="flex items-center gap-3 w-full hover:bg-orange-400 p-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-shield-user-icon lucide-shield-user"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /><path d="M6.376 18.91a6 6 0 0 1 11.249.003" /><circle cx="12" cy="11" r="4" /></svg>
+                        Admin Panel
+                      </Link>
+                    )}
+                    <button onClick={logout} className="flex items-center w-full gap-3 hover:bg-orange-400 p-2">
                       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-log-out-icon lucide-log-out"><path d="m16 17 5-5-5-5" /><path d="M21 12H9" /><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /></svg>
                       Logout
                     </button>
@@ -481,12 +456,14 @@ const Navbar = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
+
               {showLocationPicker && (
                 <div className="location-dropdown">
                   <div className="location-dropdown-content">
                     <h3 className="dropdown-title">Choose Location</h3>
 
-                    {/* <button onClick={getCurrentLocation} className="current-location-btn" disabled={isLocating}>
+                    {/* Button 1: Use My Current Location */}
+                    <button onClick={getCurrentLocation} className="current-location-btn" disabled={isLocating}>
                       <svg className="location-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -494,20 +471,31 @@ const Navbar = () => {
                       {isLocating ? 'Locating...' : 'Use My Current Location'}
                     </button>
 
-                    <div className="divider">or</div> */}
+                    <div className="divider">or search address</div>
 
+                    {/* Address search input + button */}
+                    <div className="address-search-group">
+                      <input
+                        type="text"
+                        value={searchAddress}
+                        onChange={(e) => setSearchAddress(e.target.value)}
+                        placeholder="Type full address (e.g., Hamindpur, Behror, Rajasthan)"
+                        className="location-input"
+                        onKeyPress={(e) => e.key === 'Enter' && searchAddressAndShowMap()}
+                      />
+                      <button onClick={searchAddressAndShowMap} className="save-location-btn mt-2" disabled={isAddressSearching}>
+                        {isAddressSearching ? 'Searching...' : 'Search & Show on Map'}
+                      </button>
+                    </div>
 
-
+                    {/* Map preview (appears after either button is clicked) */}
                     {showMap && (
                       <div className="map-preview">
                         <div ref={mapContainerRef} style={{ height: '220px', width: '100%', borderRadius: '8px', marginTop: '8px', background: '#f0f0f0' }}></div>
                         <p className="text-xs text-gray-500 mt-1">📍 Drag the marker to adjust exact location</p>
-                        <div className="mb-2">
-                         
-                          <button onClick={getCurrentLocation} className="save-location-btn mt-2" disabled={isLocating}>
-                            {isAddressSearching ? 'Searching...' : 'Search & Show on Map'}
-                          </button>
-                        </div>
+                        <button onClick={confirmMapLocation} className="save-location-btn mt-2 bg-green-600 hover:bg-green-700">
+                          Confirm Location
+                        </button>
                       </div>
                     )}
 
@@ -577,7 +565,7 @@ const Navbar = () => {
       <div className={`mobile-drawer ${mobileMenuOpen ? 'open' : ''}`}>
         <div className="drawer-header"><span className="drawer-logo">GharSeva</span><button className="drawer-close" onClick={() => setMobileMenuOpen(false)}>✕</button></div>
         <div className="drawer-links">
-          <Link to="/" className="drawer-link flex  gap-2" onClick={() => setMobileMenuOpen(false)}>
+          <Link to="/" className="drawer-link flex gap-2" onClick={() => setMobileMenuOpen(false)}>
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-house-icon lucide-house"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" /><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></svg>
             Home
           </Link>
@@ -589,8 +577,9 @@ const Navbar = () => {
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-land-plot-icon lucide-land-plot"><path d="m12 8 6-3-6-3v10" /><path d="m8 11.99-5.5 3.14a1 1 0 0 0 0 1.74l8.5 4.86a2 2 0 0 0 2 0l8.5-4.86a1 1 0 0 0 0-1.74L16 12" /><path d="m6.49 12.85 11.02 6.3" /><path d="M17.51 12.85 6.5 19.15" /></svg>
             Providers
           </Link>
-          <Link to="/register-as-professional" className="drawer-link special   flex gap-2" onClick={() => setMobileMenuOpen(false)}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-shield-user-icon lucide-shield-user"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /><path d="M6.376 18.91a6 6 0 0 1 11.249.003" /><circle cx="12" cy="11" r="4" /></svg>          Register as Professional
+          <Link to="/register-as-professional" className="drawer-link special flex gap-2" onClick={() => setMobileMenuOpen(false)}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-shield-user-icon lucide-shield-user"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /><path d="M6.376 18.91a6 6 0 0 1 11.249.003" /><circle cx="12" cy="11" r="4" /></svg>
+            Register as Professional
           </Link>
           {user ? (
             <>
@@ -602,16 +591,26 @@ const Navbar = () => {
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-book-marked-icon lucide-book-marked"><path d="M10 2v8l3-3 3 3V2" /><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20" /></svg>
                 Bookings
               </Link>
-              {user.role === 'provider' && <><Link to="/provider/profile" className="drawer-link">My Services</Link><Link to="/provider/stats" className="drawer-link">Stats</Link></>}
-              {user.role === 'admin' && <Link to="/admin" className="drawer-link flex gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-user-star-icon lucide-user-star"><path d="M16.051 12.616a1 1 0 0 1 1.909.024l.737 1.452a1 1 0 0 0 .737.535l1.634.256a1 1 0 0 1 .588 1.806l-1.172 1.168a1 1 0 0 0-.282.866l.259 1.613a1 1 0 0 1-1.541 1.134l-1.465-.75a1 1 0 0 0-.912 0l-1.465.75a1 1 0 0 1-1.539-1.133l.258-1.613a1 1 0 0 0-.282-.866l-1.156-1.153a1 1 0 0 1 .572-1.822l1.633-.256a1 1 0 0 0 .737-.535z" /><path d="M8 15H7a4 4 0 0 0-4 4v2" /><circle cx="10" cy="7" r="4" /></svg>
-                Admin Panel</Link>}
+              {user.role === 'provider' && (
+                <>
+                  <Link to="/provider/profile" className="drawer-link">My Services</Link>
+                  <Link to="/provider/stats" className="drawer-link">Stats</Link>
+                </>
+              )}
+              {/* Admin Panel Link in mobile drawer */}
+              {user.role === 'admin' && (
+                <Link to="/admin" className="drawer-link flex gap-2" onClick={() => setMobileMenuOpen(false)}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-shield-user-icon lucide-shield-user"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /><path d="M6.376 18.91a6 6 0 0 1 11.249.003" /><circle cx="12" cy="11" r="4" /></svg>
+                  Admin Panel
+                </Link>
+              )}
               <button onClick={() => { logout(); setMobileMenuOpen(false); }} className="drawer-link logout flex gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-log-out-icon lucide-log-out"><path d="m16 17 5-5-5-5" /><path d="M21 12H9" /><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /></svg>
                 Logout
               </button>
-              <button onClick={() => { logout(); setMobileMenuOpen(false); }} className="drawer-link logout flex gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-message-circle-question-mark-icon lucide-message-circle-question-mark"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><path d="M12 17h.01" /></svg>                Help & Support
+              <button className="drawer-link logout flex gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-message-circle-question-mark-icon lucide-message-circle-question-mark"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><path d="M12 17h.01" /></svg>
+                Help & Support
               </button>
             </>
           ) : (
@@ -624,8 +623,16 @@ const Navbar = () => {
       </div>
 
       <style>{`
-        /* Map & existing styles */
         .map-preview { margin-top: 12px; }
+        .address-search-group { margin-bottom: 8px; }
+
+        @media (max-width: 767px) {
+          .search-location-row { flex-direction: column !important; }
+          .location-picker, .search-wrapper { width: 100% !important; }
+          .location-btn { width: 100%; justify-content: space-between; }
+          .location-dropdown { width: calc(100vw - 2rem); left: 0; right: auto; }
+        }
+
         @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&family=Poppins:wght@300;400;500;600;700;800&display=swap');
         .navbar-white { background-color: #ffffff; width: 100%; position: sticky; top: 0; z-index: 1000; border-bottom: 1px solid #e5e7eb; font-family: 'Poppins', 'Inter', system-ui, sans-serif; }
         .navbar-container { max-width: 1280px; margin: 0 auto; padding: 0.75rem 1.5rem; }
@@ -659,7 +666,6 @@ const Navbar = () => {
         .user-dropdown:hover .dropdown-menu { opacity: 1; visibility: visible; }
         .dropdown-item { display: block; padding: 0.5rem 1rem; color: #374151; text-decoration: none; transition: background 0.2s; }
         .dropdown-item:hover { background: #f3f4f6; }
-        .logout-item { color: #dc2626; }
         .auth-buttons { display: flex; gap: 0.5rem; }
         .login-link { color: #374151; text-decoration: none; font-weight: 600; padding: 0.25rem 0.75rem; transition: color 0.2s; cursor: pointer; background: none; border: none; font-family: inherit; }
         .login-link:hover { color: #3b82f6; }
@@ -667,7 +673,7 @@ const Navbar = () => {
         .register-link:hover { background: #2563eb; transform: scale(1.05); }
         .search-location-row { margin-top: 1rem; display: flex; flex-direction: column; gap: 0.75rem; }
         @media (min-width: 768px) { .search-location-row { flex-direction: row; } }
-        .location-picker { position: relative; }
+        .location-picker { position: relative; width: 100%; }
         .location-btn { display: flex; align-items: center; gap: 0.5rem; background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.625rem 1rem; border-radius: 0.5rem; color: #374151; cursor: pointer; width: 100%; font-family: inherit; }
         .location-btn:hover { background: #f3f4f6; border-color: #d1d5db; }
         .location-icon { width: 1.25rem; height: 1.25rem; }
@@ -685,7 +691,7 @@ const Navbar = () => {
         .save-location-btn { width: 100%; background: #3b82f6; color: white; padding: 0.5rem; border-radius: 0.5rem; border: none; cursor: pointer; font-family: inherit; font-weight: 500; transition: background 0.2s; }
         .save-location-btn:hover { background: #2563eb; }
         .save-location-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-        .search-wrapper { flex: 1; position: relative; }
+        .search-wrapper { flex: 1; position: relative; width: 100%; }
         .search-form { width: 100%; }
         .search-input-wrapper { position: relative; }
         .search-icon { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); width: 1.25rem; height: 1.25rem; color: #9ca3af; }
@@ -716,13 +722,6 @@ const Navbar = () => {
         .drawer-link.auth.signup { background: #3b82f6; color: white; }
         .drawer-link.logout { color: #dc2626; }
         .drawer-link:hover { background: #f3f4f6; }
-        .mobile-bottom-nav { display: flex; position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e5e7eb; padding: 0.5rem 1rem; justify-content: space-around; align-items: center; z-index: 100; }
-        @media (min-width: 1024px) { .mobile-bottom-nav { display: none; } }
-        .mobile-nav-item { display: flex; flex-direction: column; align-items: center; text-decoration: none; color: #6b7280; transition: color 0.2s; background: none; border: none; cursor: pointer; font-family: inherit; font-size: 0.7rem; }
-        .mobile-nav-item.special { color: #eab308; }
-        .mobile-nav-icon { width: 1.5rem; height: 1.5rem; }
-        .mobile-bottom-spacer { height: 4rem; }
-        @media (min-width: 1024px) { .mobile-bottom-spacer { display: none; } }
       `}</style>
     </>
   );
