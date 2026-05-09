@@ -42,13 +42,10 @@ export const fetchNotifications = async (page = 1, limit = 20) => {
 };
 
 // ========== Admin APIs ==========
-
-// Dashboard stats
 export const fetchAdminDashboard = async () => {
   return apiFetch('/admin/dashboard');
 };
 
-// Users management
 export const fetchAdminUsers = async (page = 1, limit = 20, role = '', status = '') => {
   let url = `/admin/users?page=${page}&limit=${limit}`;
   if (role) url += `&role=${role}`;
@@ -67,7 +64,6 @@ export const updateAdminUserStatus = async (userId, status) => {
   });
 };
 
-// Provider verifications
 export const fetchAdminVerifications = async (page = 1, limit = 20) => {
   return apiFetch(`/admin/verifications?page=${page}&limit=${limit}`);
 };
@@ -79,7 +75,6 @@ export const verifyProvider = async (providerId, status, note = '') => {
   });
 };
 
-// Categories CRUD
 export const createCategory = async (categoryData) => {
   return apiFetch('/admin/categories', {
     method: 'POST',
@@ -100,7 +95,6 @@ export const deleteCategory = async (categoryId) => {
   });
 };
 
-// Services CRUD
 export const createService = async (serviceData) => {
   return apiFetch('/admin/services', {
     method: 'POST',
@@ -121,22 +115,60 @@ export const deleteService = async (serviceId) => {
   });
 };
 
-// Bookings management
 export const fetchAdminBookings = async (page = 1, limit = 20, status = '') => {
   let url = `/admin/bookings?page=${page}&limit=${limit}`;
   if (status) url += `&status=${status}`;
   return apiFetch(url);
 };
 
-// Revenue reports
 export const fetchRevenueReport = async (startDate, endDate) => {
   return apiFetch(`/admin/reports/revenue?startDate=${startDate}&endDate=${endDate}`);
 };
 
+// ========== Public Service/Category APIs ==========
 export const fetchCategories = async () => {
+  return apiFetch('/services/categories');
+};
+
+export const fetchCategoryBySlug = async (slug) => {
+  return apiFetch(`/services/categories/${slug}`);
+};
+
+export const fetchServices = async (page = 1, limit = 10) => {
+  return apiFetch(`/services?page=${page}&limit=${limit}`);
+};
+
+export const fetchFeaturedServices = async () => {
+  return apiFetch('/services/featured');
+};
+
+export const fetchPopularServices = async () => {
+  return apiFetch('/services/popular');
+};
+
+export const fetchServiceBySlug = async (slug) => {
+  return apiFetch(`/services/${slug}`);
+};
+
+export const searchServices = async (query) => {
+  const res = await fetchServices(1, 100);
+  if (res.success && res.data.services) {
+    const filtered = res.data.services.filter(service =>
+      service.name.toLowerCase().includes(query.toLowerCase()) ||
+      service.shortDescription?.toLowerCase().includes(query.toLowerCase()) ||
+      service.slug.toLowerCase().includes(query.toLowerCase())
+    );
+    return { success: true, services: filtered };
+  }
+  return { success: false, services: [] };
+};
+
+// Add to src/services/api.js (after deleteCategory)
+
+export const fetchAdminCategories = async () => {
   return apiFetch('/admin/categories');
 };
 
-export const fetchServices = async () => {
+export const fetchAdminServices = async () => {
   return apiFetch('/admin/services');
 };

@@ -20,6 +20,10 @@ const Navbar = () => {
   const [searchAddress, setSearchAddress] = useState('');
   const [isAddressSearching, setIsAddressSearching] = useState(false);
 
+  // Responsive state logic
+  const [isMobileView, setIsMobileView] = useState(window.innerWidth < 1024);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+
   // Map related states
   const [mapLat, setMapLat] = useState(28.6139);
   const [mapLng, setMapLng] = useState(77.2090);
@@ -31,6 +35,13 @@ const Navbar = () => {
   const searchTimeout = useRef(null);
   const searchRef = useRef(null);
   const locationRef = useRef(null);
+
+  // Handle Window Resize for Responsiveness
+  useEffect(() => {
+    const handleResize = () => setIsMobileView(window.innerWidth < 1024);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Preload Leaflet
   useEffect(() => {
@@ -109,21 +120,10 @@ const Navbar = () => {
   };
 
   const servicePlaceholders = [
-    '🔧 Search for plumbers...',
-    '⚡ Find electricians...',
-    '🧹 Book cleaning services...',
-    '🔑 Locksmith available...',
-    '📦 Moving & packing...',
-    '🎨 Painters near you...',
-    '❄️ AC repair services...',
-    '💧 Plumbers for emergency...',
-    '🔌 Electrical repairs...',
-    '🧺 Laundry services...',
-    '📱 Mobile repair...',
-    '🚗 Car wash & detailing...',
-    '🌿 Gardening services...',
-    '🐜 Pest control...',
-    '📚 Home tutors...'
+    'Search for plumbers...',
+    'Find electricians...',
+    'Book cleaning services...',
+    'AC repair services...'
   ];
 
   useEffect(() => {
@@ -136,14 +136,6 @@ const Navbar = () => {
   }, [isSearchFocused]);
 
   useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 1024 && mobileMenuOpen) setMobileMenuOpen(false);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [mobileMenuOpen]);
-
-  useEffect(() => {
     const handleClickOutside = (event) => {
       if (searchRef.current && !searchRef.current.contains(event.target)) setShowSearchResults(false);
       if (locationRef.current && !locationRef.current.contains(event.target)) setShowLocationPicker(false);
@@ -152,7 +144,6 @@ const Navbar = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // When location picker opens, show map and load saved/current location
   useEffect(() => {
     if (showLocationPicker) {
       setShowMap(true);
@@ -222,7 +213,6 @@ const Navbar = () => {
             { id: 2, name: 'Electrical Repair', category: 'Electrician', rating: 4.8, price: 600 },
             { id: 3, name: 'AC Service & Repair', category: 'AC Technician', rating: 4.7, price: 800 },
             { id: 4, name: 'Home Cleaning', category: 'Cleaner', rating: 4.6, price: 400 },
-            { id: 5, name: 'Painting Services', category: 'Painter', rating: 4.4, price: 1000 },
           ].filter(service =>
             service.name.toLowerCase().includes(query.toLowerCase()) ||
             service.category.toLowerCase().includes(query.toLowerCase())
@@ -359,369 +349,334 @@ const Navbar = () => {
     window.location.href = `/service/${service.id}`;
   };
 
-  return (
+  const getInitials = (name) => {
+    if (!name) return 'U';
+    return name.substring(0, 2).toUpperCase();
+  };
+
+
+  /* --- RENDER HELPERS --- */
+
+  const renderLocationModalContent = () => (
     <>
-      <nav className="navbar-white">
-        <div className="navbar-container">
-          <div className="navbar-top-row">
-            <div className="logo-section">
-              <Link to="/" className="logo-link" onMouseEnter={handleLogoRotate} onClick={handleLogoRotate}>
-                <div className="logo-wrapper">
-                  <img
-                    src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778086674/seva_uuvngp-removebg-preview_mq4ctm.png"
-                    alt="GharSeva Logo"
-                    className={`logo-image ${isLogoRotating ? 'logo-rotate' : ''}`}
-                    onError={(e) => { e.target.onerror = null; e.target.src = "https://via.placeholder.com/80x80?text=GS"; }}
-                  />
-                </div>
-                <div className="logo-text">
-                  <span className="brand-name">GharSeva</span>
-                  <p className="brand-tagline">Home Services at Your Doorstep</p>
-                </div>
-              </Link>
-              <button className="mobile-menu-btn" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-                <svg className="mobile-menu-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              </button>
+      <h3 className="text-gray-900 font-semibold mb-3">Choose Location</h3>
+      <button onClick={getCurrentLocation} disabled={isLocating} className="w-full flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-600 py-2 px-4 rounded-lg transition border border-blue-100 font-medium">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        {isLocating ? 'Locating...' : 'Use My Current Location'}
+      </button>
+      <div className="my-3 text-center text-gray-400 text-xs font-medium uppercase tracking-wider">or search address</div>
+      <div className="flex flex-col gap-2">
+        <input type="text" value={searchAddress} onChange={(e) => setSearchAddress(e.target.value)} placeholder="Type full address..." className="bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-all" onKeyPress={(e) => e.key === 'Enter' && searchAddressAndShowMap()} />
+        <button onClick={searchAddressAndShowMap} disabled={isAddressSearching} className="bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium transition shadow-sm">
+          {isAddressSearching ? 'Searching...' : 'Search & Show on Map'}
+        </button>
+      </div>
+      {showMap && (
+        <div className="mt-3">
+          <div ref={mapContainerRef} className="h-[200px] w-full rounded-lg bg-gray-100 overflow-hidden border border-gray-200"></div>
+          <p className="text-[10px] text-gray-500 mt-1.5 text-center font-medium">📍 Drag marker to adjust exact location</p>
+          <button onClick={confirmMapLocation} className="w-full mt-2 bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg text-sm font-medium transition shadow-sm">Confirm Location</button>
+        </div>
+      )}
+      <div className="my-3 text-center text-gray-400 text-xs font-medium uppercase tracking-wider">or enter city manually</div>
+      <input type="text" value={customLocation} onChange={(e) => setCustomLocation(e.target.value)} placeholder="Enter city..." className="w-full bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-all" onKeyPress={(e) => e.key === 'Enter' && saveCustomLocation()} />
+      <button onClick={saveCustomLocation} className="w-full mt-2 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-medium transition">Save Location</button>
+    </>
+  );
+
+  const renderSearchResultsDropdown = () => (
+    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-xl shadow-xl z-[1050] max-h-[300px] overflow-y-auto overflow-hidden">
+      {loading ? (
+        <div className="p-4 text-center text-gray-500 text-sm">Searching...</div>
+      ) : searchResults.length > 0 ? (
+        searchResults.map((service) => (
+          <div key={service.id} onClick={() => selectSearchResult(service)} className="p-3 border-b border-gray-50 last:border-0 hover:bg-gray-50 cursor-pointer flex justify-between items-center transition">
+            <div>
+              <h4 className="text-gray-900 text-sm font-medium">{service.name}</h4>
+              <p className="text-gray-500 text-xs mt-0.5">{service.category}</p>
             </div>
-            <div className="nav-links">
-              <Link to="/" className="nav-link">Home</Link>
-              <Link to="/services" className="nav-link">Services</Link>
-              <Link to="/providers" className="nav-link">Providers</Link>
-              <Link to="/register-as-professional" className="register-btn">Register as Professional</Link>
-            </div>
-            <div className="user-actions desktop-only rounded-md px-2">
-              {user ? (
-                <div className="user-dropdown">
-                  <button className="user-dropdown-btn uppercase">
-                    <span className="username">{user.name || user.email?.split('@')[0]}</span>
-                    <svg className="dropdown-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                  <div className="dropdown-menu p-3">
-                    <Link to="/profile" className="flex items-center gap-3 hover:bg-orange-400 p-2">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-user-round-icon lucide-user-round"><circle cx="12" cy="8" r="5" /><path d="M20 21a8 8 0 0 0-16 0" /></svg>
-                      Profile
-                    </Link>
-                    <Link to="/my-bookings" className="flex items-center gap-3 hover:bg-orange-400 p-2">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-book-marked-icon lucide-book-marked"><path d="M10 2v8l3-3 3 3V2" /><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20" /></svg>
-                      Bookings
-                    </Link>
-                    {user.role === 'provider' && (
-                      <>
-                        <Link to="/provider/profile" className="flex items-center gap-3 w-full hover:bg-orange-400 p-2">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-toolbox-icon lucide-toolbox"><path d="M16 12v4" /><path d="M16 6a2 2 0 0 1 1.414.586l4 4A2 2 0 0 1 22 12v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 .586-1.414l4-4A2 2 0 0 1 8 6z" /><path d="M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" /><path d="M2 14h20" /><path d="M8 12v4" /></svg>
-                          My Services
-                        </Link>
-                        <Link to="/provider/stats" className="flex items-center gap-3 w-full hover:bg-orange-400 p-2">Stats</Link>
-                      </>
-                    )}
-                    {/* Admin Panel Link - only for admin */}
-                    {user.role === 'admin' && (
-                      <Link to="/admin" className="flex items-center gap-3 w-full hover:bg-orange-400 p-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-shield-user-icon lucide-shield-user"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /><path d="M6.376 18.91a6 6 0 0 1 11.249.003" /><circle cx="12" cy="11" r="4" /></svg>
-                        Admin Panel
-                      </Link>
-                    )}
-                    <button onClick={logout} className="flex items-center w-full gap-3 hover:bg-orange-400 p-2">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-log-out-icon lucide-log-out"><path d="m16 17 5-5-5-5" /><path d="M21 12H9" /><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /></svg>
-                      Logout
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="auth-buttons">
-                  <button onClick={() => setShowAuth(true)} className="login-link">Login</button>
-                  <button onClick={() => setShowAuth(true)} className="register-link">Signup</button>
-                </div>
-              )}
+            <div className="text-right">
+              <span className="text-amber-500 text-xs block font-medium">★ {service.rating}</span>
+              <span className="text-emerald-600 text-xs font-bold mt-0.5 block">₹{service.price}</span>
             </div>
           </div>
+        ))
+      ) : searchQuery.length > 1 ? (
+        <div className="p-4 text-center text-gray-500 text-sm">No services found</div>
+      ) : null}
+    </div>
+  );
 
-          <div className="search-location-row">
-            <div className="location-picker" ref={locationRef}>
-              <button onClick={() => setShowLocationPicker(!showLocationPicker)} className="location-btn">
-                <svg className="location-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                {isLocating ? (
-                  <span className="locating-text"><span className="locating-spinner"></span> Locating…</span>
+  const renderSearchInput = (mobileMode = false) => (
+    <div className={`w-full relative ${mobileMode ? 'flex' : 'flex-1'}`} ref={searchRef}>
+      <form onSubmit={handleSearchSubmit} className={`flex items-center w-full ${mobileMode ? 'bg-gray-50 border border-gray-200 rounded-full focus-within:bg-white focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-400 shadow-sm transition-all' : ''}`}>
+        <div className="pl-3 text-gray-400">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={handleSearchChange}
+          onFocus={() => { setIsSearchFocused(true); if (searchQuery.length > 1) setShowSearchResults(true); }}
+          onBlur={() => setIsSearchFocused(false)}
+          placeholder={searchPlaceholder || servicePlaceholders[0]}
+          className="w-full bg-transparent text-gray-900 px-2 py-2.5 text-sm focus:outline-none placeholder-gray-400"
+        />
+        {searchQuery && (
+          <button type="button" onClick={() => { setSearchQuery(''); setSearchResults([]); setShowSearchResults(false); }} className="pr-2 text-gray-400 hover:text-gray-600">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        )}
+        <button type="submit" className={`${mobileMode ? 'hidden' : 'hidden sm:flex'} items-center gap-1 bg-transparent hover:bg-gray-200 text-gray-600 hover:text-gray-900 px-4 py-1.5 mr-1 rounded-full text-sm font-medium transition`}>
+          Search <span>&rarr;</span>
+        </button>
+      </form>
+      {showSearchResults && renderSearchResultsDropdown()}
+    </div>
+  );
+
+
+  return (
+    <>
+      <nav className="bg-white text-gray-800 border-b border-gray-200 font-sans sticky top-0 z-[1000] shadow-sm">
+        <div className="max-w-[1500px] mx-auto px-4 py-3">
+          
+          {/* ===================== DESKTOP VIEW (>=1024px) ===================== */}
+          {!isMobileView && (
+            <div className="flex items-center justify-between gap-8">
+              
+              {/* Logo */}
+              <Link to="/" className="flex items-center gap-3 shrink-0 no-underline" onMouseEnter={handleLogoRotate} onClick={handleLogoRotate}>
+                <div className="bg-blue-600 text-white rounded-lg w-10 h-10 flex items-center justify-center font-bold text-xl shadow-md shadow-blue-500/20">GS</div>
+                <div>
+                  <h1 className="text-xl font-bold text-blue-600 tracking-tight leading-tight">GharSeva</h1>
+                  <p className="text-[11px] text-gray-500 leading-tight mt-0.5">Home services at your doorstep</p>
+                </div>
+              </Link>
+
+              {/* Desktop Combined Pill: Location + Search */}
+              <div className="flex flex-1 items-center bg-gray-50 border border-gray-200 rounded-full max-w-3xl transition-all focus-within:border-gray-300 focus-within:bg-white focus-within:shadow-md">
+                
+                {/* Desktop Location Dropdown */}
+                <div className="relative shrink-0" ref={locationRef}>
+                  <button onClick={() => setShowLocationPicker(!showLocationPicker)} className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-l-full transition-colors whitespace-nowrap">
+                    <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    <span className="max-w-[150px] truncate">{isLocating ? 'Locating...' : (location || 'Select Location')}</span>
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                  </button>
+
+                  {showLocationPicker && (
+                    <div className="absolute top-full left-0 mt-2 w-[350px] bg-white border border-gray-100 rounded-xl shadow-xl z-50 p-4">
+                      {renderLocationModalContent()}
+                    </div>
+                  )}
+                </div>
+
+                <div className="w-[1px] h-6 bg-gray-300"></div>
+
+                {/* Desktop Search Bar */}
+                {renderSearchInput(false)}
+              </div>
+
+              {/* Desktop Right Controls (Auth/Profile & Menu) */}
+              <div className="flex items-center gap-3 shrink-0">
+                {user ? (
+                  <div className="relative group">
+                    <button className="flex items-center gap-2 bg-white hover:bg-gray-50 border border-gray-200 px-2 py-1.5 rounded-full transition-colors shadow-sm">
+                      <div className="w-7 h-7 bg-blue-100 text-blue-700 font-bold rounded-full flex items-center justify-center text-xs">{getInitials(user.name || user.email)}</div>
+                      <span className="text-sm font-medium text-gray-700 max-w-[80px] truncate">{user.name || user.email?.split('@')[0]}</span>
+                      <svg className="w-4 h-4 text-gray-400 pr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+                    {/* Desktop Profile Dropdown */}
+                    <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-xl shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 overflow-hidden">
+                      <Link to="/profile" className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition font-medium">Profile</Link>
+                      <Link to="/my-bookings" className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition font-medium">Bookings</Link>
+                      {user.role === 'provider' && (
+                        <>
+                          <Link to="/provider/profile" className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition font-medium">My Services</Link>
+                          <Link to="/provider/stats" className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition font-medium">Stats</Link>
+                        </>
+                      )}
+                      {user.role === 'admin' && <Link to="/admin" className="block px-4 py-2.5 text-sm text-amber-600 hover:bg-amber-50 transition font-bold">Admin Panel</Link>}
+                      <div className="h-px bg-gray-100 my-1"></div>
+                      <button onClick={logout} className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition font-medium">Logout</button>
+                    </div>
+                  </div>
                 ) : (
-                  <span className="location-text">{location || 'Select Location'}</span>
+                  <div className="flex gap-2">
+                    <button onClick={() => setShowAuth(true)} className="text-sm font-medium text-gray-600 hover:text-gray-900 px-3 py-1.5 transition">Login</button>
+                    <button onClick={() => setShowAuth(true)} className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-1.5 rounded-full transition shadow-sm">Sign Up</button>
+                  </div>
                 )}
-                <svg className="dropdown-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
 
-              {showLocationPicker && (
-                <div className="location-dropdown">
-                  <div className="location-dropdown-content">
-                    <h3 className="dropdown-title">Choose Location</h3>
+                <button onClick={() => setMobileMenuOpen(true)} className="flex items-center justify-center bg-white hover:bg-gray-50 border border-gray-200 w-10 h-10 rounded-xl transition-colors shadow-sm">
+                  <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+                </button>
+              </div>
+            </div>
+          )}
 
-                    {/* Button 1: Use My Current Location */}
-                    <button onClick={getCurrentLocation} className="current-location-btn" disabled={isLocating}>
-                      <svg className="location-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          {/* ===================== MOBILE VIEW (<1024px) ===================== */}
+          {isMobileView && (
+            <div className="flex flex-col gap-3">
+              {/* Row 1: Logo | Fixed Location | Search Toggle | Hamburger */}
+              <div className="flex items-center justify-between gap-2">
+                
+                {/* Mobile Logo */}
+                <Link to="/" className="flex shrink-0 no-underline" onClick={handleLogoRotate}>
+                  <div className="bg-blue-600 text-white rounded-lg w-9 h-9 flex items-center justify-center font-bold text-lg shadow-md">GS</div>
+                </Link>
+
+                {/* Mobile Fixed Location Box */}
+                <div className="flex-1 min-w-0" ref={locationRef}>
+                  <button 
+                    onClick={() => setShowLocationPicker(true)} 
+                    className="flex items-center justify-between w-full max-w-[200px] gap-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-full transition-colors"
+                  >
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <svg className="w-4 h-4 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
-                      {isLocating ? 'Locating...' : 'Use My Current Location'}
-                    </button>
-
-                    <div className="divider">or search address</div>
-
-                    {/* Address search input + button */}
-                    <div className="address-search-group">
-                      <input
-                        type="text"
-                        value={searchAddress}
-                        onChange={(e) => setSearchAddress(e.target.value)}
-                        placeholder="Type full address (e.g., Hamindpur, Behror, Rajasthan)"
-                        className="location-input"
-                        onKeyPress={(e) => e.key === 'Enter' && searchAddressAndShowMap()}
-                      />
-                      <button onClick={searchAddressAndShowMap} className="save-location-btn mt-2" disabled={isAddressSearching}>
-                        {isAddressSearching ? 'Searching...' : 'Search & Show on Map'}
-                      </button>
-                    </div>
-
-                    {/* Map preview (appears after either button is clicked) */}
-                    {showMap && (
-                      <div className="map-preview">
-                        <div ref={mapContainerRef} style={{ height: '220px', width: '100%', borderRadius: '8px', marginTop: '8px', background: '#f0f0f0' }}></div>
-                        <p className="text-xs text-gray-500 mt-1">📍 Drag the marker to adjust exact location</p>
-                        <button onClick={confirmMapLocation} className="save-location-btn mt-2 bg-green-600 hover:bg-green-700">
-                          Confirm Location
-                        </button>
+                      <div className="flex flex-col text-left min-w-0">
+                        <span className="text-[9px] font-bold text-gray-800 uppercase tracking-wider leading-none">Location</span>
+                        <span className="text-[11px] text-gray-500 truncate leading-tight mt-0.5">
+                          {isLocating ? 'Locating...' : (location || 'Select Location')}
+                        </span>
                       </div>
-                    )}
+                    </div>
+                    <svg className="w-3 h-3 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                  </button>
 
-                    <div className="divider">or enter city manually</div>
-
-                    <input
-                      type="text"
-                      value={customLocation}
-                      onChange={(e) => setCustomLocation(e.target.value)}
-                      placeholder="Enter city/locality..."
-                      className="location-input"
-                      onKeyPress={(e) => e.key === 'Enter' && saveCustomLocation()}
-                    />
-                    <button onClick={saveCustomLocation} className="save-location-btn mt-2">Save Location</button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="search-wrapper" ref={searchRef}>
-              <form onSubmit={handleSearchSubmit} className="search-form">
-                <div className="search-input-wrapper">
-                  <svg className="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={handleSearchChange}
-                    onFocus={() => { setIsSearchFocused(true); if (searchQuery.length > 1) setShowSearchResults(true); }}
-                    onBlur={() => setIsSearchFocused(false)}
-                    placeholder={searchPlaceholder || servicePlaceholders[0]}
-                    className="search-input"
-                  />
-                  {searchQuery && (
-                    <button type="button" onClick={() => { setSearchQuery(''); setSearchResults([]); setShowSearchResults(false); }} className="clear-search-btn">
-                      <svg className="clear-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
+                  {/* Mobile Location Modal (Centered Overlay) */}
+                  {showLocationPicker && (
+                    <>
+                      <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-[1150]" onClick={() => setShowLocationPicker(false)}></div>
+                      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-[350px] bg-white border border-gray-100 rounded-2xl shadow-2xl z-[1200] p-5">
+                        <button onClick={() => setShowLocationPicker(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                        {renderLocationModalContent()}
+                      </div>
+                    </>
                   )}
                 </div>
-              </form>
-              {showSearchResults && (
-                <div className="search-results-dropdown">
-                  {loading ? (
-                    <div className="loading-state"><div className="spinner"></div><p>Searching...</p></div>
-                  ) : searchResults.length > 0 ? (
-                    searchResults.map((service) => (
-                      <div key={service.id} onClick={() => selectSearchResult(service)} className="search-result-item">
-                        <div><h4 className="result-name">{service.name}</h4><p className="result-category">{service.category}</p></div>
-                        <div><span className="rating">★ {service.rating}</span><p className="price">₹{service.price}</p></div>
-                      </div>
-                    ))
-                  ) : searchQuery.length > 1 ? (
-                    <div className="no-results">No services found</div>
-                  ) : null}
+
+                {/* Mobile Right Controls */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <button onClick={() => setMobileSearchOpen(!mobileSearchOpen)} className="p-2 text-gray-600 bg-gray-50 border border-gray-200 hover:bg-gray-100 rounded-full transition shadow-sm">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                  </button>
+                  
+                  {user && (
+                    <div className="w-8 h-8 bg-blue-100 text-blue-700 font-bold rounded-full flex items-center justify-center text-xs border border-blue-200">
+                      {getInitials(user.name || user.email)}
+                    </div>
+                  )}
+
+                  <button onClick={() => setMobileMenuOpen(true)} className="flex items-center justify-center bg-white hover:bg-gray-50 border border-gray-200 w-9 h-9 rounded-xl transition-colors shadow-sm">
+                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+                  </button>
+                </div>
+              </div>
+
+              {/* Row 2: Search Bar Expansion (Visible only when mobileSearchOpen is true) */}
+              {mobileSearchOpen && (
+                <div className="w-full animate-fadeIn mt-1">
+                  {renderSearchInput(true)}
                 </div>
               )}
             </div>
+          )}
+
+          {/* ===================== CATEGORIES FILTER (Shared Scrollable Row) ===================== */}
+          <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            <button className="shrink-0 flex items-center gap-2 px-4 py-1.5 rounded-lg border border-gray-300 bg-gray-100 text-gray-900 text-sm font-semibold transition hover:bg-gray-200">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h8m-8 6h16" /></svg>
+              All
+            </button>
+            <button className="shrink-0 flex items-center gap-2 px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:text-gray-900 hover:border-gray-300 hover:bg-gray-50 text-sm font-medium transition shadow-sm">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+              Electrician
+            </button>
+            <button className="shrink-0 flex items-center gap-2 px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:text-gray-900 hover:border-gray-300 hover:bg-gray-50 text-sm font-medium transition shadow-sm">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+              Plumber
+            </button>
+            <button className="shrink-0 flex items-center gap-2 px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:text-gray-900 hover:border-gray-300 hover:bg-gray-50 text-sm font-medium transition shadow-sm">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" /></svg>
+              Painter
+            </button>
+            <button className="shrink-0 flex items-center gap-2 px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:text-gray-900 hover:border-gray-300 hover:bg-gray-50 text-sm font-medium transition shadow-sm">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+              AC repair
+            </button>
+            <button className="shrink-0 flex items-center gap-2 px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:text-gray-900 hover:border-gray-300 hover:bg-gray-50 text-sm font-medium transition shadow-sm">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
+              Cleaning
+            </button>
+            <button className="shrink-0 flex items-center gap-2 px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:text-gray-900 hover:border-gray-300 hover:bg-gray-50 text-sm font-medium transition shadow-sm">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.618 5.984A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016zM12 9v2m0 4h.01" /></svg>
+              Pest Control
+            </button>
           </div>
         </div>
       </nav>
 
-      {/* Mobile Drawer */}
-      <div className={`mobile-drawer-overlay ${mobileMenuOpen ? 'open' : ''}`} onClick={() => setMobileMenuOpen(false)}></div>
-      <div className={`mobile-drawer ${mobileMenuOpen ? 'open' : ''}`}>
-        <div className="drawer-header"><span className="drawer-logo">GharSeva</span><button className="drawer-close" onClick={() => setMobileMenuOpen(false)}>✕</button></div>
-        <div className="drawer-links">
-          <Link to="/" className="drawer-link flex gap-2" onClick={() => setMobileMenuOpen(false)}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-house-icon lucide-house"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" /><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></svg>
-            Home
-          </Link>
-          <Link to="/services" className="drawer-link flex gap-2" onClick={() => setMobileMenuOpen(false)}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-toolbox-icon lucide-toolbox"><path d="M16 12v4" /><path d="M16 6a2 2 0 0 1 1.414.586l4 4A2 2 0 0 1 22 12v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 .586-1.414l4-4A2 2 0 0 1 8 6z" /><path d="M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" /><path d="M2 14h20" /><path d="M8 12v4" /></svg>
-            Services
-          </Link>
-          <Link to="/providers" className="drawer-link flex gap-2" onClick={() => setMobileMenuOpen(false)}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-land-plot-icon lucide-land-plot"><path d="m12 8 6-3-6-3v10" /><path d="m8 11.99-5.5 3.14a1 1 0 0 0 0 1.74l8.5 4.86a2 2 0 0 0 2 0l8.5-4.86a1 1 0 0 0 0-1.74L16 12" /><path d="m6.49 12.85 11.02 6.3" /><path d="M17.51 12.85 6.5 19.15" /></svg>
-            Providers
-          </Link>
-          <Link to="/register-as-professional" className="drawer-link special flex gap-2" onClick={() => setMobileMenuOpen(false)}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-shield-user-icon lucide-shield-user"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /><path d="M6.376 18.91a6 6 0 0 1 11.249.003" /><circle cx="12" cy="11" r="4" /></svg>
-            Register as Professional
-          </Link>
+      {/* ===================== SIDEBAR DRAWER (Accessed via Hamburger) ===================== */}
+      <div className={`fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-[1050] transition-opacity duration-300 ${mobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`} onClick={() => setMobileMenuOpen(false)}></div>
+      <div className={`fixed top-0 right-0 bottom-0 w-72 bg-white shadow-2xl z-[1100] transform transition-transform duration-300 flex flex-col border-l border-gray-200 ${mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className="flex justify-between items-center p-5 border-b border-gray-100">
+          <span className="text-xl font-bold text-blue-600">Menu</span>
+          <button onClick={() => setMobileMenuOpen(false)} className="text-gray-500 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 p-2 rounded-lg transition-colors">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2">
+          <Link to="/" className="text-gray-700 hover:text-blue-600 hover:bg-blue-50 px-4 py-3 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>Home</Link>
+          <Link to="/services" className="text-gray-700 hover:text-blue-600 hover:bg-blue-50 px-4 py-3 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>All Services</Link>
+          <Link to="/providers" className="text-gray-700 hover:text-blue-600 hover:bg-blue-50 px-4 py-3 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>Providers</Link>
+          <div className="h-px bg-gray-100 my-2"></div>
+          
           {user ? (
             <>
-              <Link to="/profile" className="drawer-link flex gap-2" onClick={() => setMobileMenuOpen(false)}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-user-round-icon lucide-user-round"><circle cx="12" cy="8" r="5" /><path d="M20 21a8 8 0 0 0-16 0" /></svg>
-                Profile
-              </Link>
-              <Link to="/my-bookings" className="drawer-link flex gap-2" onClick={() => setMobileMenuOpen(false)}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-book-marked-icon lucide-book-marked"><path d="M10 2v8l3-3 3 3V2" /><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20" /></svg>
-                Bookings
-              </Link>
-              {user.role === 'provider' && (
-                <>
-                  <Link to="/provider/profile" className="drawer-link">My Services</Link>
-                  <Link to="/provider/stats" className="drawer-link">Stats</Link>
-                </>
-              )}
-              {/* Admin Panel Link in mobile drawer */}
-              {user.role === 'admin' && (
-                <Link to="/admin" className="drawer-link flex gap-2" onClick={() => setMobileMenuOpen(false)}>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-shield-user-icon lucide-shield-user"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /><path d="M6.376 18.91a6 6 0 0 1 11.249.003" /><circle cx="12" cy="11" r="4" /></svg>
-                  Admin Panel
-                </Link>
-              )}
-              <button onClick={() => { logout(); setMobileMenuOpen(false); }} className="drawer-link logout flex gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-log-out-icon lucide-log-out"><path d="m16 17 5-5-5-5" /><path d="M21 12H9" /><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /></svg>
-                Logout
-              </button>
-              <button className="drawer-link logout flex gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-message-circle-question-mark-icon lucide-message-circle-question-mark"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><path d="M12 17h.01" /></svg>
-                Help & Support
-              </button>
+              <Link to="/profile" className="text-gray-700 hover:text-blue-600 hover:bg-blue-50 px-4 py-3 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>My Profile</Link>
+              <Link to="/my-bookings" className="text-gray-700 hover:text-blue-600 hover:bg-blue-50 px-4 py-3 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>My Bookings</Link>
+              <div className="h-px bg-gray-100 my-2"></div>
+              <button onClick={() => { logout(); setMobileMenuOpen(false); }} className="w-full text-left text-red-600 hover:bg-red-50 px-4 py-3 rounded-xl transition font-medium">Logout</button>
             </>
           ) : (
             <>
-              <button onClick={() => { setShowAuth(true); setMobileMenuOpen(false); }} className="drawer-link auth">Login</button>
-              <button onClick={() => { setShowAuth(true); setMobileMenuOpen(false); }} className="drawer-link auth signup">Signup</button>
+              <Link to="/register-as-professional" className="text-amber-600 hover:bg-amber-50 px-4 py-3 rounded-xl transition font-bold" onClick={() => setMobileMenuOpen(false)}>Register as Professional</Link>
+              <div className="mt-4 flex flex-col gap-2">
+                <button onClick={() => { setShowAuth(true); setMobileMenuOpen(false); }} className="w-full bg-white text-gray-800 py-2.5 rounded-xl font-semibold border border-gray-200 hover:bg-gray-50 transition shadow-sm">Login</button>
+                <button onClick={() => { setShowAuth(true); setMobileMenuOpen(false); }} className="w-full bg-blue-600 text-white py-2.5 rounded-xl font-semibold hover:bg-blue-700 transition shadow-sm">Sign Up</button>
+              </div>
             </>
           )}
         </div>
       </div>
 
       <style>{`
-        .map-preview { margin-top: 12px; }
-        .address-search-group { margin-bottom: 8px; }
-
-        @media (max-width: 767px) {
-          .search-location-row { flex-direction: column !important; }
-          .location-picker, .search-wrapper { width: 100% !important; }
-          .location-btn { width: 100%; justify-content: space-between; }
-          .location-dropdown { width: calc(100vw - 2rem); left: 0; right: auto; }
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
         }
-
-        @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&family=Poppins:wght@300;400;500;600;700;800&display=swap');
-        .navbar-white { background-color: #ffffff; width: 100%; position: sticky; top: 0; z-index: 1000; border-bottom: 1px solid #e5e7eb; font-family: 'Poppins', 'Inter', system-ui, sans-serif; }
-        .navbar-container { max-width: 1280px; margin: 0 auto; padding: 0.75rem 1.5rem; }
-        .navbar-top-row { display: flex; flex-direction: column; gap: 1rem; }
-        @media (min-width: 1024px) { .navbar-top-row { flex-direction: row; align-items: center; justify-content: space-between; } }
-        .logo-section { display: flex; align-items: center; justify-content: space-between; width: 100%; }
-        @media (min-width: 1024px) { .logo-section { width: auto; } }
-        .logo-link { display: flex; align-items: center; gap: 0.75rem; text-decoration: none; cursor: pointer; }
-        .logo-image { height: 4rem; width: auto; object-fit: contain; transition: transform 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
-        .logo-rotate { animation: rotateLogo 0.6s ease-in-out; }
-        @keyframes rotateLogo { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .logo-text { display: none; }
-        @media (min-width: 640px) { .logo-text { display: block; } }
-        .brand-name { font-size: 1.875rem; font-weight: 800; background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); background-clip: text; -webkit-background-clip: text; color: transparent; }
-        .brand-tagline { font-size: 0.75rem; color: #6b7280; margin-top: 0.125rem; }
-        .mobile-menu-btn { display: block; padding: 0.5rem; background: transparent; border: none; cursor: pointer; color: #374151; }
-        @media (min-width: 1024px) { .mobile-menu-btn { display: none; } }
-        .mobile-menu-icon { width: 1.5rem; height: 1.5rem; }
-        .nav-links { display: none; gap: 1.5rem; align-items: center; }
-        @media (min-width: 1024px) { .nav-links { display: flex; } }
-        .nav-link { color: #374151; text-decoration: none; font-weight: 500; transition: color 0.2s; }
-        .nav-link:hover { color: #3b82f6; }
-        .register-btn { background: linear-gradient(135deg, #eab308 0%, #f59e0b 100%); color: #1f2937; padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; font-weight: 700; transition: all 0.2s; }
-        .register-btn:hover { transform: scale(1.05); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-        .user-actions { display: flex; gap: 1rem; align-items: center; }
-        .desktop-only { display: none; }
-        @media (min-width: 1024px) { .desktop-only { display: flex; } }
-        .user-dropdown { position: relative; }
-        .user-dropdown-btn { display: flex; align-items: center; gap: 0.5rem; background: transparent; border: none; cursor: pointer; color: #374151; font-family: inherit; font-weight: 500; padding: 0.5rem; }
-        .dropdown-menu { position: absolute; right: 0; margin-top: 0.5rem; width: 12rem; background: white; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); opacity: 0; visibility: hidden; transition: all 0.2s; z-index: 20; }
-        .user-dropdown:hover .dropdown-menu { opacity: 1; visibility: visible; }
-        .dropdown-item { display: block; padding: 0.5rem 1rem; color: #374151; text-decoration: none; transition: background 0.2s; }
-        .dropdown-item:hover { background: #f3f4f6; }
-        .auth-buttons { display: flex; gap: 0.5rem; }
-        .login-link { color: #374151; text-decoration: none; font-weight: 600; padding: 0.25rem 0.75rem; transition: color 0.2s; cursor: pointer; background: none; border: none; font-family: inherit; }
-        .login-link:hover { color: #3b82f6; }
-        .register-link { background: #3b82f6; color: white; padding: 0.25rem 1rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; transition: all 0.2s; cursor: pointer; border: none; }
-        .register-link:hover { background: #2563eb; transform: scale(1.05); }
-        .search-location-row { margin-top: 1rem; display: flex; flex-direction: column; gap: 0.75rem; }
-        @media (min-width: 768px) { .search-location-row { flex-direction: row; } }
-        .location-picker { position: relative; width: 100%; }
-        .location-btn { display: flex; align-items: center; gap: 0.5rem; background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.625rem 1rem; border-radius: 0.5rem; color: #374151; cursor: pointer; width: 100%; font-family: inherit; }
-        .location-btn:hover { background: #f3f4f6; border-color: #d1d5db; }
-        .location-icon { width: 1.25rem; height: 1.25rem; }
-        .location-text { flex: 1; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
-        .locating-text { display: flex; align-items: center; gap: 0.375rem; color: #6b7280; font-size: 0.875rem; }
-        .locating-spinner { width: 0.875rem; height: 0.875rem; border: 2px solid #d1d5db; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .dropdown-arrow { width: 1rem; height: 1rem; }
-        .location-dropdown { position: absolute; top: 100%; left: 0; right: auto; margin-top: 0.5rem; width: 90vw; max-width: 24rem; background: white; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); z-index: 30; }
-        .location-dropdown-content { padding: 1rem; max-height: 80vh; overflow-y: auto; }
-        .dropdown-title { color: #1f2937; font-weight: 600; margin-bottom: 0.75rem; }
-        .current-location-btn { width: 100%; background: #eff6ff; color: #3b82f6; padding: 0.5rem; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; border: none; cursor: pointer; font-family: inherit; }
-        .divider { border-top: 1px solid #e5e7eb; margin: 0.75rem 0; text-align: center; color: #9ca3af; font-size: 0.75rem; }
-        .location-input { width: 100%; border: 1px solid #d1d5db; border-radius: 0.5rem; padding: 0.5rem 0.75rem; margin-bottom: 0.75rem; font-family: inherit; }
-        .save-location-btn { width: 100%; background: #3b82f6; color: white; padding: 0.5rem; border-radius: 0.5rem; border: none; cursor: pointer; font-family: inherit; font-weight: 500; transition: background 0.2s; }
-        .save-location-btn:hover { background: #2563eb; }
-        .save-location-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-        .search-wrapper { flex: 1; position: relative; width: 100%; }
-        .search-form { width: 100%; }
-        .search-input-wrapper { position: relative; }
-        .search-icon { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); width: 1.25rem; height: 1.25rem; color: #9ca3af; }
-        .search-input { width: 100%; background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.625rem 2.5rem 0.625rem 2.5rem; border-radius: 0.5rem; font-family: inherit; }
-        .search-input:focus { outline: none; border-color: #3b82f6; }
-        .clear-search-btn { position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; color: #9ca3af; }
-        .search-results-dropdown { position: absolute; top: 100%; left: 0; right: 0; margin-top: 0.5rem; background: white; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); max-height: 24rem; overflow-y: auto; z-index: 30; }
-        .loading-state { padding: 1rem; text-align: center; color: #6b7280; }
-        .spinner { width: 1.5rem; height: 1.5rem; border: 2px solid #e5e7eb; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto; }
-        .search-result-item { padding: 0.75rem; cursor: pointer; display: flex; justify-content: space-between; border-bottom: 1px solid #f3f4f6; }
-        .search-result-item:hover { background: #f9fafb; }
-        .result-name { font-weight: 600; color: #1f2937; font-size: 0.875rem; }
-        .result-category { font-size: 0.75rem; color: #6b7280; }
-        .rating { display: flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; color: #f59e0b; }
-        .price { font-size: 0.75rem; font-weight: 600; color: #10b981; margin-top: 0.25rem; text-align: right; }
-        .no-results { padding: 1rem; text-align: center; color: #6b7280; }
-        .mobile-drawer-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1100; opacity: 0; visibility: hidden; transition: all 0.3s; }
-        .mobile-drawer-overlay.open { opacity: 1; visibility: visible; }
-        .mobile-drawer { position: fixed; top: 0; left: 0; bottom: 0; width: 280px; background: white; z-index: 1101; transform: translateX(-100%); transition: transform 0.3s ease; display: flex; flex-direction: column; box-shadow: 2px 0 8px rgba(0,0,0,0.1); }
-        .mobile-drawer.open { transform: translateX(0); }
-        .drawer-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid #e5e7eb; }
-        .drawer-logo { font-size: 1.5rem; font-weight: 800; background: linear-gradient(135deg, #1e3a8a, #3b82f6); background-clip: text; -webkit-background-clip: text; color: transparent; }
-        .drawer-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280; }
-        .drawer-links { flex: 1; display: flex; flex-direction: column; padding: 1rem; gap: 0.75rem; }
-        .drawer-link { text-decoration: none; color: #374151; font-weight: 500; padding: 0.5rem; border-radius: 0.5rem; transition: background 0.2s; background: none; text-align: left; cursor: pointer; font-family: inherit; font-size: 1rem; }
-        .drawer-link.special { color: #eab308; font-weight: 700; }
-        .drawer-link.auth { background: #f3f4f6; text-align: center; margin-top: 0.5rem; }
-        .drawer-link.auth.signup { background: #3b82f6; color: white; }
-        .drawer-link.logout { color: #dc2626; }
-        .drawer-link:hover { background: #f3f4f6; }
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.2s ease-out forwards;
+        }
       `}</style>
     </>
   );

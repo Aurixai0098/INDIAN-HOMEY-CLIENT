@@ -1,14 +1,12 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { fetchCategories, fetchFeaturedServices, fetchPopularServices } from '../services/api';
 
-const categories = [
-  { name: 'Air Conditioner', icon: '❄️' },
-  { name: 'Beauty salon', icon: '💄' },
-  { name: 'Refrigerator', icon: '🧊' },
-  { name: 'Geyser', icon: '🚿' },
-  { name: 'Cleaning', icon: '🧹' },
-  { name: 'Washing machine', icon: '🧺' },
-  { name: 'Microwave oven', icon: '🍲' },
-  { name: 'Water purifier', icon: '💧' },
+const sliderImages = [
+  "https://www.urbancompany.com/img?bucket=urbanclap-prod&quality=90&format=auto/w_1232,dpr_2,fl_progressive:steep,q_auto:low,f_auto,c_limit/images/supply/customer-app-supply/1778178479978-7aada8.jpeg",
+  "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=1200&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?q=80&w=1200&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1533090161767-e6ffed986c88?q=80&w=1200&h=400&fit=crop"
 ];
 
 const reviews = [
@@ -46,81 +44,29 @@ const reviews = [
   }
 ];
 
-const sliderImages = [
-  "https://www.urbancompany.com/img?bucket=urbanclap-prod&quality=90&format=auto/w_1232,dpr_2,fl_progressive:steep,q_auto:low,f_auto,c_limit/images/supply/customer-app-supply/1778178479978-7aada8.jpeg",
-  "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=1200&h=400&fit=crop",
-  "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?q=80&w=1200&h=400&fit=crop",
-  "https://images.unsplash.com/photo-1533090161767-e6ffed986c88?q=80&w=1200&h=400&fit=crop"
-];
-
-const carpenterServices = [
-  { name: "Cupboard & Drawer", img: "https://images.unsplash.com/photo-1533090161767-e6ffed986c88?q=80&w=400&h=300&fit=crop" },
-  { name: "Repair", img: "https://images.unsplash.com/photo-1581141849291-1125c7b692b5?q=80&w=400&h=300&fit=crop" },
-  { name: "Installation", img: "https://www.serviceonwheel.com/uploads/service/849891670587516.jpg" },
-  { name: "Hardware material supplier", img: "https://www.serviceonwheel.com/uploads/service/117811671188219.jpg" }
-];
-
-const plumberServices = [
-  { name: "Repair", img: "https://www.serviceonwheel.com/uploads/service/891591670584966.jpg" },
-  { name: "Removal", img: "https://www.serviceonwheel.com/uploads/service/478661670587230.jpg" },
-  { name: "Installation", img: "https://www.serviceonwheel.com/uploads/service/609611670584726.jpg" },
-  { name: "Other", img: "https://www.serviceonwheel.com/uploads/service/315811673929679.jpg" }
-];
-
-const acServices = [
-  { name: "Repair", img: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=400&h=400&fit=crop" },
-  { name: "Service", img: "https://www.serviceonwheel.com/uploads/service/885241673525900.jpg" },
-  { name: "Installation", img: "https://www.serviceonwheel.com/uploads/service/765461670409535.jpg" },
-  { name: "Air Conditioner Purchase", img: "https://www.serviceonwheel.com/uploads/service/748141670401655.jpg" }
-];
-
-const cleaningServices = [
-  { name: "Full Home Deep Cleaning", img: "https://www.urbancompany.com/img?bucket=urbanclap-prod&quality=90&format=auto/w_128,dpr_2,fl_progressive:steep,q_auto:low,f_auto,c_limit/images/growth/luminosity/1731490009388-aece6d.jpeg" },
-  { name: "Kitchen Cleaning", img: "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?q=80&w=400&h=400&fit=crop" },
-  { name: "Sofa & Carpet Cleaning", img: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=400&h=400&fit=crop" },
-  { name: "Bathroom Cleaning", img: "https://images.unsplash.com/photo-1584622781564-1d987f7333c1?q=80&w=400&h=400&fit=crop" }
-];
-
-const electricianServices = [
-  { name: "Repair", img: "https://www.urbancompany.com/img?bucket=urbanclap-prod&quality=90&format=auto/w_128,dpr_2,fl_progressive:steep,q_auto:low,f_auto,c_limit/images/growth/luminosity/1729158496446-b93dbc.jpeg" },
-  { name: "Installation", img: "https://www.urbancompany.com/img?bucket=urbanclap-prod&quality=90&format=auto/w_128,dpr_2,fl_progressive:steep,q_auto:low,f_auto,c_limit/images/growth/luminosity/1713781380730-bb1e82.jpeg" },
-  { name: "Maintenance", img: "https://images.unsplash.com/photo-1544724569-5f546fd6f2b5?q=80&w=500&h=400&fit=crop" },
-  { name: "Other", img: "https://www.urbancompany.com/img?bucket=urbanclap-prod&quality=90&format=auto/w_128,dpr_2,fl_progressive:steep,q_auto:low,f_auto,c_limit/images/supply/customer-app-supply/1727251276143-d8cc28.jpeg" }
-];
-
-const ServiceGrid = ({ title, tagline, bgColor = "bg-white", services, linkHref = "#" }) => (
-  <section className={`py-12 md:py-20 px-5 sm:px-6 ${bgColor}`}>
-    <div className="max-w-6xl mx-auto">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 md:mb-12 gap-4">
-        <div>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-2">{title}</h2>
-          {tagline && <p className="text-slate-500 italic text-sm md:text-base">{tagline}</p>}
-        </div>
-        <a href={linkHref} className="flex items-center gap-2 text-slate-800 font-semibold hover:text-emerald-600 transition-all group whitespace-nowrap text-sm md:text-base">
-          View All Services
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 group-hover:translate-x-1 transition-transform">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-          </svg>
-        </a>
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-5 md:gap-6">
-        {services.map((service, idx) => (
-          <div key={idx} className="group cursor-pointer tap-feedback">
-            <div className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 mb-3 md:mb-4 aspect-square md:aspect-[4/3] flex items-center justify-center p-2">
-              <img src={service.img} alt={service.name} className="w-full h-full object-cover rounded-xl group-hover:scale-105 transition-transform duration-500" loading="lazy" />
-            </div>
-            <h4 className="text-center font-bold text-slate-800 text-sm sm:text-base md:text-lg px-1">{service.name}</h4>
-          </div>
-        ))}
-      </div>
+const ServiceCard = ({ service }) => (
+  <div className="group cursor-pointer tap-feedback">
+    <div className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 mb-3 md:mb-4 aspect-square md:aspect-[4/3] flex items-center justify-center p-2">
+      <img 
+        src={service.images?.[0]?.url || "https://via.placeholder.com/400x400?text=Service"} 
+        alt={service.name} 
+        className="w-full h-full object-cover rounded-xl group-hover:scale-105 transition-transform duration-500" 
+        loading="lazy" 
+      />
     </div>
-  </section>
+    <h4 className="text-center font-bold text-slate-800 text-sm sm:text-base md:text-lg px-1">{service.name}</h4>
+    <p className="text-center text-emerald-600 font-semibold text-sm">₹{service.basePrice} {service.priceUnit?.replace('_', ' ')}</p>
+  </div>
 );
 
 export default function Home() {
   const categoryScrollRef = useRef(null);
   const reviewScrollRef = useRef(null);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [categories, setCategories] = useState([]);
+  const [featuredServices, setFeaturedServices] = useState([]);
+  const [popularServices, setPopularServices] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -128,6 +74,28 @@ export default function Home() {
     }, 5000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    loadHomeData();
+  }, []);
+
+  const loadHomeData = async () => {
+    setLoading(true);
+    try {
+      const [categoriesRes, featuredRes, popularRes] = await Promise.all([
+        fetchCategories(),
+        fetchFeaturedServices(),
+        fetchPopularServices()
+      ]);
+      if (categoriesRes.success) setCategories(categoriesRes.data.categories);
+      if (featuredRes.success) setFeaturedServices(featuredRes.data.services);
+      if (popularRes.success) setPopularServices(popularRes.data.services);
+    } catch (err) {
+      console.error("Error loading home data:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const scrollCategory = (direction) => {
     if (categoryScrollRef.current) {
@@ -149,9 +117,13 @@ export default function Home() {
     }
   };
 
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading amazing services...</div>;
+  }
+
   return (
     <div className="min-h-screen bg-white font-sans overflow-x-hidden">
-      {/* Hero Section */}
+      {/* Hero Section - unchanged */}
       <section className="relative bg-emerald-600 pt-8 pb-20 md:pt-12 md:pb-32 px-5 sm:px-6 overflow-hidden">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center relative z-10 gap-8">
           <div className="md:w-1/2 text-white space-y-5 md:space-y-6 text-center md:text-left">
@@ -171,7 +143,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Image Slider */}
+      {/* Image Slider - unchanged */}
       <section className="relative -mt-20 sm:-mt-32 md:-mt-48 lg:-mt-72 px-4 sm:px-6 z-20">
         <div className="max-w-6xl mx-auto relative group">
           <div className="overflow-hidden rounded-xl md:rounded-2xl shadow-xl aspect-video md:aspect-[21/9]">
@@ -205,7 +177,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Categories Slider */}
+      {/* Categories Slider (dynamic from API) */}
       <section className="relative mt-6 sm:mt-4 px-4 sm:px-6 pb-10 md:pb-12">
         <div className="max-w-6xl mx-auto">
           <div className="bg-white p-3 sm:p-4 rounded-xl shadow-md border border-gray-100">
@@ -216,15 +188,15 @@ export default function Home() {
                 </svg>
               </button>
               <div ref={categoryScrollRef} className="flex flex-1 items-start gap-4 sm:gap-6 md:gap-10 overflow-x-auto no-scrollbar horizontal-scroll py-3">
-                {categories.map((item, index) => (
-                  <div key={index} className="flex flex-col items-center min-w-[80px] sm:min-w-[100px] md:min-w-[120px] group cursor-pointer tap-feedback">
+                {categories.map((cat) => (
+                  <Link to={`/services/category/${cat.slug}`} key={cat._id} className="flex flex-col items-center min-w-[80px] sm:min-w-[100px] md:min-w-[120px] group cursor-pointer tap-feedback">
                     <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-50 rounded-2xl flex items-center justify-center text-3xl sm:text-4xl mb-2 sm:mb-4 group-hover:bg-white group-hover:shadow-lg transition-all duration-300">
-                      {item.icon}
+                      {cat.icon?.url ? <img src={cat.icon.url} alt={cat.name} className="w-10 h-10 object-contain" /> : (cat.name.charAt(0))}
                     </div>
                     <span className="text-xs sm:text-sm font-medium text-slate-600 text-center group-hover:text-emerald-600 transition-colors whitespace-nowrap">
-                      {item.name}
+                      {cat.name}
                     </span>
-                  </div>
+                  </Link>
                 ))}
               </div>
               <button onClick={() => scrollCategory('right')} className="shrink-0 w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center bg-white rounded-full shadow-md border border-gray-100 text-slate-600 hover:bg-emerald-50 active:scale-95 transition-all tap-feedback">
@@ -237,7 +209,51 @@ export default function Home() {
         </div>
       </section>
 
-      {/* How It Works */}
+      {/* Featured Services Section */}
+      {featuredServices.length > 0 && (
+        <section className="py-12 md:py-20 px-5 sm:px-6 bg-slate-50">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 md:mb-12 gap-4">
+              <div>
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-2">Featured Services</h2>
+                <p className="text-slate-500 italic text-sm md:text-base">Most popular services chosen by our customers</p>
+              </div>
+              <Link to="/services" className="flex items-center gap-2 text-slate-800 font-semibold hover:text-emerald-600 transition-all group whitespace-nowrap text-sm md:text-base">
+                View All Services
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 group-hover:translate-x-1 transition-transform">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                </svg>
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-5 md:gap-6">
+              {featuredServices.map(service => (
+                <ServiceCard key={service._id} service={service} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Popular Services Section */}
+      {popularServices.length > 0 && (
+        <section className="py-12 md:py-20 px-5 sm:px-6 bg-white">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 md:mb-12 gap-4">
+              <div>
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-2">Popular Services</h2>
+                <p className="text-slate-500 italic text-sm md:text-base">Trending now – booked by thousands</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-5 md:gap-6">
+              {popularServices.map(service => (
+                <ServiceCard key={service._id} service={service} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* How It Works section - unchanged */}
       <section className="py-14 md:py-20 px-5 sm:px-6 bg-white">
         <div className="max-w-6xl mx-auto">
           <div className="mb-10 md:mb-16 text-center md:text-left">
@@ -276,42 +292,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Carpenter */}
-      <ServiceGrid title="Carpenter" tagline="Our Carpentry work is the Illusion of Perfection!!!!" bgColor="bg-slate-50" services={carpenterServices} />
-
-      {/* Plumber with custom background */}
-      <section className="py-12 md:py-20 px-5 sm:px-6 bg-teal-50/60 relative overflow-hidden">
-        <div className="max-w-6xl mx-auto relative z-10">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 md:mb-12 gap-4">
-            <div className="max-w-2xl">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-3">Plumber</h2>
-              <p className="text-slate-600 italic text-sm md:text-base">"People say they are always waiting for GOD to appear, but have you ever tried to find a plumber on a Sunday?"</p>
-            </div>
-            <a href="#" className="flex items-center gap-2 text-slate-800 font-bold hover:text-emerald-600 transition-all group whitespace-nowrap text-sm md:text-base">View All Services →</a>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-5 md:gap-8">
-            {plumberServices.map((service, idx) => (
-              <div key={idx} className="group tap-feedback">
-                <div className="rounded-2xl overflow-hidden shadow-md group-hover:shadow-2xl transition-all duration-500 mb-3 aspect-[4/3]">
-                  <img src={service.img} alt={service.name} className="w-full h-full object-cover group-hover:scale-110 transition duration-700" loading="lazy" />
-                </div>
-                <h4 className="text-center font-bold text-slate-900 text-base md:text-lg">{service.name}</h4>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Air Conditioner */}
-      <ServiceGrid title="Air Conditioner" tagline="Beat the heat, Book for instant Services" services={acServices} />
-
-      {/* Cleaning - fixed quotes */}
-      <ServiceGrid title="Cleaning" tagline="A clean house is a happy house. Let us do the dirty work!" services={cleaningServices} />
-
-      {/* Electrician - fixed quotes */}
-      <ServiceGrid title="Electrician" tagline="Don't be a DIY disaster. Expert electricians are here to brighten your day!" services={electricianServices} bgColor="bg-amber-50/40" />
-
-      {/* Customer Reviews */}
+      {/* Customer Reviews - unchanged */}
       <section className="py-14 md:py-20 px-5 sm:px-6 bg-slate-50">
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 md:mb-12">
@@ -353,11 +334,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-      <footer className="bg-gray-900 text-white py-8 px-5 text-center text-sm">
-        <p>© 2025 Ghar Seva | Expert home services at your fingertips</p>
-        <p className="text-gray-400 text-xs mt-2">Book with confidence • Pay after service</p>
-      </footer>
 
       <style>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }
