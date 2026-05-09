@@ -1,15 +1,15 @@
-import { Route, Routes, Link } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
 import Home from "./pages/Home";
 import About from "./pages/About";
+import Profile from "./pages/Profile";
 import Navbar from "./components/Navbar";
 import Login from "./components/auth/Login";
 import PrivateRoute from "./components/PrivateRoute";
 import { useAuth } from "./context/AuthContext";
 import Footer from "./components/Footer";
 
-// Example protected pages (create these later)
-const Profile = () => <div>Profile Page</div>;
-const MyBookings = () => <div>My Bookings</div>;
+// Temporary placeholder for MyBookings (you can create this page later)
+const MyBookings = () => <div className="p-8 text-center text-gray-600">My Bookings page coming soon...</div>;
 
 export default function App() {
   const { showAuth } = useAuth();
@@ -38,9 +38,8 @@ export default function App() {
             </PrivateRoute>
           }
         />
-        {/* Add more protected routes as needed */}
       </Routes>
-      <Footer/>
+      <Footer />
     </>
   );
 }
