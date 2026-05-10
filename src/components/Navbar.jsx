@@ -548,7 +548,7 @@ const Navbar = () => {
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between gap-2">
                 <Link to="/" className="flex shrink-0 no-underline" onClick={handleLogoRotate}>
-                  <div className=" text-white rounded-lg w-14 h-9 flex items-center justify-center font-bold text-lg shadow-md">
+                  <div className=" text-white rounded-lg w-14 h-9 flex items-center justify-center font-bold text-lg ">
                     <img src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778086579/seva_uuvngp.png" alt="logo"
                      className='w-full h-full'
                     />
