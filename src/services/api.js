@@ -2,20 +2,72 @@
 
 const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:5000/api/v1';
 
+// Cache for categories
+let categoriesCache = {
+  data: null,
+  timestamp: null,
+  promise: null,
+};
+
 const apiFetch = async (endpoint, options = {}) => {
-  const response = await fetch(`${BASE_URL}${endpoint}`, {
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-    ...options,
-  });
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.message || 'Request failed');
+  let response;
+  try {
+    response = await fetch(`${BASE_URL}${endpoint}`, {
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      ...options,
+    });
+  } catch (networkError) {
+    throw new Error('Network error. Please check your connection.');
   }
+
+  if (response.status === 429) {
+    throw new Error('Too many requests. Please wait a moment and try again.');
+  }
+
+  if (!response.ok) {
+    let errorMessage;
+    try {
+      const data = await response.json();
+      errorMessage = data.message || 'Request failed';
+    } catch (e) {
+      errorMessage = response.statusText || `HTTP ${response.status}`;
+    }
+    throw new Error(errorMessage);
+  }
+
+  const data = await response.json();
   return data;
+};
+
+// Cached version of fetchCategories
+export const fetchCategories = async (forceRefresh = false) => {
+  const now = Date.now();
+  const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+  if (!forceRefresh && categoriesCache.data && (now - categoriesCache.timestamp) < CACHE_TTL) {
+    return categoriesCache.data;
+  }
+
+  if (categoriesCache.promise) {
+    return await categoriesCache.promise;
+  }
+
+  categoriesCache.promise = (async () => {
+    try {
+      const result = await apiFetch('/services/categories');
+      categoriesCache.data = result;
+      categoriesCache.timestamp = now;
+      return result;
+    } finally {
+      categoriesCache.promise = null;
+    }
+  })();
+
+  return await categoriesCache.promise;
 };
 
 // ========== User APIs ==========
@@ -39,6 +91,13 @@ export const fetchWallet = async () => {
 
 export const fetchNotifications = async (page = 1, limit = 20) => {
   return apiFetch(`/users/notifications?page=${page}&limit=${limit}`);
+};
+
+// Mark customer notification as read
+export const markNotificationRead = async (notificationId) => {
+  return apiFetch(`/users/notifications/${notificationId}/read`, {
+    method: 'PATCH',
+  });
 };
 
 // ========== Address APIs ==========
@@ -165,13 +224,79 @@ export const fetchAdminServices = async () => {
 };
 
 // ========== Provider APIs ==========
+export const registerProvider = async (providerData) => {
+  return apiFetch('/providers/register', {
+    method: 'POST',
+    body: JSON.stringify(providerData),
+  });
+};
+
+export const fetchProviderProfile = async () => {
+  return apiFetch('/providers/profile');
+};
+
+export const updateProviderProfile = async (data) => {
+  return apiFetch('/providers/profile', {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+};
+
+export const addProviderService = async (serviceData) => {
+  return apiFetch('/providers/services', {
+    method: 'POST',
+    body: JSON.stringify(serviceData),
+  });
+};
+
+export const removeProviderService = async (serviceId) => {
+  return apiFetch(`/providers/services/${serviceId}`, {
+    method: 'DELETE',
+  });
+};
+
+export const fetchProviderStats = async () => {
+  return apiFetch('/providers/stats');
+};
+
+export const updateServiceArea = async (areaData) => {
+  return apiFetch('/providers/service-area', {
+    method: 'PUT',
+    body: JSON.stringify(areaData),
+  });
+};
+
+export const uploadProviderDocument = async (docData) => {
+  return apiFetch('/providers/documents', {
+    method: 'POST',
+    body: JSON.stringify(docData),
+  });
+};
+
+export const updateBankDetails = async (bankData) => {
+  return apiFetch('/providers/bank-details', {
+    method: 'PUT',
+    body: JSON.stringify(bankData),
+  });
+};
+
 export const searchProviders = async (latitude, longitude, radius = 10, serviceCategoryId) => {
   let url = `/providers/search?latitude=${latitude}&longitude=${longitude}&radius=${radius}`;
   if (serviceCategoryId) url += `&service=${serviceCategoryId}`;
   return apiFetch(url);
 };
 
-// ========== Booking APIs ==========
+export const fetchProviderNotifications = async () => {
+  return apiFetch('/providers/notifications');
+};
+
+export const mar9yMnTm4NSzvG9rrwjM2ec8xZgh1cafXH8 = async (notificationId) => {
+  return apiFetch(`/providers/notifications/${notificationId}/read`, {
+    method: 'PATCH',
+  });
+};
+
+// ========== Booking APIs (customer & provider) ==========
 export const createBooking = async (bookingData) => {
   return apiFetch('/bookings', {
     method: 'POST',
@@ -203,11 +328,33 @@ export const rescheduleBooking = async (bookingId, scheduledDate, scheduledTime)
   });
 };
 
-// ========== Public Service/Category APIs ==========
-export const fetchCategories = async () => {
-  return apiFetch('/services/categories');
+// Provider actions on bookings
+export const confirmBooking = async (bookingId) => {
+  return apiFetch(`/bookings/${bookingId}/confirm`, {
+    method: 'PATCH',
+  });
 };
 
+export const startBooking = async (bookingId) => {
+  return apiFetch(`/bookings/${bookingId}/start`, {
+    method: 'PATCH',
+  });
+};
+
+export const generateBookingOTP = async (bookingId) => {
+  return apiFetch(`/bookings/${bookingId}/generate-otp`, {
+    method: 'POST',
+  });
+};
+
+export const completeBooking = async (bookingId, otp) => {
+  return apiFetch(`/bookings/${bookingId}/complete`, {
+    method: 'PATCH',
+    body: JSON.stringify({ completionOTP: otp }),
+  });
+};
+
+// ========== Public Service/Category APIs ==========
 export const fetchCategoryBySlug = async (slug) => {
   return apiFetch(`/services/categories/${slug}`);
 };

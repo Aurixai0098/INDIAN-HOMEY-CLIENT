@@ -1,11 +1,23 @@
-// src/components/Navbar.jsx
 import { Link } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { fetchCategories } from '../services/api';
 import { useCart } from '../context/CartContext';
+import { fetchCategories, fetchProviderProfile, updateServiceArea } from '../services/api';
+import NotificationBell from './NotificationBell';
+import ProviderLocationModal from './/./../pages/provider/ProviderLocationModal';
+
 const Navbar = () => {
   const { user, logout, setShowAuth } = useAuth();
+  const { cartCount } = useCart();
+
+  // Dynamic categories
+  const [categories, setCategories] = useState([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+
+  // For provider location modal
+  const [showLocationModal, setShowLocationModal] = useState(false);
+
+  // Search & location states (unchanged from your existing)
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
@@ -21,19 +33,10 @@ const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchAddress, setSearchAddress] = useState('');
   const [isAddressSearching, setIsAddressSearching] = useState(false);
-
-  // Responsive state logic
   const [isMobileView, setIsMobileView] = useState(window.innerWidth < 1024);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
-  // Cart count (mock – replace with real context)
-  const { cartCount } = useCart();
-
-  // Dynamic categories state
-  const [categories, setCategories] = useState([]);
-  const [categoriesLoading, setCategoriesLoading] = useState(true);
-
-  // Map related states
+  // Map states
   const [mapLat, setMapLat] = useState(28.6139);
   const [mapLng, setMapLng] = useState(77.2090);
   const [showMap, setShowMap] = useState(false);
@@ -45,14 +48,7 @@ const Navbar = () => {
   const searchRef = useRef(null);
   const locationRef = useRef(null);
 
-  // Handle Window Resize for Responsiveness
-  useEffect(() => {
-    const handleResize = () => setIsMobileView(window.innerWidth < 1024);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  // Fetch categories from backend
+  // Fetch categories on mount
   useEffect(() => {
     const loadCategories = async () => {
       setCategoriesLoading(true);
@@ -60,17 +56,21 @@ const Navbar = () => {
         const res = await fetchCategories();
         if (res.success && res.data.categories) {
           setCategories(res.data.categories.filter(cat => cat.isActive));
-        } else {
-          setCategories([]);
         }
       } catch (err) {
         console.error('Failed to load categories:', err);
-        setCategories([]);
       } finally {
         setCategoriesLoading(false);
       }
     };
     loadCategories();
+  }, []);
+
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => setIsMobileView(window.innerWidth < 1024);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   // Preload Leaflet
@@ -90,7 +90,6 @@ const Navbar = () => {
     }
   }, []);
 
-  // Initialize or update map
   useEffect(() => {
     if (!showMap || !mapContainerRef.current) return;
     if (!window.L) {
@@ -104,7 +103,6 @@ const Navbar = () => {
 
   const initOrUpdateMap = () => {
     if (!mapContainerRef.current || !window.L) return;
-
     if (mapInstanceRef.current) {
       mapInstanceRef.current.setView([mapLat, mapLng], 15);
       if (markerRef.current) {
@@ -126,12 +124,10 @@ const Navbar = () => {
       mapInstanceRef.current.invalidateSize();
       return;
     }
-
     const map = window.L.map(mapContainerRef.current).setView([mapLat, mapLng], 15);
     window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
-
     const marker = window.L.marker([mapLat, mapLng], { draggable: true }).addTo(map);
     marker.on('dragend', async () => {
       const newLatLng = marker.getLatLng();
@@ -144,7 +140,6 @@ const Navbar = () => {
         localStorage.setItem('userLocation', address);
       }
     });
-
     mapInstanceRef.current = map;
     markerRef.current = marker;
   };
@@ -376,7 +371,6 @@ const Navbar = () => {
     return name.substring(0, 2).toUpperCase();
   };
 
-  /* --- RENDER HELPERS --- */
   const renderLocationModalContent = () => (
     <>
       <h3 className="text-gray-900 font-semibold mb-3">Choose Location</h3>
@@ -464,15 +458,17 @@ const Navbar = () => {
     <>
       <nav className="bg-white text-gray-800 border-b border-gray-200 font-sans sticky top-0 z-[1000] shadow-sm">
         <div className="max-w-[1500px] mx-auto px-4 py-3">
-          
+
           {/* DESKTOP VIEW */}
           {!isMobileView && (
             <div className="flex items-center justify-between gap-8">
+              {/* Logo with image – replace the div with img */}
               <Link to="/" className="flex items-center gap-3 shrink-0 no-underline" onMouseEnter={handleLogoRotate} onClick={handleLogoRotate}>
-                <div className="bg-blue-600 text-white rounded-lg w-16 h-10 flex items-center justify-center font-bold text-xl ">
-                   <img src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778086579/seva_uuvngp.png" alt="logo"
-                     className='w-full h-full'
-                    />
+                {/* Replace this div with your logo image */}
+                {/* <img src="/logo.png" alt="GharSeva" className="w-10 h-10 object-contain" /> */}
+                <div className="bg-blue-600 text-white rounded-lg w-16 h-10 flex items-center justify-center font-bold text-xl shadow-md shadow-blue-500/20">
+                  <img src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778086579/seva_uuvngp.png" alt="logo"
+                    className='w-full h-full' />
                 </div>
                 <div>
                   <h1 className="text-xl font-bold text-blue-600 tracking-tight leading-tight">GharSeva</h1>
@@ -480,6 +476,7 @@ const Navbar = () => {
                 </div>
               </Link>
 
+              {/* Combined Location + Search Pill */}
               <div className="flex flex-1 items-center bg-gray-50 border border-gray-200 rounded-full max-w-3xl transition-all focus-within:border-gray-300 focus-within:bg-white focus-within:shadow-md">
                 <div className="relative shrink-0" ref={locationRef}>
                   <button onClick={() => setShowLocationPicker(!showLocationPicker)} className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-l-full transition-colors whitespace-nowrap">
@@ -498,6 +495,7 @@ const Navbar = () => {
               </div>
 
               <div className="flex items-center gap-3 shrink-0">
+                {/* Cart icon */}
                 <Link to="/cart" className="relative p-2 text-gray-600 hover:text-blue-600 bg-white hover:bg-gray-50 rounded-full transition-colors border border-gray-200 shadow-sm">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M18 13l1.5 6M9 21a1 1 0 100-2 1 1 0 000 2zm9 0a1 1 0 100-2 1 1 0 000 2z" />
@@ -509,6 +507,10 @@ const Navbar = () => {
                   )}
                 </Link>
 
+                {/* Notification Bell for ALL logged‑in users */}
+                {user && <NotificationBell />}
+
+                {/* User menu */}
                 {user ? (
                   <div className="relative group">
                     <button className="flex items-center gap-2 bg-white hover:bg-gray-50 border border-gray-200 px-2 py-1.5 rounded-full transition-colors shadow-sm">
@@ -518,11 +520,16 @@ const Navbar = () => {
                     </button>
                     <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-xl shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 overflow-hidden">
                       <Link to="/profile" className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition font-medium">Profile</Link>
-                      <Link to="/my-bookings" className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition font-medium">Bookings</Link>
+                      <Link to="/my-bookings" className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition font-medium">My Bookings</Link>
                       {user.role === 'provider' && (
                         <>
-                          <Link to="/provider/profile" className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition font-medium">My Services</Link>
-                          <Link to="/provider/stats" className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition font-medium">Stats</Link>
+                          <Link to="/provider" className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition font-medium">Dashboard</Link>
+                          <Link to="/provider/bookings" className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition font-medium">Manage Bookings</Link>
+                          <Link to="/provider/services" className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition font-medium">My Services</Link>
+                          <Link to="/provider/profile" className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition font-medium">Profile Settings</Link>
+                          <button onClick={() => setShowLocationModal(true)} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition font-medium">
+                            Update Service Area
+                          </button>
                         </>
                       )}
                       {user.role === 'admin' && <Link to="/admin" className="block px-4 py-2.5 text-sm text-amber-600 hover:bg-amber-50 transition font-bold">Admin Panel</Link>}
@@ -548,10 +555,10 @@ const Navbar = () => {
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between gap-2">
                 <Link to="/" className="flex shrink-0 no-underline" onClick={handleLogoRotate}>
-                  <div className=" text-white rounded-lg w-14 h-9 flex items-center justify-center font-bold text-lg ">
+                  {/* Replace with logo image if desired */}
+                  <div className="bg-blue-600 text-white rounded-lg w-14 h-10 flex items-center justify-center font-bold text-lg shadow-md">
                     <img src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778086579/seva_uuvngp.png" alt="logo"
-                     className='w-full h-full'
-                    />
+                    className='w-full h-full' />
                   </div>
                 </Link>
                 <div className="flex-1 min-w-0" ref={locationRef}>
@@ -568,17 +575,6 @@ const Navbar = () => {
                     </div>
                     <svg className="w-3 h-3 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                   </button>
-                  {showLocationPicker && (
-                    <>
-                      <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-[1150]" onClick={() => setShowLocationPicker(false)}></div>
-                      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-[350px] bg-white border border-gray-100 rounded-2xl shadow-2xl z-[1200] p-5">
-                        <button onClick={() => setShowLocationPicker(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                        </button>
-                        {renderLocationModalContent()}
-                      </div>
-                    </>
-                  )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <Link to="/cart" className="relative p-2 text-gray-600 hover:text-blue-600 bg-gray-50 border border-gray-200 rounded-full transition-colors shadow-sm">
@@ -587,6 +583,7 @@ const Navbar = () => {
                     </svg>
                     {cartCount > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{cartCount > 9 ? '9+' : cartCount}</span>}
                   </Link>
+                  {user && <NotificationBell />}
                   <button onClick={() => setMobileSearchOpen(!mobileSearchOpen)} className="p-2 text-gray-600 bg-gray-50 border border-gray-200 hover:bg-gray-100 rounded-full transition shadow-sm">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                   </button>
@@ -600,11 +597,7 @@ const Navbar = () => {
                   </button>
                 </div>
               </div>
-              {mobileSearchOpen && (
-                <div className="w-full animate-fadeIn mt-1">
-                  {renderSearchInput(true)}
-                </div>
-              )}
+              {mobileSearchOpen && <div className="w-full animate-fadeIn mt-1">{renderSearchInput(true)}</div>}
             </div>
           )}
 
@@ -612,9 +605,7 @@ const Navbar = () => {
           <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
             {categoriesLoading ? (
               <div className="flex gap-2">
-                {[1,2,3,4,5].map(i => (
-                  <div key={i} className="w-20 h-8 bg-gray-200 rounded-full animate-pulse"></div>
-                ))}
+                {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="h-8 w-20 bg-gray-200 rounded-full animate-pulse"></div>)}
               </div>
             ) : categories.length > 0 ? (
               categories.map(cat => (
@@ -638,7 +629,7 @@ const Navbar = () => {
         </div>
       </nav>
 
-      {/* SIDEBAR DRAWER (unchanged) */}
+      {/* Sidebar Drawer – keep as is (already has dynamic categories? but we'll keep static for brevity) */}
       <div className={`fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-[1050] transition-opacity duration-300 ${mobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`} onClick={() => setMobileMenuOpen(false)}></div>
       <div className={`fixed top-0 right-0 bottom-0 w-72 bg-white shadow-2xl z-[1100] transform transition-transform duration-300 flex flex-col border-l border-gray-200 ${mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="flex justify-between items-center p-5 border-b border-gray-100">
@@ -656,12 +647,21 @@ const Navbar = () => {
             <>
               <Link to="/profile" className="text-gray-700 hover:text-blue-600 hover:bg-blue-50 px-4 py-3 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>My Profile</Link>
               <Link to="/my-bookings" className="text-gray-700 hover:text-blue-600 hover:bg-blue-50 px-4 py-3 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>My Bookings</Link>
+              {user.role === 'provider' && (
+                <>
+                  <Link to="/provider" className="text-gray-700 hover:text-blue-600 hover:bg-blue-50 px-4 py-3 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>Provider Dashboard</Link>
+                  <Link to="/provider/bookings" className="text-gray-700 hover:text-blue-600 hover:bg-blue-50 px-4 py-3 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>Manage Bookings</Link>
+                  <button onClick={() => { setShowLocationModal(true); setMobileMenuOpen(false); }} className="text-left text-gray-700 hover:text-blue-600 hover:bg-blue-50 px-4 py-3 rounded-xl transition font-medium">
+                    Update Service Area
+                  </button>
+                </>
+              )}
               <div className="h-px bg-gray-100 my-2"></div>
               <button onClick={() => { logout(); setMobileMenuOpen(false); }} className="w-full text-left text-red-600 hover:bg-red-50 px-4 py-3 rounded-xl transition font-medium">Logout</button>
             </>
           ) : (
             <>
-              <Link to="/register-as-professional" className="text-amber-600 hover:bg-amber-50 px-4 py-3 rounded-xl transition font-bold" onClick={() => setMobileMenuOpen(false)}>Register as Professional</Link>
+              <Link to="/register-provider" className="text-amber-600 hover:bg-amber-50 px-4 py-3 rounded-xl transition font-bold" onClick={() => setMobileMenuOpen(false)}>Register as Professional</Link>
               <div className="mt-4 flex flex-col gap-2">
                 <button onClick={() => { setShowAuth(true); setMobileMenuOpen(false); }} className="w-full bg-white text-gray-800 py-2.5 rounded-xl font-semibold border border-gray-200 hover:bg-gray-50 transition shadow-sm">Login</button>
                 <button onClick={() => { setShowAuth(true); setMobileMenuOpen(false); }} className="w-full bg-blue-600 text-white py-2.5 rounded-xl font-semibold hover:bg-blue-700 transition shadow-sm">Sign Up</button>
@@ -670,6 +670,11 @@ const Navbar = () => {
           )}
         </div>
       </div>
+
+      {/* Provider Location Modal */}
+      {showLocationModal && user?.role === 'provider' && (
+        <ProviderLocationModal onClose={() => setShowLocationModal(false)} />
+      )}
 
       <style>{`
         .scrollbar-hide::-webkit-scrollbar { display: none; }

@@ -8,12 +8,20 @@ import ServiceDetailPage from "./pages/ServiceDetailPage";
 import CartPage from "./pages/CartPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import MyBookingsPage from "./pages/MyBookingsPage";
+import RegisterProvider from "./components/auth/RegisterProvider";
 import Navbar from "./components/Navbar";
 import Login from "./components/auth/Login";
 import PrivateRoute from "./components/PrivateRoute";
 import { useAuth } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
 import Footer from "./components/Footer";
+
+// Provider Panel imports
+import ProviderLayout from "./pages/provider/ProviderLayout";
+import ProviderDashboard from "./pages/provider/ProviderDashboard";
+import ProviderBookings from "./pages/provider/ProviderBookings";
+import ProviderServices from "./pages/provider/ProviderServices";
+import ProviderProfile from "./pages/provider/ProviderProfile";
 
 // Admin imports
 import AdminLayout from "./pages/admin/AdminLayout";
@@ -40,6 +48,15 @@ export default function App() {
         <Route path="/cart" element={<PrivateRoute><CartPage /></PrivateRoute>} />
         <Route path="/checkout" element={<PrivateRoute><CheckoutPage /></PrivateRoute>} />
         <Route path="/my-bookings" element={<PrivateRoute><MyBookingsPage /></PrivateRoute>} />
+        <Route path="/register-provider" element={<PrivateRoute><RegisterProvider /></PrivateRoute>} />
+
+        {/* Provider Panel Routes */}
+        <Route path="/provider" element={<PrivateRoute><ProviderLayout /></PrivateRoute>}>
+          <Route index element={<ProviderDashboard />} />
+          <Route path="bookings" element={<ProviderBookings />} />
+          <Route path="services" element={<ProviderServices />} />
+          <Route path="profile" element={<ProviderProfile />} />
+        </Route>
 
         {/* Admin Routes */}
         <Route path="/admin" element={<PrivateRoute><AdminLayout /></PrivateRoute>}>
