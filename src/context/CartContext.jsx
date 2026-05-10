@@ -1,5 +1,5 @@
 // src/context/CartContext.jsx
-import { createContext, useContext, useState , useEffect } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 
 const CartContext = createContext();
 
@@ -28,6 +28,10 @@ export const CartProvider = ({ children }) => {
       const existingIndex = prev.findIndex(
         item => item.serviceId === service._id && item.variant === variant
       );
+      
+      // Extract category ID – handle both populated and unpopulated category
+      const categoryId = service.category?._id || service.category;
+      
       if (existingIndex >= 0) {
         // Increase quantity if same service+variant already in cart
         const updated = [...prev];
@@ -38,20 +42,23 @@ export const CartProvider = ({ children }) => {
           ...prev,
           {
             serviceId: service._id,
+            categoryId: categoryId,        // ✅ Store category ID for booking
             name: service.name,
             price: service.basePrice,
             priceUnit: service.priceUnit || 'service',
             quantity,
             variant,
-            image: service.images?.[0]?.url || null
-          }
+            image: service.images?.[0]?.url || null,
+          },
         ];
       }
     });
   };
 
   const removeFromCart = (serviceId, variant = null) => {
-    setCartItems(prev => prev.filter(item => !(item.serviceId === serviceId && item.variant === variant)));
+    setCartItems(prev =>
+      prev.filter(item => !(item.serviceId === serviceId && item.variant === variant))
+    );
   };
 
   const updateQuantity = (serviceId, quantity, variant = null) => {
@@ -82,7 +89,7 @@ export const CartProvider = ({ children }) => {
         addToCart,
         removeFromCart,
         updateQuantity,
-        clearCart
+        clearCart,
       }}
     >
       {children}

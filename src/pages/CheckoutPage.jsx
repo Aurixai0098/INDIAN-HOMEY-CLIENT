@@ -26,7 +26,7 @@ const CheckoutPage = () => {
   const [providers, setProviders] = useState([]);
   const [selectedProvider, setSelectedProvider] = useState(null);
   const [loadingProviders, setLoadingProviders] = useState(false);
-  const [searchRadius, setSearchRadius] = useState(10); // km
+  const [searchRadius, setSearchRadius] = useState(10);
 
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTimeStart, setScheduledTimeStart] = useState('10:00');
@@ -47,7 +47,6 @@ const CheckoutPage = () => {
     loadAddresses();
   }, []);
 
-  // Load providers whenever selected address OR searchRadius changes
   useEffect(() => {
     if (selectedAddress) {
       loadProvidersForAddress(selectedAddress);
@@ -73,13 +72,10 @@ const CheckoutPage = () => {
     const firstItem = cartItems[0];
     setLoadingProviders(true);
     try {
-      // Use coordinates if available (from address or geocoded)
       let lat, lng;
       if (address.coordinates?.latitude && address.coordinates?.longitude) {
         lat = address.coordinates.latitude;
         lng = address.coordinates.longitude;
-      } else {
-        // Optionally geocode pincode/city here, but for now skip
       }
       const res = await searchProviders(lat, lng, searchRadius, firstItem.categoryId, address.pincode, address.city);
       if (res.success) {
@@ -133,6 +129,14 @@ const CheckoutPage = () => {
     setLoading(true);
     setError('');
 
+    // Determine category from the first cart item
+    const firstCartItem = cartItems[0];
+    if (!firstCartItem.categoryId) {
+      setError('Category information missing. Please remove and re-add the service.');
+      setLoading(false);
+      return;
+    }
+
     const items = cartItems.map(item => ({
       service: item.serviceId,
       quantity: item.quantity,
@@ -142,6 +146,7 @@ const CheckoutPage = () => {
     const bookingData = {
       provider: selectedProvider._id,
       services: items,
+      category: firstCartItem.categoryId,   // ✅ ADD THIS LINE
       scheduledDate,
       scheduledTime: {
         start: scheduledTimeStart,
@@ -193,7 +198,7 @@ const CheckoutPage = () => {
       <div className="grid md:grid-cols-2 gap-8">
         {/* Left Column */}
         <div className="space-y-6">
-          {/* Cart Summary */}
+          {/* Order Summary */}
           <div className="bg-white rounded-xl shadow-sm border p-6">
             <h2 className="font-bold text-lg mb-4">Order Summary</h2>
             <div className="space-y-3 max-h-64 overflow-y-auto">
@@ -214,9 +219,7 @@ const CheckoutPage = () => {
           <div className="bg-white rounded-xl shadow-sm border p-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="font-bold text-lg">Delivery Address</h2>
-              <button onClick={() => setShowAddAddress(!showAddAddress)} className="text-emerald-600 text-sm">
-                + Add New
-              </button>
+              <button onClick={() => setShowAddAddress(!showAddAddress)} className="text-emerald-600 text-sm">+ Add New</button>
             </div>
             {addresses.length === 0 && !showAddAddress && (
               <p className="text-gray-500 text-sm">No addresses found. Please add one.</p>
@@ -225,13 +228,7 @@ const CheckoutPage = () => {
               <div className="space-y-3">
                 {addresses.map(addr => (
                   <label key={addr._id} className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                    <input
-                      type="radio"
-                      name="address"
-                      checked={selectedAddress?._id === addr._id}
-                      onChange={() => setSelectedAddress(addr)}
-                      className="mt-1"
-                    />
+                    <input type="radio" name="address" checked={selectedAddress?._id === addr._id} onChange={() => setSelectedAddress(addr)} className="mt-1" />
                     <div>
                       <p className="font-medium">{addr.label}</p>
                       <p className="text-sm text-gray-600">{addr.street}</p>
@@ -242,7 +239,6 @@ const CheckoutPage = () => {
                 ))}
               </div>
             )}
-
             {showAddAddress && (
               <form onSubmit={handleAddAddress} className="space-y-3 mt-3">
                 <input type="text" placeholder="Label (Home, Office)" value={newAddress.label} onChange={e => setNewAddress({...newAddress, label: e.target.value})} className="w-full p-2 border rounded-lg" required />
@@ -272,15 +268,11 @@ const CheckoutPage = () => {
               <input type="date" value={scheduledDate} onChange={e => setScheduledDate(e.target.value)} className="w-full p-2 border rounded-lg" required min={new Date().toISOString().split('T')[0]} />
               <div className="flex gap-3">
                 <select value={scheduledTimeStart} onChange={e => setScheduledTimeStart(e.target.value)} className="flex-1 p-2 border rounded-lg">
-                  {Array.from({ length: 12 }, (_, i) => i + 8).map(h => (
-                    <option key={h} value={`${h}:00`}>{h}:00</option>
-                  ))}
+                  {Array.from({ length: 12 }, (_, i) => i + 8).map(h => <option key={h} value={`${h}:00`}>{h}:00</option>)}
                 </select>
                 <span className="self-center">to</span>
                 <select value={scheduledTimeEnd} onChange={e => setScheduledTimeEnd(e.target.value)} className="flex-1 p-2 border rounded-lg">
-                  {Array.from({ length: 12 }, (_, i) => i + 9).map(h => (
-                    <option key={h} value={`${h}:00`}>{h}:00</option>
-                  ))}
+                  {Array.from({ length: 12 }, (_, i) => i + 9).map(h => <option key={h} value={`${h}:00`}>{h}:00</option>)}
                 </select>
               </div>
               <textarea placeholder="Additional notes for provider" value={notes} onChange={e => setNotes(e.target.value)} className="w-full p-2 border rounded-lg" rows="2"></textarea>
@@ -288,24 +280,14 @@ const CheckoutPage = () => {
           </div>
         </div>
 
-        {/* Right Column - Select Provider */}
+        {/* Right Column - Provider Selection */}
         <div className="space-y-6">
           <div className="bg-white rounded-xl shadow-sm border p-6 sticky top-24">
             <h2 className="font-bold text-lg mb-4">Choose Service Provider</h2>
-            
-            {/* Radius selector (only shown if coordinates are available) */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">Search Radius</label>
               <div className="flex items-center gap-2">
-                <input
-                  type="range"
-                  min="5"
-                  max="50"
-                  step="5"
-                  value={searchRadius}
-                  onChange={(e) => setSearchRadius(parseInt(e.target.value))}
-                  className="flex-1"
-                />
+                <input type="range" min="5" max="50" step="5" value={searchRadius} onChange={(e) => setSearchRadius(parseInt(e.target.value))} className="flex-1" />
                 <span className="text-sm font-medium w-16">{searchRadius} km</span>
               </div>
               <p className="text-xs text-gray-400 mt-1">Providers within {searchRadius} km of your address</p>

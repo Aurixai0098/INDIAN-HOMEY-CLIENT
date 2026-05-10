@@ -53,11 +53,11 @@ const reviews = [
 const ServiceCard = ({ service }) => (
   <Link to={`/service/${service.slug}`} className="group cursor-pointer tap-feedback block">
     <div className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 mb-3 md:mb-4 aspect-square md:aspect-[4/3] flex items-center justify-center p-2">
-      <img 
-        src={service.images?.[0]?.url || "https://via.placeholder.com/400x400?text=Service"} 
-        alt={service.name} 
-        className="w-full h-full object-cover rounded-xl group-hover:scale-105 transition-transform duration-500" 
-        loading="lazy" 
+      <img
+        src={service.images?.[0]?.url || "https://via.placeholder.com/400x400?text=Service"}
+        alt={service.name}
+        className="w-full h-full object-cover rounded-xl group-hover:scale-105 transition-transform duration-500"
+        loading="lazy"
       />
     </div>
     <h4 className="text-center font-bold text-slate-800 text-sm sm:text-base md:text-lg px-1">{service.name}</h4>
@@ -75,9 +75,9 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
 
-   useEffect(()=>{
-    window.scrollTo(0,0)
-  },[])
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [])
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -139,10 +139,16 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-white font-sans overflow-x-hidden">
       {/* Hero Section */}
-      <section className="relative bg-emerald-600 pt-8 pb-20 md:pt-12 md:pb-32 px-5 sm:px-6 overflow-hidden">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center relative z-10 gap-8">
+      <section
+        className="relative pt-8 pb-20 md:pt-32 md:pb-32 px-5 sm:px-6 overflow-hidden bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: `url('https://res.cloudinary.com/dfqsa6hoc/image/upload/v1778415983/WhatsApp_Image_2026-05-10_at_5.54.53_PM_kwx8d4.jpg')` }}
+      >
+        {/* Dark overlay for better text readability */}
+        <div className="absolute inset-0 bg-black/60 z-0"></div>
+
+        <div className="max-w-7xl mx-auto flex flex-col mt-4 md:flex-row items-center relative z-10 gap-8">
           <div className="md:w-1/2 text-white space-y-5 md:space-y-6 text-center md:text-left">
-            <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold leading-tight">
+            <h1 className="text-3xl sm:text-4xl md:text-6xl  mt-20 font-bold leading-tight">
               Expert Professional <br className="hidden sm:block" /> Home Services, <br /> Book Online
             </h1>
             <p className="text-base md:text-lg opacity-90 max-w-md mx-auto md:mx-0">
@@ -152,14 +158,13 @@ export default function Home() {
               Contact Us
             </button>
           </div>
-          <div className="md:w-1/2 flex justify-center">
-            <img src="https://www.serviceonwheel.com/images/banner-clean.png" alt="Cleaning Service" className="w-64 sm:w-80 md:w-full max-w-md drop-shadow-2xl" />
-          </div>
+
+         
         </div>
       </section>
 
       {/* Image Slider */}
-      <section className="relative -mt-20 sm:-mt-32 md:-mt-48 lg:-mt-72 px-4 sm:px-6 z-20">
+      {/* <section className="relative -mt-20 sm:-mt-32 md:-mt-0 lg:-mt-72 px-4 sm:px-6 z-20">
         <div className="max-w-6xl mx-auto relative group">
           <div className="overflow-hidden rounded-xl md:rounded-2xl shadow-xl aspect-video md:aspect-[21/9]">
             <div className="flex transition-transform duration-700 ease-in-out h-full" style={{ transform: `translateX(-${currentSlide * 100}%)` }}>
@@ -190,7 +195,7 @@ export default function Home() {
             ))}
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Categories Slider (Dynamic from API) */}
       <section className="relative mt-6 sm:mt-4 px-4 sm:px-6 pb-10 md:pb-12">
