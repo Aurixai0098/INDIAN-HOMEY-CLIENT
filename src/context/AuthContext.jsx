@@ -68,6 +68,12 @@ export const AuthProvider = ({ children }) => {
     window.fetch = async (...args) => {
       let response = await originalFetch(...args);
 
+      // FIX: URL check takaki refresh-token API infinite loop me na phase
+      const url = typeof args[0] === 'string' ? args[0] : (args[0]?.url || '');
+      if (url.includes('/auth/refresh-token')) {
+        return response;
+      }
+
       // If 401 and not already refreshing, try to refresh token and retry
       if (response.status === 401 && !refreshPromise) {
         refreshPromise = refreshAccessToken().then(success => {
@@ -78,7 +84,7 @@ export const AuthProvider = ({ children }) => {
 
         const refreshed = await refreshPromise;
         if (refreshed) {
-          // Retry the original request (cookies are already updated)
+          // Retry the original request
           response = await originalFetch(...args);
         }
         return response;
