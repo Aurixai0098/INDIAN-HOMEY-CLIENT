@@ -8,6 +8,8 @@ import {
   fetchNotifications,
 } from '../services/api';
 
+
+
 const Profile = () => {
   const { user, setUser } = useAuth();
 
@@ -41,8 +43,11 @@ const Profile = () => {
   const [notifPage, setNotifPage] = useState(1);
   const [notifHasMore, setNotifHasMore] = useState(true);
 
+
+  
   // Load wallet and notifications on mount
   useEffect(() => {
+     window.scrollTo(0,0)
     loadWallet();
     loadNotifications(1);
   }, []);

@@ -41,6 +41,37 @@ export const fetchNotifications = async (page = 1, limit = 20) => {
   return apiFetch(`/users/notifications?page=${page}&limit=${limit}`);
 };
 
+// ========== Address APIs ==========
+export const fetchAddresses = async () => {
+  return apiFetch('/users/addresses');
+};
+
+export const addAddress = async (addressData) => {
+  return apiFetch('/users/addresses', {
+    method: 'POST',
+    body: JSON.stringify(addressData),
+  });
+};
+
+export const updateAddress = async (addressId, addressData) => {
+  return apiFetch(`/users/addresses/${addressId}`, {
+    method: 'PUT',
+    body: JSON.stringify(addressData),
+  });
+};
+
+export const deleteAddress = async (addressId) => {
+  return apiFetch(`/users/addresses/${addressId}`, {
+    method: 'DELETE',
+  });
+};
+
+export const setDefaultAddress = async (addressId) => {
+  return apiFetch(`/users/addresses/${addressId}/default`, {
+    method: 'PATCH',
+  });
+};
+
 // ========== Admin APIs ==========
 export const fetchAdminDashboard = async () => {
   return apiFetch('/admin/dashboard');
@@ -125,13 +156,51 @@ export const fetchRevenueReport = async (startDate, endDate) => {
   return apiFetch(`/admin/reports/revenue?startDate=${startDate}&endDate=${endDate}`);
 };
 
-// ========== Admin Category & Service Fetch (for table) ==========
 export const fetchAdminCategories = async () => {
   return apiFetch('/admin/categories');
 };
 
 export const fetchAdminServices = async () => {
   return apiFetch('/admin/services');
+};
+
+// ========== Provider APIs ==========
+export const searchProviders = async (latitude, longitude, radius = 10, serviceCategoryId) => {
+  let url = `/providers/search?latitude=${latitude}&longitude=${longitude}&radius=${radius}`;
+  if (serviceCategoryId) url += `&service=${serviceCategoryId}`;
+  return apiFetch(url);
+};
+
+// ========== Booking APIs ==========
+export const createBooking = async (bookingData) => {
+  return apiFetch('/bookings', {
+    method: 'POST',
+    body: JSON.stringify(bookingData),
+  });
+};
+
+export const fetchMyBookings = async (page = 1, limit = 10, status = '') => {
+  let url = `/bookings/my-bookings?page=${page}&limit=${limit}`;
+  if (status) url += `&status=${status}`;
+  return apiFetch(url);
+};
+
+export const fetchBookingById = async (bookingId) => {
+  return apiFetch(`/bookings/${bookingId}`);
+};
+
+export const cancelBooking = async (bookingId, reason) => {
+  return apiFetch(`/bookings/${bookingId}/cancel`, {
+    method: 'PATCH',
+    body: JSON.stringify({ reason }),
+  });
+};
+
+export const rescheduleBooking = async (bookingId, scheduledDate, scheduledTime) => {
+  return apiFetch(`/bookings/${bookingId}/reschedule`, {
+    method: 'PATCH',
+    body: JSON.stringify({ scheduledDate, scheduledTime }),
+  });
 };
 
 // ========== Public Service/Category APIs ==========

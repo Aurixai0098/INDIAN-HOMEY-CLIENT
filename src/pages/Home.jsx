@@ -10,6 +10,8 @@ const sliderImages = [
   "https://images.unsplash.com/photo-1533090161767-e6ffed986c88?q=80&w=1200&h=400&fit=crop"
 ];
 
+
+
 const reviews = [
   {
     id: 1,
@@ -45,6 +47,8 @@ const reviews = [
   }
 ];
 
+
+
 // Clickable Service Card
 const ServiceCard = ({ service }) => (
   <Link to={`/service/${service.slug}`} className="group cursor-pointer tap-feedback block">
@@ -70,6 +74,10 @@ export default function Home() {
   const [popularServices, setPopularServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
+
+   useEffect(()=>{
+    window.scrollTo(0,0)
+  },[])
 
   useEffect(() => {
     const timer = setInterval(() => {

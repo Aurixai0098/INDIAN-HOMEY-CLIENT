@@ -1,10 +1,13 @@
 // src/pages/CartPage.jsx
-import { useCart } from '../context/CartContext';
+import { useCart  } from '../context/CartContext';
 import { Link } from 'react-router-dom';
-
+import { useEffect } from 'react';
 const CartPage = () => {
   const { cartItems, cartTotal, removeFromCart, updateQuantity, clearCart } = useCart();
 
+   useEffect(()=>{
+      window.scrollTo(0,0)
+    },[])
   if (cartItems.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -42,7 +45,9 @@ const CartPage = () => {
       <div className="mt-8 border-t pt-6 flex justify-between items-center">
         <div className="text-xl font-bold">Total: ₹{cartTotal}</div>
         <button onClick={clearCart} className="text-red-600 hover:underline">Clear Cart</button>
-        <button className="bg-emerald-600 text-white px-6 py-2 rounded-xl hover:bg-emerald-700">Proceed to Checkout</button>
+        <Link to="/checkout" className="bg-emerald-600 text-white px-6 py-2 rounded-xl hover:bg-emerald-700">
+          Proceed to Checkout
+        </Link>
       </div>
     </div>
   );

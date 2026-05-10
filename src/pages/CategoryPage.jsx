@@ -6,6 +6,8 @@ import { useCart } from '../context/CartContext';
 
 const ServiceCard = ({ service, onAddToCart }) => {
   const [added, setAdded] = useState(false);
+ 
+  
 
   const handleAdd = (e) => {
     e.preventDefault();      // Prevent navigation when clicking on button
@@ -14,7 +16,11 @@ const ServiceCard = ({ service, onAddToCart }) => {
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
   };
-
+   
+ useEffect(()=>{
+    window.scrollTo(0,0)
+ },[])
+  
   return (
     <div className="group">
       <Link to={`/service/${service.slug}`} className="block">

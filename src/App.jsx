@@ -5,6 +5,9 @@ import About from "./pages/About";
 import Profile from "./pages/Profile";
 import CategoryPage from "./pages/CategoryPage";
 import ServiceDetailPage from "./pages/ServiceDetailPage";
+import CartPage from "./pages/CartPage";
+import CheckoutPage from "./pages/CheckoutPage";
+import MyBookingsPage from "./pages/MyBookingsPage";
 import Navbar from "./components/Navbar";
 import Login from "./components/auth/Login";
 import PrivateRoute from "./components/PrivateRoute";
@@ -20,10 +23,6 @@ import AdminProviders from "./pages/admin/AdminProviders";
 import AdminCategories from "./pages/admin/AdminCategories";
 import AdminServices from "./pages/admin/AdminServices";
 import AdminBookings from "./pages/admin/AdminBookings";
-import CartPage from "./pages/CartPage";
-
-const MyBookings = () => <div className="p-8 text-center text-gray-600">My Bookings page coming soon...</div>;
-
 
 export default function App() {
   const { showAuth } = useAuth();
@@ -38,8 +37,9 @@ export default function App() {
         <Route path="/category/:slug" element={<CategoryPage />} />
         <Route path="/service/:slug" element={<ServiceDetailPage />} />
         <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
-        <Route path="/my-bookings" element={<PrivateRoute><MyBookings /></PrivateRoute>} />
-        <Route path="/cart" element={<PrivateRoute><CartPage/></PrivateRoute>} />
+        <Route path="/cart" element={<PrivateRoute><CartPage /></PrivateRoute>} />
+        <Route path="/checkout" element={<PrivateRoute><CheckoutPage /></PrivateRoute>} />
+        <Route path="/my-bookings" element={<PrivateRoute><MyBookingsPage /></PrivateRoute>} />
 
         {/* Admin Routes */}
         <Route path="/admin" element={<PrivateRoute><AdminLayout /></PrivateRoute>}>
