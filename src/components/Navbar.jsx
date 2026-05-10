@@ -469,7 +469,11 @@ const Navbar = () => {
           {!isMobileView && (
             <div className="flex items-center justify-between gap-8">
               <Link to="/" className="flex items-center gap-3 shrink-0 no-underline" onMouseEnter={handleLogoRotate} onClick={handleLogoRotate}>
-                <div className="bg-blue-600 text-white rounded-lg w-10 h-10 flex items-center justify-center font-bold text-xl shadow-md shadow-blue-500/20">GS</div>
+                <div className="bg-blue-600 text-white rounded-lg w-16 h-10 flex items-center justify-center font-bold text-xl ">
+                   <img src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778086579/seva_uuvngp.png" alt="logo"
+                     className='w-full h-full'
+                    />
+                </div>
                 <div>
                   <h1 className="text-xl font-bold text-blue-600 tracking-tight leading-tight">GharSeva</h1>
                   <p className="text-[11px] text-gray-500 leading-tight mt-0.5">Home services at your doorstep</p>
@@ -544,7 +548,11 @@ const Navbar = () => {
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between gap-2">
                 <Link to="/" className="flex shrink-0 no-underline" onClick={handleLogoRotate}>
-                  <div className="bg-blue-600 text-white rounded-lg w-9 h-9 flex items-center justify-center font-bold text-lg shadow-md">GS</div>
+                  <div className=" text-white rounded-lg w-14 h-9 flex items-center justify-center font-bold text-lg shadow-md">
+                    <img src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778086579/seva_uuvngp.png" alt="logo"
+                     className='w-full h-full'
+                    />
+                  </div>
                 </Link>
                 <div className="flex-1 min-w-0" ref={locationRef}>
                   <button onClick={() => setShowLocationPicker(true)} className="flex items-center justify-between w-full max-w-[200px] gap-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-full transition-colors">
