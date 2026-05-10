@@ -1,3 +1,4 @@
+// src/components/auth/Login.jsx
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 
@@ -41,8 +42,17 @@ const Login = () => {
 
   const handleRegister = async (e) => {
     e.preventDefault();
+    // Basic frontend validation
     if (!firstName || !lastName || !emailReg || !phone || !passwordReg) {
       setError("All fields are required");
+      return;
+    }
+    if (passwordReg.length < 8) {
+      setError("Password must be at least 8 characters");
+      return;
+    }
+    if (!/^[6-9]\d{9}$/.test(phone)) {
+      setError("Please enter a valid Indian mobile number (10 digits starting with 6-9)");
       return;
     }
     setLoading(true);
@@ -51,6 +61,7 @@ const Login = () => {
     try {
       await register({ firstName, lastName, email: emailReg, phone, password: passwordReg });
     } catch (err) {
+      // Show friendly error message directly from backend
       setError(err.message);
     } finally {
       setLoading(false);
@@ -77,7 +88,7 @@ const Login = () => {
   return (
     <div className="min-h-screen w-full fixed z-[2000] flex items-center justify-center p-4 font-sans overflow-auto">
       <div className="w-full max-w-3xl bg-white rounded-2xl border flex flex-col md:flex-row overflow-auto">
-        {/* Left Panel */}
+        {/* Left Panel (unchanged) */}
         <div
           className="w-full md:w-1/2 relative flex flex-col justify-center items-center text-white p-5 md:p-8 min-h-[140px] md:min-h-[260px] bg-cover bg-center"
           style={{ backgroundImage: `url(${bgImage})` }}
@@ -113,7 +124,7 @@ const Login = () => {
         {/* Right Panel */}
         <div className="w-full md:w-1/2 p-5 md:p-8 flex flex-col justify-center bg-white">
           {error && (
-            <div className="mb-2 text-red-600 text-xs text-center bg-red-50 p-2 rounded border border-red-200">
+            <div className="mb-4 text-red-600 text-sm text-center bg-red-50 p-2 rounded border border-red-200">
               {error}
             </div>
           )}
@@ -153,21 +164,11 @@ const Login = () => {
                 <div className="relative flex justify-center text-xs"><span className="px-2 bg-white text-gray-500">or use your email for registration</span></div>
               </div>
               <div className="space-y-2 md:space-y-3">
-                <div>
-                  <input type="text" placeholder="First Name" value={firstName} onChange={(e) => setFirstName(e.target.value)} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm" />
-                </div>
-                <div>
-                  <input type="text" placeholder="Last Name" value={lastName} onChange={(e) => setLastName(e.target.value)} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm" />
-                </div>
-                <div>
-                  <input type="email" placeholder="Email" value={emailReg} onChange={(e) => setEmailReg(e.target.value)} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm" />
-                </div>
-                <div>
-                  <input type="tel" placeholder="Phone Number" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm" />
-                </div>
-                <div>
-                  <input type="password" placeholder="Password" value={passwordReg} onChange={(e) => setPasswordReg(e.target.value)} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm" />
-                </div>
+                <input type="text" placeholder="First Name" value={firstName} onChange={(e) => setFirstName(e.target.value)} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm" />
+                <input type="text" placeholder="Last Name" value={lastName} onChange={(e) => setLastName(e.target.value)} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm" />
+                <input type="email" placeholder="Email" value={emailReg} onChange={(e) => setEmailReg(e.target.value)} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm" />
+                <input type="tel" placeholder="Phone Number" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm" />
+                <input type="password" placeholder="Password (min 8 chars)" value={passwordReg} onChange={(e) => setPasswordReg(e.target.value)} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm" />
                 <button
                   type="submit"
                   disabled={loading}

@@ -1,3 +1,4 @@
+// src/context/AuthContext.jsx
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:5000/api/v1";
@@ -9,6 +10,38 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [showAuth, setShowAuth] = useState(false);
 
+  // Refresh token queue management
+  let refreshPromise = null;
+  let pendingRequests = [];
+
+  const processPendingRequests = () => {
+    pendingRequests.forEach(cb => cb());
+    pendingRequests = [];
+  };
+
+  const refreshAccessToken = async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/auth/refresh-token`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (res.ok) {
+        // Token refreshed successfully – cookies are updated by backend
+        return true;
+      } else {
+        // Refresh token invalid/expired – force logout
+        setUser(null);
+        setShowAuth(true);
+        return false;
+      }
+    } catch (error) {
+      console.error("Refresh token error:", error);
+      setUser(null);
+      setShowAuth(true);
+      return false;
+    }
+  };
+
   const fetchUser = useCallback(async () => {
     try {
       const res = await fetch(`${BASE_URL}/auth/me`, {
@@ -16,11 +49,7 @@ export const AuthProvider = ({ children }) => {
       });
       if (res.ok) {
         const data = await res.json();
-        if (data.data?.user) {
-          setUser(data.data.user);
-        } else {
-          setUser(null);
-        }
+        setUser(data.data?.user || null);
       } else {
         setUser(null);
       }
@@ -32,17 +61,45 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  const refreshAccessToken = async () => {
-    try {
-      const res = await fetch(`${BASE_URL}/auth/refresh-token`, {
-        method: "POST",
-        credentials: "include",
-      });
-      return res.ok;
-    } catch (error) {
-      return false;
-    }
-  };
+  // Interceptor for automatic token refresh
+  useEffect(() => {
+    const originalFetch = window.fetch;
+
+    window.fetch = async (...args) => {
+      let response = await originalFetch(...args);
+
+      // If 401 and not already refreshing, try to refresh token and retry
+      if (response.status === 401 && !refreshPromise) {
+        refreshPromise = refreshAccessToken().then(success => {
+          refreshPromise = null;
+          processPendingRequests();
+          return success;
+        });
+
+        const refreshed = await refreshPromise;
+        if (refreshed) {
+          // Retry the original request (cookies are already updated)
+          response = await originalFetch(...args);
+        }
+        return response;
+      }
+
+      // If a refresh is already in progress, wait for it
+      if (response.status === 401 && refreshPromise) {
+        await new Promise(resolve => {
+          pendingRequests.push(resolve);
+        });
+        // Retry with new token
+        response = await originalFetch(...args);
+      }
+
+      return response;
+    };
+
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, []);
 
   const register = async (userData) => {
     const res = await fetch(`${BASE_URL}/auth/register`, {
@@ -52,7 +109,10 @@ export const AuthProvider = ({ children }) => {
       body: JSON.stringify(userData),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.message || "Registration failed");
+    if (!res.ok) {
+      // Throw structured error from backend
+      throw new Error(data.message || "Registration failed");
+    }
     setUser(data.data.user);
     setShowAuth(false);
     return data;
@@ -66,7 +126,9 @@ export const AuthProvider = ({ children }) => {
       body: JSON.stringify({ email, password }),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.message || "Login failed");
+    if (!res.ok) {
+      throw new Error(data.message || "Login failed");
+    }
     setUser(data.data.user);
     setShowAuth(false);
     return data;
@@ -88,26 +150,6 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     fetchUser();
   }, [fetchUser]);
-
-  useEffect(() => {
-    const originalFetch = window.fetch;
-    window.fetch = async (...args) => {
-      let response = await originalFetch(...args);
-      if (response.status === 401) {
-        const refreshed = await refreshAccessToken();
-        if (refreshed) {
-          response = await originalFetch(...args);
-        } else {
-          setUser(null);
-          setShowAuth(true);
-        }
-      }
-      return response;
-    };
-    return () => {
-      window.fetch = originalFetch;
-    };
-  }, []);
 
   const value = {
     user,
