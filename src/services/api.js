@@ -125,6 +125,15 @@ export const fetchRevenueReport = async (startDate, endDate) => {
   return apiFetch(`/admin/reports/revenue?startDate=${startDate}&endDate=${endDate}`);
 };
 
+// ========== Admin Category & Service Fetch (for table) ==========
+export const fetchAdminCategories = async () => {
+  return apiFetch('/admin/categories');
+};
+
+export const fetchAdminServices = async () => {
+  return apiFetch('/admin/services');
+};
+
 // ========== Public Service/Category APIs ==========
 export const fetchCategories = async () => {
   return apiFetch('/services/categories');
@@ -161,14 +170,4 @@ export const searchServices = async (query) => {
     return { success: true, services: filtered };
   }
   return { success: false, services: [] };
-};
-
-// Add to src/services/api.js (after deleteCategory)
-
-export const fetchAdminCategories = async () => {
-  return apiFetch('/admin/categories');
-};
-
-export const fetchAdminServices = async () => {
-  return apiFetch('/admin/services');
 };

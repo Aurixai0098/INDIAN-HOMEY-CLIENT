@@ -5,7 +5,7 @@ const AdminCategories = () => {
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isFormOpen, setIsFormOpen] = useState(false);
-    const [form, setForm] = useState({ name: '', slug: '', description: '', icon: '', sortOrder: 1, isActive: true });
+    const [form, setForm] = useState({ name: '', slug: '', description: '', iconUrl: '', sortOrder: 1, isActive: true });
     const [editingId, setEditingId] = useState(null);
     const [submitting, setSubmitting] = useState(false);
 
@@ -55,13 +55,16 @@ const AdminCategories = () => {
     };
 
     const resetForm = () => {
-        setForm({ name: '', slug: '', description: '', icon: '', sortOrder: 1, isActive: true });
+        setForm({ name: '', slug: '', description: '', iconUrl: '', sortOrder: 1, isActive: true });
         setEditingId(null);
         setIsFormOpen(false);
     };
 
     const editCategory = (cat) => {
-        setForm(cat);
+        setForm({
+            ...cat,
+            iconUrl: cat.icon?.url || ''
+        });
         setEditingId(cat._id);
         setIsFormOpen(true);
     };
@@ -94,6 +97,7 @@ const AdminCategories = () => {
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
+                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Icon</th>
                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Name</th>
                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Slug</th>
                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Order</th>
@@ -104,6 +108,13 @@ const AdminCategories = () => {
                     <tbody className="divide-y divide-gray-100 bg-white">
                         {categories.map(cat => (
                             <tr key={cat._id} className="hover:bg-gray-50 transition-colors">
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    {cat.icon?.url ? (
+                                        <img src={cat.icon.url} alt={cat.name} className="w-8 h-8 object-contain rounded" />
+                                    ) : (
+                                        <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center text-gray-400">📁</div>
+                                    )}
+                                </td>
                                 <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{cat.name}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-gray-500 text-sm">{cat.slug}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-gray-500">{cat.sortOrder}</td>
@@ -119,7 +130,7 @@ const AdminCategories = () => {
                             </tr>
                         ))}
                         {categories.length === 0 && (
-                            <tr><td colSpan="5" className="px-6 py-8 text-center text-gray-500">No categories found. Click "Add Category" to create one.</td></tr>
+                            <tr><td colSpan="6" className="px-6 py-8 text-center text-gray-500">No categories found. Click "Add Category" to create one.</td></tr>
                         )}
                     </tbody>
                 </table>
@@ -149,11 +160,17 @@ const AdminCategories = () => {
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                                 <textarea rows="3" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none" placeholder="Brief description..."></textarea>
                             </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Icon URL</label>
+                                <input type="url" value={form.iconUrl} onChange={e => setForm({ ...form, iconUrl: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" placeholder="https://example.com/icon.png" />
+                                {form.iconUrl && (
+                                    <div className="mt-2 flex items-center gap-2">
+                                        <span className="text-xs text-gray-500">Preview:</span>
+                                        <img src={form.iconUrl} alt="icon preview" className="w-8 h-8 object-contain border rounded p-1" />
+                                    </div>
+                                )}
+                            </div>
                             <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Icon Name/URL</label>
-                                    <input type="text" value={form.icon} onChange={e => setForm({ ...form, icon: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g., snowflake" />
-                                </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Sort Order</label>
                                     <input type="number" value={form.sortOrder} onChange={e => setForm({ ...form, sortOrder: parseInt(e.target.value) })} className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" />

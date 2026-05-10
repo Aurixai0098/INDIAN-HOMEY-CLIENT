@@ -24,6 +24,9 @@ const Navbar = () => {
   const [isMobileView, setIsMobileView] = useState(window.innerWidth < 1024);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
+  // Cart count (mock – replace with real context)
+  const [cartCount, setCartCount] = useState(0); // Initially 0, update from your cart store
+
   // Map related states
   const [mapLat, setMapLat] = useState(28.6139);
   const [mapLng, setMapLng] = useState(77.2090);
@@ -483,8 +486,20 @@ const Navbar = () => {
                 {renderSearchInput(false)}
               </div>
 
-              {/* Desktop Right Controls (Auth/Profile & Menu) */}
+              {/* Desktop Right Controls (Cart + Auth/Profile + Menu) */}
               <div className="flex items-center gap-3 shrink-0">
+                {/* Cart Icon */}
+                <Link to="/cart" className="relative p-2 text-gray-600 hover:text-blue-600 bg-white hover:bg-gray-50 rounded-full transition-colors border border-gray-200 shadow-sm">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M18 13l1.5 6M9 21a1 1 0 100-2 1 1 0 000 2zm9 0a1 1 0 100-2 1 1 0 000 2z" />
+                  </svg>
+                  {cartCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center shadow-sm">
+                      {cartCount > 9 ? '9+' : cartCount}
+                    </span>
+                  )}
+                </Link>
+
                 {user ? (
                   <div className="relative group">
                     <button className="flex items-center gap-2 bg-white hover:bg-gray-50 border border-gray-200 px-2 py-1.5 rounded-full transition-colors shadow-sm">
@@ -524,7 +539,7 @@ const Navbar = () => {
           {/* ===================== MOBILE VIEW (<1024px) ===================== */}
           {isMobileView && (
             <div className="flex flex-col gap-3">
-              {/* Row 1: Logo | Fixed Location | Search Toggle | Hamburger */}
+              {/* Row 1: Logo | Fixed Location | Search Toggle | Cart | Hamburger */}
               <div className="flex items-center justify-between gap-2">
                 
                 {/* Mobile Logo */}
@@ -567,8 +582,20 @@ const Navbar = () => {
                   )}
                 </div>
 
-                {/* Mobile Right Controls */}
+                {/* Mobile Right Controls (Cart + Search + User/Hamburger) */}
                 <div className="flex items-center gap-2 shrink-0">
+                  {/* Cart Icon */}
+                  <Link to="/cart" className="relative p-2 text-gray-600 hover:text-blue-600 bg-gray-50 border border-gray-200 rounded-full transition-colors shadow-sm">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M18 13l1.5 6M9 21a1 1 0 100-2 1 1 0 000 2zm9 0a1 1 0 100-2 1 1 0 000 2z" />
+                    </svg>
+                    {cartCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                        {cartCount > 9 ? '9+' : cartCount}
+                      </span>
+                    )}
+                  </Link>
+
                   <button onClick={() => setMobileSearchOpen(!mobileSearchOpen)} className="p-2 text-gray-600 bg-gray-50 border border-gray-200 hover:bg-gray-100 rounded-full transition shadow-sm">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                   </button>

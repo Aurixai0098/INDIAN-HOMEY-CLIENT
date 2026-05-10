@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchCategories, fetchFeaturedServices, fetchPopularServices } from '../services/api';
 
@@ -10,38 +10,12 @@ const sliderImages = [
 ];
 
 const reviews = [
-  {
-    id: 1,
-    name: "Rajat Jangra",
-    date: "24/04/2026",
-    rating: 5,
-    comment: "Excellent service! The plumber arrived on time and fixed the leakage perfectly. Highly recommended for home services.",
-    image: "https://ui-avatars.com/api/?name=Rajat+Jangra&background=10b981&color=fff"
-  },
-  {
-    id: 2,
-    name: "Rahul Rao",
-    date: "20/03/2026",
-    rating: 5,
-    comment: "AC servicing was very professional. They cleaned everything and checked for gas leaks too. Very satisfied.",
-    image: "https://ui-avatars.com/api/?name=Rahul+Rao&background=3b82f6&color=fff"
-  },
-  {
-    id: 3,
-    name: "Amit Kumar",
-    date: "15/02/2026",
-    rating: 4,
-    comment: "The cleaning team did a great job with the deep cleaning of my kitchen. It looks brand new now.",
-    image: "https://ui-avatars.com/api/?name=Amit+Kumar&background=f59e0b&color=fff"
-  },
-  {
-    id: 4,
-    name: "Sandeep Saini",
-    date: "10/01/2026",
-    rating: 5,
-    comment: "Best platform for local experts. I booked an electrician for wiring work and he was very skilled.",
-    image: "https://ui-avatars.com/api/?name=Sandeep+Saini&background=ef4444&color=fff"
-  }
+  { name: "Ridhi Saluja", sector: "Sector 56", comment: "The services have definitely improved from the first time. Preferences are kept as top priority. Thank you for making our lives easier with Ghar Seva!", rating: 5, color: "bg-emerald-500" },
+  { name: "Kirti", sector: "Sector 51", comment: "I'd say it was great value for money. The urgency was handled well, without compromising quality. Really satisfied with the experience.", rating: 5, color: "bg-blue-500" },
+  { name: "Neha", sector: "Sector 57", comment: "The service was simple and effective. It met my expectations without any hassle. Good overall experience.", rating: 5, color: "bg-orange-500" },
+  { name: "Ritika", sector: "Sector 57", comment: "Seamless experience from booking to completion. The staff was courteous, punctual, and did a fantastic job.", rating: 5, color: "bg-red-500" },
+  { name: "Sameer", sector: "Sector 52", comment: "Really liked your service, it was smooth, efficient, and just what I needed. Would definitely recommend to others. ✨", rating: 5, color: "bg-teal-500" },
+  { name: "Karishma", sector: "Suncity", comment: "Absolutely excellent service! The team was prompt and professional. Would love to use it again.", rating: 5, color: "bg-purple-500" },
 ];
 
 const ServiceCard = ({ service }) => (
@@ -61,7 +35,6 @@ const ServiceCard = ({ service }) => (
 
 export default function Home() {
   const categoryScrollRef = useRef(null);
-  const reviewScrollRef = useRef(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [categories, setCategories] = useState([]);
   const [featuredServices, setFeaturedServices] = useState([]);
@@ -107,24 +80,14 @@ export default function Home() {
     }
   };
 
-  const scrollReview = (direction) => {
-    if (reviewScrollRef.current) {
-      const scrollAmount = window.innerWidth < 640 ? 280 : 380;
-      reviewScrollRef.current.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
-        behavior: 'smooth',
-      });
-    }
-  };
-
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Loading amazing services...</div>;
   }
 
   return (
     <div className="min-h-screen bg-white font-sans overflow-x-hidden">
-      {/* Hero Section - unchanged */}
-      <section className="relative bg-emerald-600 pt-8 pb-20 md:pt-12 md:pb-32 px-5 sm:px-6 overflow-hidden">
+      {/* Hero Section - Improved */}
+      <section className="relative bg-gradient-to-br from-emerald-600 to-teal-700 pt-8 pb-20 md:pt-12 md:pb-32 px-5 sm:px-6 overflow-hidden">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center relative z-10 gap-8">
           <div className="md:w-1/2 text-white space-y-5 md:space-y-6 text-center md:text-left">
             <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold leading-tight">
@@ -143,7 +106,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Image Slider - unchanged */}
+      {/* Image Slider - Improved */}
       <section className="relative -mt-20 sm:-mt-32 md:-mt-48 lg:-mt-72 px-4 sm:px-6 z-20">
         <div className="max-w-6xl mx-auto relative group">
           <div className="overflow-hidden rounded-xl md:rounded-2xl shadow-xl aspect-video md:aspect-[21/9]">
@@ -177,7 +140,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Categories Slider (dynamic from API) */}
+      {/* Categories Slider - Improved */}
       <section className="relative mt-6 sm:mt-4 px-4 sm:px-6 pb-10 md:pb-12">
         <div className="max-w-6xl mx-auto">
           <div className="bg-white p-3 sm:p-4 rounded-xl shadow-md border border-gray-100">
@@ -209,7 +172,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Featured Services Section */}
+      {/* Featured Services Section - Improved */}
       {featuredServices.length > 0 && (
         <section className="py-12 md:py-20 px-5 sm:px-6 bg-slate-50">
           <div className="max-w-6xl mx-auto">
@@ -234,7 +197,7 @@ export default function Home() {
         </section>
       )}
 
-      {/* Popular Services Section */}
+      {/* Popular Services Section - Improved */}
       {popularServices.length > 0 && (
         <section className="py-12 md:py-20 px-5 sm:px-6 bg-white">
           <div className="max-w-6xl mx-auto">
@@ -253,7 +216,7 @@ export default function Home() {
         </section>
       )}
 
-      {/* How It Works section - unchanged */}
+      {/* How It Works section - Improved */}
       <section className="py-14 md:py-20 px-5 sm:px-6 bg-white">
         <div className="max-w-6xl mx-auto">
           <div className="mb-10 md:mb-16 text-center md:text-left">
@@ -292,41 +255,52 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Customer Reviews - unchanged */}
-      <section className="py-14 md:py-20 px-5 sm:px-6 bg-slate-50">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 md:mb-12">
-            <div>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-2">Our Customer Reviews</h2>
-              <p className="text-slate-500 italic text-sm md:text-base">What our happy clients say about Ghar Seva</p>
-            </div>
-            <div className="flex gap-3 self-end sm:self-auto">
-              <button onClick={() => scrollReview('left')} className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-white rounded-full shadow-md border border-gray-100 text-slate-600 hover:bg-emerald-600 hover:text-white transition-all active:scale-90 tap-feedback">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5 md:w-6 md:h-6">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-                </svg>
-              </button>
-              <button onClick={() => scrollReview('right')} className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-white rounded-full shadow-md border border-gray-100 text-slate-600 hover:bg-emerald-600 hover:text-white transition-all active:scale-90 tap-feedback">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5 md:w-6 md:h-6">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                </svg>
-              </button>
-            </div>
-          </div>
-          <div ref={reviewScrollRef} className="flex gap-5 overflow-x-auto no-scrollbar horizontal-scroll pb-6 md:pb-8 scroll-smooth">
-            {reviews.map((review) => (
-              <div key={review.id} className="min-w-[280px] sm:min-w-[360px] md:min-w-[400px] bg-white p-5 md:p-8 rounded-2xl shadow-md border border-gray-50 flex flex-col justify-between">
-                <div>
-                  <div className="flex gap-1 mb-4">
-                    {[...Array(review.rating)].map((_, i) => <span key={i} className="text-yellow-500 text-lg md:text-xl">★</span>)}
-                  </div>
-                  <p className="text-slate-600 leading-relaxed italic text-sm md:text-base mb-6">"{review.comment}"</p>
+      {/* REVIEWS SECTION - MATCHING VIDEO (Auto-Scroll Infinite Loop) */}
+      <section className="py-20 bg-slate-50 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6 mb-12 text-center md:text-left">
+          <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-2">Our Customer Reviews</h2>
+          <p className="text-slate-500 italic">What our happy clients say about Ghar Seva</p>
+        </div>
+        
+        {/* Row 1: Scrolling Left */}
+        <div className="flex overflow-hidden mb-8">
+          <div className="flex animate-marquee-left whitespace-nowrap">
+            {[...reviews, ...reviews].map((review, i) => (
+              <div key={i} className="inline-block w-[300px] md:w-[400px] bg-white rounded-2xl p-6 mx-4 shadow-lg border border-gray-100 whitespace-normal align-top transition-transform hover:scale-105">
+                <div className="flex gap-1 mb-3">
+                  {[...Array(5)].map((_, j) => <span key={j} className="text-emerald-500 text-lg">★</span>)}
                 </div>
-                <div className="flex items-center gap-3 md:gap-4">
-                  <img src={review.image} alt={review.name} className="w-10 h-10 md:w-12 md:h-12 rounded-full object-cover border-2 border-white shadow-md" />
+                <p className="text-slate-600 text-sm leading-relaxed mb-6 italic">"{review.comment}"</p>
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full ${review.color || 'bg-emerald-500'} flex items-center justify-center text-white font-bold`}>
+                    {review.name.charAt(0)}
+                  </div>
                   <div>
-                    <h4 className="font-bold text-slate-900 text-sm md:text-base">{review.name}</h4>
-                    <p className="text-xs text-slate-400">{review.date}</p>
+                    <h4 className="font-bold text-slate-900 text-sm">{review.name}</h4>
+                    <p className="text-xs text-slate-400">{review.sector}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Row 2: Scrolling Right */}
+        <div className="flex overflow-hidden">
+          <div className="flex animate-marquee-right whitespace-nowrap">
+            {[...reviews, ...reviews].map((review, i) => (
+              <div key={i} className="inline-block w-[300px] md:w-[400px] bg-white rounded-2xl p-6 mx-4 shadow-lg border border-gray-100 whitespace-normal align-top transition-transform hover:scale-105">
+                <div className="flex gap-1 mb-3">
+                  {[...Array(5)].map((_, j) => <span key={j} className="text-emerald-500 text-lg">★</span>)}
+                </div>
+                <p className="text-slate-600 text-sm leading-relaxed mb-6 italic">"{review.comment}"</p>
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full ${review.color || 'bg-emerald-500'} flex items-center justify-center text-white font-bold`}>
+                    {review.name.charAt(0)}
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900 text-sm">{review.name}</h4>
+                    <p className="text-xs text-slate-400">{review.sector}</p>
                   </div>
                 </div>
               </div>
@@ -342,6 +316,13 @@ export default function Home() {
         .horizontal-scroll > * { scroll-snap-align: start; }
         .tap-feedback { cursor: pointer; -webkit-tap-highlight-color: transparent; }
         .tap-feedback:active { transform: scale(0.96); transition: transform 0.08s linear; }
+
+        /* Animation Styles for Reviews */
+        .animate-marquee-left { animation: marquee-left 45s linear infinite; display: flex; width: max-content; }
+        .animate-marquee-right { animation: marquee-right 45s linear infinite; display: flex; width: max-content; }
+        @keyframes marquee-left { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+        @keyframes marquee-right { 0% { transform: translateX(-50%); } 100% { transform: translateX(0); } }
+        .animate-marquee-left:hover, .animate-marquee-right:hover { animation-play-state: paused; }
       `}</style>
     </div>
   );

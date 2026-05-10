@@ -1,17 +1,20 @@
 import { useState, useEffect } from 'react';
-import { createService, updateService, deleteService, fetchServices } from '../../services/api';
+import { createService, updateService, deleteService, fetchServices, fetchCategories } from '../../services/api';
 
 const AdminServices = () => {
   const [services, setServices] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingCategories, setLoadingCategories] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [form, setForm] = useState({
-    name: '', slug: '', description: '', category: '', basePrice: 0, unit: 'per_service',
-    duration: 30, isActive: true, isFeatured: false, tags: []
+    name: '', slug: '', description: '', category: '', basePrice: 0, priceUnit: 'per_service',
+    estimatedDuration: { min: 30, max: 60 }, isActive: true, isFeatured: false, tags: [], imageUrls: ''
   });
   const [editingId, setEditingId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Load services and categories
   const loadServices = async () => {
     setLoading(true);
     try {
@@ -26,7 +29,27 @@ const AdminServices = () => {
     }
   };
 
-  useEffect(() => { loadServices(); }, []);
+  const loadCategories = async () => {
+    setLoadingCategories(true);
+    try {
+      const res = await fetchCategories();
+      if (res.success && res.data.categories) {
+        setCategories(res.data.categories);
+      } else {
+        setCategories([]);
+      }
+    } catch (err) {
+      console.error('Error loading categories:', err);
+      setCategories([]);
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
+
+  useEffect(() => {
+    loadServices();
+    loadCategories();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -47,14 +70,22 @@ const AdminServices = () => {
   };
 
   const resetForm = () => {
-    setForm({ name: '', slug: '', description: '', category: '', basePrice: 0, unit: 'per_service', duration: 30, isActive: true, isFeatured: false, tags: [] });
+    setForm({
+      name: '', slug: '', description: '', category: '', basePrice: 0, priceUnit: 'per_service',
+      estimatedDuration: { min: 30, max: 60 }, isActive: true, isFeatured: false, tags: [], imageUrls: ''
+    });
     setEditingId(null);
     setIsFormOpen(false);
   };
 
   const editService = (svc) => {
-    // Handling tag array conversion for editing
-    setForm({ ...svc, tags: svc.tags ? svc.tags : [] });
+    const imageUrls = svc.images?.map(img => img.url).join(', ') || '';
+    setForm({
+      ...svc,
+      imageUrls,
+      estimatedDuration: svc.estimatedDuration || { min: 30, max: 60 },
+      category: svc.category?._id || svc.category
+    });
     setEditingId(svc._id);
     setIsFormOpen(true);
   };
@@ -94,10 +125,11 @@ const AdminServices = () => {
       </div>
 
       {/* Services Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Image</th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Name</th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Category</th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Price</th>
@@ -109,9 +141,16 @@ const AdminServices = () => {
           <tbody className="divide-y divide-gray-100 bg-white">
             {services.map(s => (
               <tr key={s._id} className="hover:bg-gray-50 transition-colors">
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {s.images?.[0]?.url ? (
+                    <img src={s.images[0].url} alt={s.name} className="w-10 h-10 object-cover rounded-lg" />
+                  ) : (
+                    <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">📷</div>
+                  )}
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{s.name}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-gray-500 text-sm">{s.category?.name || s.category}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-gray-900 font-semibold">₹{s.basePrice} <span className="text-gray-400 text-xs font-normal">/{s.priceUnit || s.unit}</span></td>
+                <td className="px-6 py-4 whitespace-nowrap text-gray-900 font-semibold">₹{s.basePrice} <span className="text-gray-400 text-xs font-normal">/{s.priceUnit || 'service'}</span></td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${s.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
                     {s.isActive ? 'Active' : 'Inactive'}
@@ -127,7 +166,9 @@ const AdminServices = () => {
               </tr>
             ))}
             {services.length === 0 && (
-              <tr><td colSpan="6" className="px-6 py-8 text-center text-gray-500">No services found. Click "Add Service" to create one.</td></tr>
+              <tr>
+                <td colSpan="7" className="px-6 py-8 text-center text-gray-500">No services found. Click "Add Service" to create one.</td>
+              </tr>
             )}
           </tbody>
         </table>
@@ -158,25 +199,70 @@ const AdminServices = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                   <textarea rows="2" value={form.description} onChange={e => setForm({...form, description: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none" placeholder="Details about the service..."></textarea>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Category ID</label>
-                  <input type="text" required value={form.category} onChange={e => setForm({...form, category: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Category Object ID" />
+
+                {/* Category Dropdown */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                  {loadingCategories ? (
+                    <div className="flex items-center gap-2 text-gray-500 text-sm">
+                      <div className="w-4 h-4 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                      Loading categories...
+                    </div>
+                  ) : (
+                    <select
+                      required
+                      value={form.category}
+                      onChange={e => setForm({...form, category: e.target.value})}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
+                    >
+                      <option value="">-- Select Category --</option>
+                      {categories.map(cat => (
+                        <option key={cat._id} value={cat._id}>
+                          {cat.name} {!cat.isActive && '(Inactive)'}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {categories.length === 0 && !loadingCategories && (
+                    <p className="text-red-500 text-xs mt-1">No categories found. Please create a category first.</p>
+                  )}
                 </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Base Price (₹)</label>
                   <input type="number" required value={form.basePrice} onChange={e => setForm({...form, basePrice: parseFloat(e.target.value)})} className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Price Unit</label>
-                  <input type="text" value={form.unit} onChange={e => setForm({...form, unit: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g., per_service, per_hour" />
+                  <select value={form.priceUnit} onChange={e => setForm({...form, priceUnit: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none">
+                    <option value="per_service">Per Service</option>
+                    <option value="per_hour">Per Hour</option>
+                    <option value="per_sqft">Per Sq Ft</option>
+                    <option value="per_unit">Per Unit</option>
+                  </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Duration (Mins)</label>
-                  <input type="number" value={form.duration} onChange={e => setForm({...form, duration: parseInt(e.target.value)})} className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Min Duration (Mins)</label>
+                  <input type="number" value={form.estimatedDuration.min} onChange={e => setForm({...form, estimatedDuration: {...form.estimatedDuration, min: parseInt(e.target.value)}})} className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Max Duration (Mins)</label>
+                  <input type="number" value={form.estimatedDuration.max} onChange={e => setForm({...form, estimatedDuration: {...form.estimatedDuration, max: parseInt(e.target.value)}})} className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Image URLs (comma separated)</label>
+                  <textarea rows="2" value={form.imageUrls} onChange={e => setForm({...form, imageUrls: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="https://example.com/img1.jpg, https://example.com/img2.jpg"></textarea>
+                  {form.imageUrls && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {form.imageUrls.split(',').slice(0,3).map((url, idx) => url.trim() && (
+                        <img key={idx} src={url.trim()} alt="preview" className="w-12 h-12 object-cover rounded border" />
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Tags (Comma separated)</label>
-                  <input type="text" value={form.tags.join(', ')} onChange={e => setForm({...form, tags: e.target.value.split(',').map(t => t.trim())})} className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g., cleaning, deep clean, home" />
+                  <input type="text" value={form.tags.join(', ')} onChange={e => setForm({...form, tags: e.target.value.split(',').map(t => t.trim()).filter(t => t)})} className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g., cleaning, deep clean, home" />
                 </div>
               </div>
               
