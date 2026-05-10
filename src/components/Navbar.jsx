@@ -1,7 +1,9 @@
+// src/components/Navbar.jsx
 import { Link } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-
+import { fetchCategories } from '../services/api';
+import { useCart } from '../context/CartContext';
 const Navbar = () => {
   const { user, logout, setShowAuth } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
@@ -25,7 +27,11 @@ const Navbar = () => {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
   // Cart count (mock – replace with real context)
-  const [cartCount, setCartCount] = useState(0); // Initially 0, update from your cart store
+  const { cartCount } = useCart();
+
+  // Dynamic categories state
+  const [categories, setCategories] = useState([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
 
   // Map related states
   const [mapLat, setMapLat] = useState(28.6139);
@@ -44,6 +50,27 @@ const Navbar = () => {
     const handleResize = () => setIsMobileView(window.innerWidth < 1024);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Fetch categories from backend
+  useEffect(() => {
+    const loadCategories = async () => {
+      setCategoriesLoading(true);
+      try {
+        const res = await fetchCategories();
+        if (res.success && res.data.categories) {
+          setCategories(res.data.categories.filter(cat => cat.isActive));
+        } else {
+          setCategories([]);
+        }
+      } catch (err) {
+        console.error('Failed to load categories:', err);
+        setCategories([]);
+      } finally {
+        setCategoriesLoading(false);
+      }
+    };
+    loadCategories();
   }, []);
 
   // Preload Leaflet
@@ -207,20 +234,12 @@ const Navbar = () => {
       setShowSearchResults(true);
       searchTimeout.current = setTimeout(async () => {
         try {
-          const response = await fetch(`/api/services/search?q=${query}&location=${location}`);
+          const response = await fetch(`${import.meta.env.VITE_BASE_URL || 'http://localhost:5000/api/v1'}/services/search?q=${query}&location=${location}`);
           const data = await response.json();
-          setSearchResults(data.services || []);
+          setSearchResults(data.data?.services || []);
         } catch (error) {
-          const mockResults = [
-            { id: 1, name: 'Plumbing Services', category: 'Plumber', rating: 4.5, price: 500 },
-            { id: 2, name: 'Electrical Repair', category: 'Electrician', rating: 4.8, price: 600 },
-            { id: 3, name: 'AC Service & Repair', category: 'AC Technician', rating: 4.7, price: 800 },
-            { id: 4, name: 'Home Cleaning', category: 'Cleaner', rating: 4.6, price: 400 },
-          ].filter(service =>
-            service.name.toLowerCase().includes(query.toLowerCase()) ||
-            service.category.toLowerCase().includes(query.toLowerCase())
-          );
-          setSearchResults(mockResults);
+          console.error('Search error:', error);
+          setSearchResults([]);
         } finally {
           setLoading(false);
         }
@@ -349,7 +368,7 @@ const Navbar = () => {
   };
 
   const selectSearchResult = (service) => {
-    window.location.href = `/service/${service.id}`;
+    window.location.href = `/service/${service.slug || service._id}`;
   };
 
   const getInitials = (name) => {
@@ -357,9 +376,7 @@ const Navbar = () => {
     return name.substring(0, 2).toUpperCase();
   };
 
-
   /* --- RENDER HELPERS --- */
-
   const renderLocationModalContent = () => (
     <>
       <h3 className="text-gray-900 font-semibold mb-3">Choose Location</h3>
@@ -396,14 +413,14 @@ const Navbar = () => {
         <div className="p-4 text-center text-gray-500 text-sm">Searching...</div>
       ) : searchResults.length > 0 ? (
         searchResults.map((service) => (
-          <div key={service.id} onClick={() => selectSearchResult(service)} className="p-3 border-b border-gray-50 last:border-0 hover:bg-gray-50 cursor-pointer flex justify-between items-center transition">
+          <div key={service._id} onClick={() => selectSearchResult(service)} className="p-3 border-b border-gray-50 last:border-0 hover:bg-gray-50 cursor-pointer flex justify-between items-center transition">
             <div>
               <h4 className="text-gray-900 text-sm font-medium">{service.name}</h4>
-              <p className="text-gray-500 text-xs mt-0.5">{service.category}</p>
+              <p className="text-gray-500 text-xs mt-0.5">{service.category?.name || 'Service'}</p>
             </div>
             <div className="text-right">
-              <span className="text-amber-500 text-xs block font-medium">★ {service.rating}</span>
-              <span className="text-emerald-600 text-xs font-bold mt-0.5 block">₹{service.price}</span>
+              <span className="text-amber-500 text-xs block font-medium">★ {service.rating?.average || 0}</span>
+              <span className="text-emerald-600 text-xs font-bold mt-0.5 block">₹{service.basePrice}</span>
             </div>
           </div>
         ))
@@ -443,17 +460,14 @@ const Navbar = () => {
     </div>
   );
 
-
   return (
     <>
       <nav className="bg-white text-gray-800 border-b border-gray-200 font-sans sticky top-0 z-[1000] shadow-sm">
         <div className="max-w-[1500px] mx-auto px-4 py-3">
           
-          {/* ===================== DESKTOP VIEW (>=1024px) ===================== */}
+          {/* DESKTOP VIEW */}
           {!isMobileView && (
             <div className="flex items-center justify-between gap-8">
-              
-              {/* Logo */}
               <Link to="/" className="flex items-center gap-3 shrink-0 no-underline" onMouseEnter={handleLogoRotate} onClick={handleLogoRotate}>
                 <div className="bg-blue-600 text-white rounded-lg w-10 h-10 flex items-center justify-center font-bold text-xl shadow-md shadow-blue-500/20">GS</div>
                 <div>
@@ -462,33 +476,24 @@ const Navbar = () => {
                 </div>
               </Link>
 
-              {/* Desktop Combined Pill: Location + Search */}
               <div className="flex flex-1 items-center bg-gray-50 border border-gray-200 rounded-full max-w-3xl transition-all focus-within:border-gray-300 focus-within:bg-white focus-within:shadow-md">
-                
-                {/* Desktop Location Dropdown */}
                 <div className="relative shrink-0" ref={locationRef}>
                   <button onClick={() => setShowLocationPicker(!showLocationPicker)} className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-l-full transition-colors whitespace-nowrap">
                     <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                     <span className="max-w-[150px] truncate">{isLocating ? 'Locating...' : (location || 'Select Location')}</span>
                     <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                   </button>
-
                   {showLocationPicker && (
                     <div className="absolute top-full left-0 mt-2 w-[350px] bg-white border border-gray-100 rounded-xl shadow-xl z-50 p-4">
                       {renderLocationModalContent()}
                     </div>
                   )}
                 </div>
-
                 <div className="w-[1px] h-6 bg-gray-300"></div>
-
-                {/* Desktop Search Bar */}
                 {renderSearchInput(false)}
               </div>
 
-              {/* Desktop Right Controls (Cart + Auth/Profile + Menu) */}
               <div className="flex items-center gap-3 shrink-0">
-                {/* Cart Icon */}
                 <Link to="/cart" className="relative p-2 text-gray-600 hover:text-blue-600 bg-white hover:bg-gray-50 rounded-full transition-colors border border-gray-200 shadow-sm">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M18 13l1.5 6M9 21a1 1 0 100-2 1 1 0 000 2zm9 0a1 1 0 100-2 1 1 0 000 2z" />
@@ -507,7 +512,6 @@ const Navbar = () => {
                       <span className="text-sm font-medium text-gray-700 max-w-[80px] truncate">{user.name || user.email?.split('@')[0]}</span>
                       <svg className="w-4 h-4 text-gray-400 pr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                     </button>
-                    {/* Desktop Profile Dropdown */}
                     <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-xl shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 overflow-hidden">
                       <Link to="/profile" className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition font-medium">Profile</Link>
                       <Link to="/my-bookings" className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition font-medium">Bookings</Link>
@@ -528,7 +532,6 @@ const Navbar = () => {
                     <button onClick={() => setShowAuth(true)} className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-1.5 rounded-full transition shadow-sm">Sign Up</button>
                   </div>
                 )}
-
                 <button onClick={() => setMobileMenuOpen(true)} className="flex items-center justify-center bg-white hover:bg-gray-50 border border-gray-200 w-10 h-10 rounded-xl transition-colors shadow-sm">
                   <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
                 </button>
@@ -536,23 +539,15 @@ const Navbar = () => {
             </div>
           )}
 
-          {/* ===================== MOBILE VIEW (<1024px) ===================== */}
+          {/* MOBILE VIEW */}
           {isMobileView && (
             <div className="flex flex-col gap-3">
-              {/* Row 1: Logo | Fixed Location | Search Toggle | Cart | Hamburger */}
               <div className="flex items-center justify-between gap-2">
-                
-                {/* Mobile Logo */}
                 <Link to="/" className="flex shrink-0 no-underline" onClick={handleLogoRotate}>
                   <div className="bg-blue-600 text-white rounded-lg w-9 h-9 flex items-center justify-center font-bold text-lg shadow-md">GS</div>
                 </Link>
-
-                {/* Mobile Fixed Location Box */}
                 <div className="flex-1 min-w-0" ref={locationRef}>
-                  <button 
-                    onClick={() => setShowLocationPicker(true)} 
-                    className="flex items-center justify-between w-full max-w-[200px] gap-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-full transition-colors"
-                  >
+                  <button onClick={() => setShowLocationPicker(true)} className="flex items-center justify-between w-full max-w-[200px] gap-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-full transition-colors">
                     <div className="flex items-center gap-1.5 min-w-0">
                       <svg className="w-4 h-4 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -560,15 +555,11 @@ const Navbar = () => {
                       </svg>
                       <div className="flex flex-col text-left min-w-0">
                         <span className="text-[9px] font-bold text-gray-800 uppercase tracking-wider leading-none">Location</span>
-                        <span className="text-[11px] text-gray-500 truncate leading-tight mt-0.5">
-                          {isLocating ? 'Locating...' : (location || 'Select Location')}
-                        </span>
+                        <span className="text-[11px] text-gray-500 truncate leading-tight mt-0.5">{isLocating ? 'Locating...' : (location || 'Select Location')}</span>
                       </div>
                     </div>
                     <svg className="w-3 h-3 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                   </button>
-
-                  {/* Mobile Location Modal (Centered Overlay) */}
                   {showLocationPicker && (
                     <>
                       <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-[1150]" onClick={() => setShowLocationPicker(false)}></div>
@@ -581,38 +572,26 @@ const Navbar = () => {
                     </>
                   )}
                 </div>
-
-                {/* Mobile Right Controls (Cart + Search + User/Hamburger) */}
                 <div className="flex items-center gap-2 shrink-0">
-                  {/* Cart Icon */}
                   <Link to="/cart" className="relative p-2 text-gray-600 hover:text-blue-600 bg-gray-50 border border-gray-200 rounded-full transition-colors shadow-sm">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M18 13l1.5 6M9 21a1 1 0 100-2 1 1 0 000 2zm9 0a1 1 0 100-2 1 1 0 000 2z" />
                     </svg>
-                    {cartCount > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                        {cartCount > 9 ? '9+' : cartCount}
-                      </span>
-                    )}
+                    {cartCount > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{cartCount > 9 ? '9+' : cartCount}</span>}
                   </Link>
-
                   <button onClick={() => setMobileSearchOpen(!mobileSearchOpen)} className="p-2 text-gray-600 bg-gray-50 border border-gray-200 hover:bg-gray-100 rounded-full transition shadow-sm">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                   </button>
-                  
                   {user && (
                     <div className="w-8 h-8 bg-blue-100 text-blue-700 font-bold rounded-full flex items-center justify-center text-xs border border-blue-200">
                       {getInitials(user.name || user.email)}
                     </div>
                   )}
-
                   <button onClick={() => setMobileMenuOpen(true)} className="flex items-center justify-center bg-white hover:bg-gray-50 border border-gray-200 w-9 h-9 rounded-xl transition-colors shadow-sm">
                     <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
                   </button>
                 </div>
               </div>
-
-              {/* Row 2: Search Bar Expansion (Visible only when mobileSearchOpen is true) */}
               {mobileSearchOpen && (
                 <div className="w-full animate-fadeIn mt-1">
                   {renderSearchInput(true)}
@@ -621,41 +600,37 @@ const Navbar = () => {
             </div>
           )}
 
-          {/* ===================== CATEGORIES FILTER (Shared Scrollable Row) ===================== */}
+          {/* DYNAMIC CATEGORIES FILTER ROW */}
           <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-            <button className="shrink-0 flex items-center gap-2 px-4 py-1.5 rounded-lg border border-gray-300 bg-gray-100 text-gray-900 text-sm font-semibold transition hover:bg-gray-200">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h8m-8 6h16" /></svg>
-              All
-            </button>
-            <button className="shrink-0 flex items-center gap-2 px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:text-gray-900 hover:border-gray-300 hover:bg-gray-50 text-sm font-medium transition shadow-sm">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-              Electrician
-            </button>
-            <button className="shrink-0 flex items-center gap-2 px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:text-gray-900 hover:border-gray-300 hover:bg-gray-50 text-sm font-medium transition shadow-sm">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
-              Plumber
-            </button>
-            <button className="shrink-0 flex items-center gap-2 px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:text-gray-900 hover:border-gray-300 hover:bg-gray-50 text-sm font-medium transition shadow-sm">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" /></svg>
-              Painter
-            </button>
-            <button className="shrink-0 flex items-center gap-2 px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:text-gray-900 hover:border-gray-300 hover:bg-gray-50 text-sm font-medium transition shadow-sm">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
-              AC repair
-            </button>
-            <button className="shrink-0 flex items-center gap-2 px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:text-gray-900 hover:border-gray-300 hover:bg-gray-50 text-sm font-medium transition shadow-sm">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
-              Cleaning
-            </button>
-            <button className="shrink-0 flex items-center gap-2 px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:text-gray-900 hover:border-gray-300 hover:bg-gray-50 text-sm font-medium transition shadow-sm">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.618 5.984A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016zM12 9v2m0 4h.01" /></svg>
-              Pest Control
-            </button>
+            {categoriesLoading ? (
+              <div className="flex gap-2">
+                {[1,2,3,4,5].map(i => (
+                  <div key={i} className="w-20 h-8 bg-gray-200 rounded-full animate-pulse"></div>
+                ))}
+              </div>
+            ) : categories.length > 0 ? (
+              categories.map(cat => (
+                <Link
+                  key={cat._id}
+                  to={`/category/${cat.slug}`}
+                  className="shrink-0 flex items-center gap-2 px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:text-gray-900 hover:border-gray-300 hover:bg-gray-50 text-sm font-medium transition shadow-sm whitespace-nowrap"
+                >
+                  {cat.icon?.url ? (
+                    <img src={cat.icon.url} alt={cat.name} className="w-4 h-4 object-contain" />
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                  )}
+                  {cat.name}
+                </Link>
+              ))
+            ) : (
+              <div className="text-sm text-gray-400">No categories available</div>
+            )}
           </div>
         </div>
       </nav>
 
-      {/* ===================== SIDEBAR DRAWER (Accessed via Hamburger) ===================== */}
+      {/* SIDEBAR DRAWER (unchanged) */}
       <div className={`fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-[1050] transition-opacity duration-300 ${mobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`} onClick={() => setMobileMenuOpen(false)}></div>
       <div className={`fixed top-0 right-0 bottom-0 w-72 bg-white shadow-2xl z-[1100] transform transition-transform duration-300 flex flex-col border-l border-gray-200 ${mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="flex justify-between items-center p-5 border-b border-gray-100">
@@ -669,7 +644,6 @@ const Navbar = () => {
           <Link to="/services" className="text-gray-700 hover:text-blue-600 hover:bg-blue-50 px-4 py-3 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>All Services</Link>
           <Link to="/providers" className="text-gray-700 hover:text-blue-600 hover:bg-blue-50 px-4 py-3 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>Providers</Link>
           <div className="h-px bg-gray-100 my-2"></div>
-          
           {user ? (
             <>
               <Link to="/profile" className="text-gray-700 hover:text-blue-600 hover:bg-blue-50 px-4 py-3 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>My Profile</Link>
@@ -690,20 +664,10 @@ const Navbar = () => {
       </div>
 
       <style>{`
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-        .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(-4px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fadeIn {
-          animation: fadeIn 0.2s ease-out forwards;
-        }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fadeIn { animation: fadeIn 0.2s ease-out forwards; }
       `}</style>
     </>
   );

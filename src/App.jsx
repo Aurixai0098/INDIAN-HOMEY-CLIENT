@@ -1,11 +1,15 @@
+// src/App.jsx
 import { Route, Routes } from "react-router-dom";
 import Home from "./pages/Home";
 import About from "./pages/About";
 import Profile from "./pages/Profile";
+import CategoryPage from "./pages/CategoryPage";
+import ServiceDetailPage from "./pages/ServiceDetailPage";
 import Navbar from "./components/Navbar";
 import Login from "./components/auth/Login";
 import PrivateRoute from "./components/PrivateRoute";
 import { useAuth } from "./context/AuthContext";
+import { CartProvider } from "./context/CartContext";
 import Footer from "./components/Footer";
 
 // Admin imports
@@ -16,21 +20,26 @@ import AdminProviders from "./pages/admin/AdminProviders";
 import AdminCategories from "./pages/admin/AdminCategories";
 import AdminServices from "./pages/admin/AdminServices";
 import AdminBookings from "./pages/admin/AdminBookings";
+import CartPage from "./pages/CartPage";
 
 const MyBookings = () => <div className="p-8 text-center text-gray-600">My Bookings page coming soon...</div>;
+
 
 export default function App() {
   const { showAuth } = useAuth();
 
   return (
-    <>
+    <CartProvider>
       {showAuth && <Login />}
       <Navbar />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/about" element={<About />} />
+        <Route path="/category/:slug" element={<CategoryPage />} />
+        <Route path="/service/:slug" element={<ServiceDetailPage />} />
         <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
         <Route path="/my-bookings" element={<PrivateRoute><MyBookings /></PrivateRoute>} />
+        <Route path="/cart" element={<PrivateRoute><CartPage/></PrivateRoute>} />
 
         {/* Admin Routes */}
         <Route path="/admin" element={<PrivateRoute><AdminLayout /></PrivateRoute>}>
@@ -43,6 +52,6 @@ export default function App() {
         </Route>
       </Routes>
       <Footer />
-    </>
+    </CartProvider>
   );
 }
