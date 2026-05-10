@@ -26,6 +26,7 @@ const CheckoutPage = () => {
   const [providers, setProviders] = useState([]);
   const [selectedProvider, setSelectedProvider] = useState(null);
   const [loadingProviders, setLoadingProviders] = useState(false);
+  const [searchRadius, setSearchRadius] = useState(10); // km
 
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTimeStart, setScheduledTimeStart] = useState('10:00');
@@ -34,25 +35,24 @@ const CheckoutPage = () => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
-  useEffect(()=>{
-    window.scrollTo(0,0)
-  },[])
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   useEffect(() => {
     if (cartItems.length === 0) {
       navigate('/cart');
     }
     loadAddresses();
-    const savedCoords = localStorage.getItem('userCoords');
-    if (savedCoords) {
-      const { lat, lng } = JSON.parse(savedCoords);
-      loadProviders(lat, lng);
-    } else {
-      // Default Mumbai coordinates
-      loadProviders(19.0760, 72.8777);
-    }
   }, []);
+
+  // Load providers whenever selected address OR searchRadius changes
+  useEffect(() => {
+    if (selectedAddress) {
+      loadProvidersForAddress(selectedAddress);
+    }
+  }, [selectedAddress, searchRadius]);
 
   const loadAddresses = async () => {
     try {
@@ -68,12 +68,20 @@ const CheckoutPage = () => {
     }
   };
 
-  const loadProviders = async (lat, lng) => {
+  const loadProvidersForAddress = async (address) => {
     if (!cartItems.length) return;
     const firstItem = cartItems[0];
     setLoadingProviders(true);
     try {
-      const res = await searchProviders(lat, lng, 15, firstItem.categoryId);
+      // Use coordinates if available (from address or geocoded)
+      let lat, lng;
+      if (address.coordinates?.latitude && address.coordinates?.longitude) {
+        lat = address.coordinates.latitude;
+        lng = address.coordinates.longitude;
+      } else {
+        // Optionally geocode pincode/city here, but for now skip
+      }
+      const res = await searchProviders(lat, lng, searchRadius, firstItem.categoryId, address.pincode, address.city);
       if (res.success) {
         setProviders(res.data.providers || []);
       }
@@ -125,7 +133,6 @@ const CheckoutPage = () => {
     setLoading(true);
     setError('');
 
-    // Build booking items from cart
     const items = cartItems.map(item => ({
       service: item.serviceId,
       quantity: item.quantity,
@@ -184,9 +191,9 @@ const CheckoutPage = () => {
     <div className="max-w-6xl mx-auto px-4 py-12">
       <h1 className="text-2xl font-bold mb-8">Checkout</h1>
       <div className="grid md:grid-cols-2 gap-8">
-        {/* Left Column - Cart Summary & Address & DateTime */}
+        {/* Left Column */}
         <div className="space-y-6">
-          {/* Cart Items Summary */}
+          {/* Cart Summary */}
           <div className="bg-white rounded-xl shadow-sm border p-6">
             <h2 className="font-bold text-lg mb-4">Order Summary</h2>
             <div className="space-y-3 max-h-64 overflow-y-auto">
@@ -285,10 +292,31 @@ const CheckoutPage = () => {
         <div className="space-y-6">
           <div className="bg-white rounded-xl shadow-sm border p-6 sticky top-24">
             <h2 className="font-bold text-lg mb-4">Choose Service Provider</h2>
-            {loadingProviders ? (
+            
+            {/* Radius selector (only shown if coordinates are available) */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Search Radius</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="range"
+                  min="5"
+                  max="50"
+                  step="5"
+                  value={searchRadius}
+                  onChange={(e) => setSearchRadius(parseInt(e.target.value))}
+                  className="flex-1"
+                />
+                <span className="text-sm font-medium w-16">{searchRadius} km</span>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">Providers within {searchRadius} km of your address</p>
+            </div>
+
+            {!selectedAddress ? (
+              <p className="text-gray-500">Please select an address to see available providers.</p>
+            ) : loadingProviders ? (
               <div className="flex justify-center py-8"><div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin"></div></div>
             ) : providers.length === 0 ? (
-              <p className="text-gray-500">No providers available in your area.</p>
+              <p className="text-gray-500">No providers available for your selected address. Try increasing the radius.</p>
             ) : (
               <div className="space-y-4 max-h-96 overflow-y-auto">
                 {providers.map(provider => (
@@ -319,7 +347,7 @@ const CheckoutPage = () => {
             >
               {loading ? 'Placing Order...' : 'Place Order & Pay'}
             </button>
-            <p className="text-xs text-gray-400 text-center mt-3">You will be redirected to payment gateway after order confirmation.</p>
+            <p className="text-xs text-gray-400 text-center mt-3">Payment will be processed after order confirmation.</p>
           </div>
         </div>
       </div>

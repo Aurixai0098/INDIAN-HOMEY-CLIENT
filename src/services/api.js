@@ -93,7 +93,6 @@ export const fetchNotifications = async (page = 1, limit = 20) => {
   return apiFetch(`/users/notifications?page=${page}&limit=${limit}`);
 };
 
-// Mark customer notification as read
 export const markNotificationRead = async (notificationId) => {
   return apiFetch(`/users/notifications/${notificationId}/read`, {
     method: 'PATCH',
@@ -280,9 +279,15 @@ export const updateBankDetails = async (bankData) => {
   });
 };
 
-export const searchProviders = async (latitude, longitude, radius = 10, serviceCategoryId) => {
-  let url = `/providers/search?latitude=${latitude}&longitude=${longitude}&radius=${radius}`;
+// UPDATED searchProviders with full filtering options
+export const searchProviders = async (latitude, longitude, radius = 10, serviceCategoryId, pincode = null, city = null) => {
+  let url = `/providers/search?radius=${radius}`;
+  if (latitude && longitude) {
+    url += `&latitude=${latitude}&longitude=${longitude}`;
+  }
   if (serviceCategoryId) url += `&service=${serviceCategoryId}`;
+  if (pincode) url += `&pincode=${pincode}`;
+  if (city) url += `&city=${encodeURIComponent(city)}`;
   return apiFetch(url);
 };
 
@@ -328,7 +333,6 @@ export const rescheduleBooking = async (bookingId, scheduledDate, scheduledTime)
   });
 };
 
-// Provider actions on bookings
 export const confirmBooking = async (bookingId) => {
   return apiFetch(`/bookings/${bookingId}/confirm`, {
     method: 'PATCH',
