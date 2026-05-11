@@ -1,3 +1,4 @@
+// src/pages/provider/ProviderBookings.jsx
 import { useState, useEffect } from 'react';
 import { fetchMyBookings, confirmBooking, startBooking, completeBooking, generateBookingOTP } from '../../services/api';
 
@@ -6,7 +7,8 @@ const ProviderBookings = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
   const [actionLoading, setActionLoading] = useState(null);
-  const [otpModal, setOtpModal] = useState({ show: false, bookingId: null, otp: '' });
+  const [otpModal, setOtpModal] = useState({ show: false, bookingId: null, otp: '', generating: false });
+  const [completing, setCompleting] = useState(false);
 
   useEffect(() => {
     loadBookings();
@@ -49,27 +51,35 @@ const ProviderBookings = () => {
   };
 
   const handleGenerateOTP = async (bookingId) => {
+    setOtpModal({ show: true, bookingId, otp: '', generating: true });
     try {
       const res = await generateBookingOTP(bookingId);
       if (res.success) {
-        alert(`OTP generated: ${res.otp}`);
-        setOtpModal({ show: true, bookingId, otp: res.otp });
+        setOtpModal({ show: true, bookingId, otp: res.otp, generating: false });
+      } else {
+        alert(res.message || 'Failed to generate OTP');
+        setOtpModal({ show: false, bookingId: null, otp: '', generating: false });
       }
     } catch (err) {
       alert(err.message);
+      setOtpModal({ show: false, bookingId: null, otp: '', generating: false });
     }
   };
 
   const handleComplete = async (bookingId, otp) => {
-    setActionLoading(bookingId);
+    if (!otp) {
+      alert('Please enter the OTP');
+      return;
+    }
+    setCompleting(true);
     try {
       await completeBooking(bookingId, otp);
-      setOtpModal({ show: false, bookingId: null, otp: '' });
+      setOtpModal({ show: false, bookingId: null, otp: '', generating: false });
       loadBookings();
     } catch (err) {
       alert(err.message);
     } finally {
-      setActionLoading(null);
+      setCompleting(false);
     }
   };
 
@@ -80,8 +90,11 @@ const ProviderBookings = () => {
           <button
             onClick={() => handleConfirm(booking._id)}
             disabled={actionLoading === booking._id}
-            className="bg-emerald-600 text-white px-3 py-1 rounded text-sm hover:bg-emerald-700"
+            className="bg-emerald-600 text-white px-3 py-1 rounded text-sm hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-1"
           >
+            {actionLoading === booking._id && (
+              <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            )}
             Confirm
           </button>
         );
@@ -90,8 +103,11 @@ const ProviderBookings = () => {
           <button
             onClick={() => handleStart(booking._id)}
             disabled={actionLoading === booking._id}
-            className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
+            className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1"
           >
+            {actionLoading === booking._id && (
+              <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            )}
             Start Service
           </button>
         );
@@ -99,7 +115,7 @@ const ProviderBookings = () => {
         return (
           <button
             onClick={() => handleGenerateOTP(booking._id)}
-            className="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700"
+            className="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700 flex items-center gap-1"
           >
             Generate OTP & Complete
           </button>
@@ -168,30 +184,44 @@ const ProviderBookings = () => {
       {otpModal.show && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 max-w-sm w-full mx-4">
-            <h3 className="text-lg font-bold mb-4">Complete Service</h3>
-            <p className="text-sm text-gray-600 mb-4">Share this OTP with the customer for verification:</p>
-            <div className="text-center text-3xl font-mono font-bold bg-gray-100 p-3 rounded mb-4">{otpModal.otp}</div>
-            <input
-              type="text"
-              placeholder="Enter OTP from customer"
-              id="otp-input"
-              className="w-full border rounded-lg px-4 py-2 mb-4"
-            />
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  const otpValue = document.getElementById('otp-input').value;
-                  if (otpValue) handleComplete(otpModal.bookingId, otpValue);
-                  else alert('Please enter OTP');
-                }}
-                className="flex-1 bg-emerald-600 text-white py-2 rounded-lg"
-              >
-                Verify & Complete
-              </button>
-              <button onClick={() => setOtpModal({ show: false, bookingId: null, otp: '' })} className="flex-1 border py-2 rounded-lg">
-                Cancel
-              </button>
-            </div>
+            {otpModal.generating ? (
+              <>
+                <div className="flex flex-col items-center justify-center py-8">
+                  <div className="w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                  <p className="text-gray-600">Generating OTP...</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 className="text-lg font-bold mb-4">Complete Service</h3>
+                <p className="text-sm text-gray-600 mb-4">Share this OTP with the customer for verification:</p>
+                <div className="text-center text-3xl font-mono font-bold bg-gray-100 p-3 rounded mb-4">{otpModal.otp}</div>
+                <input
+                  type="text"
+                  placeholder="Enter OTP from customer"
+                  id="otp-input"
+                  className="w-full border rounded-lg px-4 py-2 mb-4"
+                />
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      const otpValue = document.getElementById('otp-input').value;
+                      handleComplete(otpModal.bookingId, otpValue);
+                    }}
+                    disabled={completing}
+                    className="flex-1 bg-emerald-600 text-white py-2 rounded-lg hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-1"
+                  >
+                    {completing && (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    )}
+                    {completing ? 'Verifying...' : 'Verify & Complete'}
+                  </button>
+                  <button onClick={() => setOtpModal({ show: false, bookingId: null, otp: '', generating: false })} className="flex-1 border py-2 rounded-lg">
+                    Cancel
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

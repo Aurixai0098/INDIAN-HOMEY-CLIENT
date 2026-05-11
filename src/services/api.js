@@ -279,7 +279,6 @@ export const updateBankDetails = async (bankData) => {
   });
 };
 
-// UPDATED searchProviders with full filtering options
 export const searchProviders = async (latitude, longitude, radius = 10, serviceCategoryId, pincode = null, city = null) => {
   let url = `/providers/search?radius=${radius}`;
   if (latitude && longitude) {
