@@ -222,6 +222,18 @@ export const fetchAdminServices = async () => {
   return apiFetch('/admin/services');
 };
 
+// Commission settings
+export const fetchCommission = async () => {
+  return apiFetch('/admin/settings/commission');
+};
+
+export const updateCommission = async (commissionPercentage) => {
+  return apiFetch('/admin/settings/commission', {
+    method: 'PUT',
+    body: JSON.stringify({ commissionPercentage }),
+  });
+};
+
 // ========== Provider APIs ==========
 export const registerProvider = async (providerData) => {
   return apiFetch('/providers/register', {
@@ -297,6 +309,64 @@ export const fetchProviderNotifications = async () => {
 export const mar9yMnTm4NSzvG9rrwjM2ec8xZgh1cafXH8 = async (notificationId) => {
   return apiFetch(`/providers/notifications/${notificationId}/read`, {
     method: 'PATCH',
+  });
+};
+
+// ========== Payment APIs ==========
+export const createOrder = async (data) => {
+  return apiFetch('/payments/create-order', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+
+export const verifyPayment = async (data) => {
+  return apiFetch('/payments/verify', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+
+export const fetchPaymentHistory = async (page = 1, limit = 10) => {
+  return apiFetch(`/payments/history?page=${page}&limit=${limit}`);
+};
+
+export const withdrawFromWallet = async (amount) => {
+  return apiFetch('/payments/withdraw', {
+    method: 'POST',
+    body: JSON.stringify({ amount }),
+  });
+};
+
+// ========== Withdrawal APIs (Provider & Admin) ==========
+export const requestWithdrawal = async (amount, accountDetails) => {
+  return apiFetch('/providers/withdrawals/request', {
+    method: 'POST',
+    body: JSON.stringify({ amount, accountDetails }),
+  });
+};
+
+export const fetchMyWithdrawals = async (page = 1, limit = 10) => {
+  return apiFetch(`/providers/withdrawals/my?page=${page}&limit=${limit}`);
+};
+
+export const fetchAllWithdrawals = async (status = '', page = 1, limit = 20) => {
+  let url = `/admin/withdrawals?page=${page}&limit=${limit}`;
+  if (status) url += `&status=${status}`;
+  return apiFetch(url);
+};
+
+export const approveWithdrawal = async (withdrawalId, transactionId, adminNote) => {
+  return apiFetch(`/admin/withdrawals/${withdrawalId}/approve`, {
+    method: 'PATCH',
+    body: JSON.stringify({ transactionId, adminNote }),
+  });
+};
+
+export const rejectWithdrawal = async (withdrawalId, adminNote) => {
+  return apiFetch(`/admin/withdrawals/${withdrawalId}/reject`, {
+    method: 'PATCH',
+    body: JSON.stringify({ adminNote }),
   });
 };
 

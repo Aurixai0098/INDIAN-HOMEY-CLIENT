@@ -1,3 +1,4 @@
+// src/pages/admin/AdminLayout.jsx
 import { Outlet, NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
@@ -20,6 +21,7 @@ const AdminLayout = () => {
           <NavLink to="/admin/categories" className={({ isActive }) => `block p-2 rounded ${isActive ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'}`}>Categories</NavLink>
           <NavLink to="/admin/services" className={({ isActive }) => `block p-2 rounded ${isActive ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'}`}>Services</NavLink>
           <NavLink to="/admin/bookings" className={({ isActive }) => `block p-2 rounded ${isActive ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'}`}>Bookings</NavLink>
+          <NavLink to="/admin/withdrawals" className={({ isActive }) => `block p-2 rounded ${isActive ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'}`}>Withdrawals</NavLink>
         </nav>
       </aside>
 

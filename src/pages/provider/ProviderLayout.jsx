@@ -1,3 +1,4 @@
+// src/pages/provider/ProviderLayout.jsx
 import { Outlet, NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
@@ -8,6 +9,7 @@ const ProviderLayout = () => {
     { to: '/provider', label: 'Dashboard', icon: '📊' },
     { to: '/provider/bookings', label: 'Bookings', icon: '📅' },
     { to: '/provider/services', label: 'Services', icon: '🛠️' },
+    { to: '/provider/wallet', label: 'Wallet', icon: '💰' },
     { to: '/provider/profile', label: 'Profile', icon: '👤' },
   ];
 

@@ -22,6 +22,7 @@ import ProviderDashboard from "./pages/provider/ProviderDashboard";
 import ProviderBookings from "./pages/provider/ProviderBookings";
 import ProviderServices from "./pages/provider/ProviderServices";
 import ProviderProfile from "./pages/provider/ProviderProfile";
+import ProviderWallet from "./pages/provider/ProviderWallet"; // ✅ New wallet page
 
 // Admin imports
 import AdminLayout from "./pages/admin/AdminLayout";
@@ -31,6 +32,7 @@ import AdminProviders from "./pages/admin/AdminProviders";
 import AdminCategories from "./pages/admin/AdminCategories";
 import AdminServices from "./pages/admin/AdminServices";
 import AdminBookings from "./pages/admin/AdminBookings";
+import AdminWithdrawals from "./pages/admin/AdminWithdrawals"; // ✅ New admin withdrawals page
 
 export default function App() {
   const { showAuth } = useAuth();
@@ -56,6 +58,7 @@ export default function App() {
           <Route path="bookings" element={<ProviderBookings />} />
           <Route path="services" element={<ProviderServices />} />
           <Route path="profile" element={<ProviderProfile />} />
+          <Route path="wallet" element={<ProviderWallet />} /> {/* ✅ Wallet route */}
         </Route>
 
         {/* Admin Routes */}
@@ -66,6 +69,7 @@ export default function App() {
           <Route path="categories" element={<AdminCategories />} />
           <Route path="services" element={<AdminServices />} />
           <Route path="bookings" element={<AdminBookings />} />
+          <Route path="withdrawals" element={<AdminWithdrawals />} /> {/* ✅ Withdrawals route */}
         </Route>
       </Routes>
       <Footer />

@@ -1,9 +1,10 @@
 // src/pages/MyBookingsPage.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchMyBookings } from '../services/api';
+import { fetchMyBookings, createOrder, verifyPayment } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
-const BookingCard = ({ booking }) => {
+const BookingCard = ({ booking, onPayNow }) => {
   const statusColors = {
     pending: 'bg-yellow-100 text-yellow-800',
     confirmed: 'bg-blue-100 text-blue-800',
@@ -12,9 +13,7 @@ const BookingCard = ({ booking }) => {
     cancelled: 'bg-red-100 text-red-800',
   };
 
- useEffect(()=>{
-    window.scrollTo(0,0)
-  },[])
+  const isCompletedUnpaid = booking.status === 'completed' && booking.payment?.status !== 'paid';
 
   return (
     <div className="bg-white rounded-xl shadow-sm border p-5 mb-4">
@@ -45,24 +44,34 @@ const BookingCard = ({ booking }) => {
             Write a Review
           </Link>
         )}
+        {isCompletedUnpaid && (
+          <button
+            onClick={() => onPayNow(booking)}
+            className="mt-3 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"
+          >
+            Pay Now ₹{booking.pricing?.total}
+          </button>
+        )}
+        {booking.payment?.status === 'paid' && (
+          <div className="mt-3 text-green-600 text-sm">✓ Payment completed</div>
+        )}
       </div>
     </div>
   );
 };
 
 const MyBookingsPage = () => {
+  const { user } = useAuth();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [payingBookingId, setPayingBookingId] = useState(null);
+  const pollingRef = useRef(null);
 
-  useEffect(() => {
-    loadBookings();
-  }, []);
-
-  const loadBookings = async () => {
-    setLoading(true);
+  const loadBookings = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     try {
-      const res = await fetchMyBookings(1, 20);
+      const res = await fetchMyBookings(1, 50);
       if (res.success) {
         setBookings(res.data.bookings || []);
       } else {
@@ -71,11 +80,76 @@ const MyBookingsPage = () => {
     } catch (err) {
       setError(err.message);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
-  if (loading) {
+  // Start polling every 10 seconds
+  useEffect(() => {
+    loadBookings(true);
+    pollingRef.current = setInterval(() => {
+      loadBookings(false); // silent refresh without loading spinner
+    }, 10000);
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, []);
+
+  const handlePayNow = async (booking) => {
+    setPayingBookingId(booking._id);
+    try {
+      const orderRes = await createOrder({ bookingId: booking._id });
+      if (!window.Razorpay) {
+        await new Promise((resolve) => {
+          const script = document.createElement('script');
+          script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+          script.onload = resolve;
+          document.body.appendChild(script);
+        });
+      }
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount: orderRes.data.amount,
+        currency: orderRes.data.currency,
+        name: 'Ghar Seva',
+        description: `Booking ${booking.bookingId}`,
+        order_id: orderRes.data.orderId,
+        handler: async (response) => {
+          try {
+            const verifyRes = await verifyPayment({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            });
+            if (verifyRes.success) {
+              alert('Payment successful!');
+              loadBookings(true); // full refresh
+            } else {
+              alert('Payment verification failed');
+            }
+          } catch (err) {
+            alert(err.message);
+          } finally {
+            setPayingBookingId(null);
+          }
+        },
+        prefill: {
+          name: user?.fullName,
+          email: user?.email,
+          contact: user?.phone,
+        },
+        theme: { color: '#059669' },
+        modal: { ondismiss: () => setPayingBookingId(null) },
+      };
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (err) {
+      alert(err.message);
+      setPayingBookingId(null);
+    }
+  };
+
+  if (loading && bookings.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -88,7 +162,12 @@ const MyBookingsPage = () => {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
-      <h1 className="text-2xl font-bold mb-6">My Bookings</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">My Bookings</h1>
+        <button onClick={() => loadBookings(true)} className="text-blue-600 text-sm hover:underline">
+          Refresh
+        </button>
+      </div>
       {error && <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-4">{error}</div>}
       {bookings.length === 0 ? (
         <div className="bg-white rounded-xl p-12 text-center border">
@@ -99,9 +178,14 @@ const MyBookingsPage = () => {
         </div>
       ) : (
         <div>
-          {bookings.map(booking => (
-            <BookingCard key={booking._id} booking={booking} />
+          {bookings.map((booking) => (
+            <BookingCard key={booking._id} booking={booking} onPayNow={handlePayNow} />
           ))}
+          {payingBookingId && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+              <div className="bg-white p-6 rounded-lg">Processing payment...</div>
+            </div>
+          )}
         </div>
       )}
     </div>

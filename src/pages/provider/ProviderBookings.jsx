@@ -1,5 +1,5 @@
 // src/pages/provider/ProviderBookings.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { fetchMyBookings, confirmBooking, startBooking, completeBooking, generateBookingOTP } from '../../services/api';
 
 const ProviderBookings = () => {
@@ -9,28 +9,36 @@ const ProviderBookings = () => {
   const [actionLoading, setActionLoading] = useState(null);
   const [otpModal, setOtpModal] = useState({ show: false, bookingId: null, otp: '', generating: false });
   const [completing, setCompleting] = useState(false);
+  const pollingRef = useRef(null);
 
-  useEffect(() => {
-    loadBookings();
-  }, [filter]);
-
-  const loadBookings = async () => {
-    setLoading(true);
+  const loadBookings = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     try {
       const res = await fetchMyBookings(1, 50, filter);
       if (res.success) setBookings(res.data.bookings || []);
     } catch (err) {
       console.error(err);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
+
+  // Start polling every 10 seconds
+  useEffect(() => {
+    loadBookings(true);
+    pollingRef.current = setInterval(() => {
+      loadBookings(false); // silent refresh
+    }, 10000);
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, [filter]);
 
   const handleConfirm = async (bookingId) => {
     setActionLoading(bookingId);
     try {
       await confirmBooking(bookingId);
-      loadBookings();
+      loadBookings(false);
     } catch (err) {
       alert(err.message);
     } finally {
@@ -42,7 +50,7 @@ const ProviderBookings = () => {
     setActionLoading(bookingId);
     try {
       await startBooking(bookingId);
-      loadBookings();
+      loadBookings(false);
     } catch (err) {
       alert(err.message);
     } finally {
@@ -75,7 +83,7 @@ const ProviderBookings = () => {
     try {
       await completeBooking(bookingId, otp);
       setOtpModal({ show: false, bookingId: null, otp: '', generating: false });
-      loadBookings();
+      loadBookings(false);
     } catch (err) {
       alert(err.message);
     } finally {
@@ -92,9 +100,7 @@ const ProviderBookings = () => {
             disabled={actionLoading === booking._id}
             className="bg-emerald-600 text-white px-3 py-1 rounded text-sm hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-1"
           >
-            {actionLoading === booking._id && (
-              <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-            )}
+            {actionLoading === booking._id && <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
             Confirm
           </button>
         );
@@ -105,9 +111,7 @@ const ProviderBookings = () => {
             disabled={actionLoading === booking._id}
             className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1"
           >
-            {actionLoading === booking._id && (
-              <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-            )}
+            {actionLoading === booking._id && <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
             Start Service
           </button>
         );
@@ -125,11 +129,16 @@ const ProviderBookings = () => {
     }
   };
 
-  if (loading) return <div className="text-center py-10">Loading bookings...</div>;
+  if (loading && bookings.length === 0) return <div className="text-center py-10">Loading bookings...</div>;
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Manage Bookings</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Manage Bookings</h1>
+        <button onClick={() => loadBookings(true)} className="text-blue-600 text-sm hover:underline">
+          Refresh
+        </button>
+      </div>
 
       {/* Filter tabs */}
       <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
@@ -138,9 +147,7 @@ const ProviderBookings = () => {
             key={status}
             onClick={() => setFilter(status)}
             className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${
-              filter === status
-                ? 'bg-emerald-600 text-white'
-                : 'bg-white text-gray-600 hover:bg-gray-100 border'
+              filter === status ? 'bg-emerald-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'
             }`}
           >
             {status === '' ? 'All' : status.replace('_', ' ').toUpperCase()}
@@ -161,6 +168,7 @@ const ProviderBookings = () => {
                   <p className="text-sm text-gray-600">Service: {booking.items.map(i => i.serviceName).join(', ')}</p>
                   <p className="text-sm text-gray-600">Date: {new Date(booking.scheduledDate).toLocaleDateString()} at {booking.scheduledTime.start}</p>
                   <p className="text-sm font-medium mt-1">Amount: ₹{booking.pricing?.total}</p>
+                  {booking.payment?.status === 'paid' && <p className="text-xs text-green-600 mt-1">✓ Payment received</p>}
                 </div>
                 <div className="text-right">
                   <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold mb-2 ${
@@ -185,12 +193,10 @@ const ProviderBookings = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 max-w-sm w-full mx-4">
             {otpModal.generating ? (
-              <>
-                <div className="flex flex-col items-center justify-center py-8">
-                  <div className="w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-                  <p className="text-gray-600">Generating OTP...</p>
-                </div>
-              </>
+              <div className="flex flex-col items-center justify-center py-8">
+                <div className="w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                <p className="text-gray-600">Generating OTP...</p>
+              </div>
             ) : (
               <>
                 <h3 className="text-lg font-bold mb-4">Complete Service</h3>
@@ -211,9 +217,7 @@ const ProviderBookings = () => {
                     disabled={completing}
                     className="flex-1 bg-emerald-600 text-white py-2 rounded-lg hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-1"
                   >
-                    {completing && (
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    )}
+                    {completing && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
                     {completing ? 'Verifying...' : 'Verify & Complete'}
                   </button>
                   <button onClick={() => setOtpModal({ show: false, bookingId: null, otp: '', generating: false })} className="flex-1 border py-2 rounded-lg">
