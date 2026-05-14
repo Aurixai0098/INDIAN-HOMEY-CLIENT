@@ -5,6 +5,11 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { fetchAddresses, addAddress, searchProviders, createBooking } from '../services/api';
 
+// ✅ Helper function to format price
+const formatPrice = (price) => {
+    return `₹${Number(price).toFixed(2)}`;
+};
+
 const CheckoutPage = () => {
   const navigate = useNavigate();
   const { cartItems, cartTotal, clearCart } = useCart();
@@ -33,8 +38,8 @@ const CheckoutPage = () => {
   const [scheduledTimeEnd, setScheduledTimeEnd] = useState('12:00');
   const [notes, setNotes] = useState('');
   
-  // ✅ New: Payment method selection
-  const [paymentMethod, setPaymentMethod] = useState('online'); // 'online' or 'cod'
+  // Payment method selection
+  const [paymentMethod, setPaymentMethod] = useState('online');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -162,7 +167,7 @@ const CheckoutPage = () => {
         landmark: selectedAddress.landmark || '',
       },
       payment: {
-        method: paymentMethod, // ✅ Use selected payment method
+        method: paymentMethod,
       },
       notes: notes,
     };
@@ -172,14 +177,12 @@ const CheckoutPage = () => {
       if (res.success) {
         const booking = res.data.booking;
         
-        // ✅ If COD, just clear cart and go to bookings
         if (paymentMethod === 'cod') {
           clearCart();
           navigate('/my-bookings', { state: { bookingCreated: true, message: 'Booking confirmed! Pay at time of service.' } });
         } else {
-          // ✅ For online payment, redirect to payment page or handle Razorpay
           clearCart();
-          navigate(`/payment/${booking._id}`);
+          navigate(`/my-bookings`, { state: { bookingCreated: true, message: 'Booking created! Please complete payment.' } });
         }
       } else {
         setError(res.message || 'Booking failed');
@@ -216,17 +219,17 @@ const CheckoutPage = () => {
               {cartItems.map(item => (
                 <div key={item.serviceId} className="flex justify-between text-sm">
                   <span>{item.name} x{item.quantity}</span>
-                  <span>₹{item.price * item.quantity}</span>
+                  <span>{formatPrice(item.price * item.quantity)}</span>
                 </div>
               ))}
             </div>
             <div className="border-t pt-3 mt-3 flex justify-between font-bold">
               <span>Total</span>
-              <span>₹{cartTotal}</span>
+              <span>{formatPrice(cartTotal)}</span>
             </div>
           </div>
 
-          {/* ✅ Payment Method Selection */}
+          {/* Payment Method Selection */}
           <div className="bg-white rounded-xl shadow-sm border p-6">
             <h2 className="font-bold text-lg mb-4">Payment Method</h2>
             <div className="space-y-3">
@@ -379,7 +382,7 @@ const CheckoutPage = () => {
               <p className="text-xs text-gray-400 text-center mt-3">Pay cash to the provider after service completion.</p>
             )}
             {paymentMethod === 'online' && (
-              <p className="text-xs text-gray-400 text-center mt-3">You will be redirected to Razorpay payment page.</p>
+              <p className="text-xs text-gray-400 text-center mt-3">You will be redirected to payment after booking.</p>
             )}
           </div>
         </div>

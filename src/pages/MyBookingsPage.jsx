@@ -4,6 +4,11 @@ import { Link, useLocation } from 'react-router-dom';
 import { fetchMyBookings, createOrder, verifyPayment } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
+// ✅ Helper function to format price
+const formatPrice = (price) => {
+    return `₹${Number(price).toFixed(2)}`;
+};
+
 const BookingCard = ({ booking, onPayNow, payingBookingId }) => {
   const statusColors = {
     pending: 'bg-yellow-100 text-yellow-800',
@@ -38,7 +43,7 @@ const BookingCard = ({ booking, onPayNow, payingBookingId }) => {
         </div>
         <div className="flex justify-between text-sm mt-1">
           <span className="text-gray-600">Total Amount:</span>
-          <span className="font-bold text-emerald-600">₹{booking.pricing?.total}</span>
+          <span className="font-bold text-emerald-600">{formatPrice(booking.pricing?.total)}</span>
         </div>
         <div className="flex justify-between text-sm mt-1">
           <span className="text-gray-600">Payment:</span>
@@ -57,11 +62,11 @@ const BookingCard = ({ booking, onPayNow, payingBookingId }) => {
             disabled={isProcessing}
             className="mt-3 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50"
           >
-            {isProcessing ? 'Processing...' : `Pay Now ₹${booking.pricing?.total}`}
+            {isProcessing ? 'Processing...' : `Pay Now ${formatPrice(booking.pricing?.total)}`}
           </button>
         )}
         {booking.payment?.method === 'cod' && booking.payment?.status !== 'paid' && (
-          <div className="mt-3 text-orange-600 text-sm">💰 Pay ₹{booking.pricing?.total} cash to provider at service time</div>
+          <div className="mt-3 text-orange-600 text-sm">💰 Pay {formatPrice(booking.pricing?.total)} cash to provider at service time</div>
         )}
         {booking.payment?.status === 'paid' && (
           <div className="mt-3 text-green-600 text-sm">✓ Payment completed</div>
@@ -112,7 +117,7 @@ const MyBookingsPage = () => {
   useEffect(() => {
     loadBookings(true);
     pollingRef.current = setInterval(() => {
-      loadBookings(false); // silent refresh without loading spinner
+      loadBookings(false);
     }, 10000);
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
@@ -162,7 +167,7 @@ const MyBookingsPage = () => {
             });
             if (verifyRes.success) {
               alert('✅ Payment successful! Your booking is now confirmed.');
-              loadBookings(true); // full refresh
+              loadBookings(true);
             } else {
               alert('❌ Payment verification failed. Please contact support.');
             }
