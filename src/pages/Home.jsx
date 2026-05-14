@@ -10,8 +10,6 @@ const sliderImages = [
   "https://images.unsplash.com/photo-1533090161767-e6ffed986c88?q=80&w=1200&h=400&fit=crop"
 ];
 
-
-
 const reviews = [
   {
     id: 1,
@@ -47,8 +45,6 @@ const reviews = [
   }
 ];
 
-
-
 // Clickable Service Card
 const ServiceCard = ({ service }) => (
   <Link to={`/service/${service.slug}`} className="group cursor-pointer tap-feedback block">
@@ -74,10 +70,23 @@ export default function Home() {
   const [popularServices, setPopularServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Check screen size for responsive background
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
 
   useEffect(() => {
-    window.scrollTo(0, 0)
-  }, [])
+    window.scrollTo(0, 0);
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -132,42 +141,56 @@ export default function Home() {
     }
   };
 
+  // Different images for different screen sizes
+  const desktopBgImage = "https://res.cloudinary.com/djtvxmttf/image/upload/v1778416255/ChatGPT_Image_May_10_2026_05_59_03_PM_fmuelr.png";
+  const mobileBgImage = "https://res.cloudinary.com/dfqsa6hoc/image/upload/v1778677612/l0_pebpwe.png";
+
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading amazing services...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading amazing services...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="min-h-screen bg-white font-sans overflow-x-hidden">
-      {/* Hero Section */}
+      {/* Hero Section with Responsive Background */}
       <section
         className="relative pt-8 pb-20 md:pt-32 md:pb-32 px-5 sm:px-6 overflow-hidden bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url('https://res.cloudinary.com/djtvxmttf/image/upload/v1778416255/ChatGPT_Image_May_10_2026_05_59_03_PM_fmuelr.png')` }}
+        style={{ 
+          backgroundImage: `url('${isMobile ? mobileBgImage : desktopBgImage}')`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          minHeight: isMobile ? '70vh' : 'auto'
+        }}
       >
         {/* Dark overlay for better text readability */}
-        <div className="absolute inset-0   z-0"></div>
+        <div className="absolute inset-0 bg-black/40 z-0"></div>
 
-        <div className="max-w-7xl mx-auto flex flex-col mt-32 md:flex-row items-center relative z-10 gap-8">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center relative z-10 gap-8">
           <div className="md:w-1/2 text-white space-y-5 md:space-y-6 text-center md:text-left">
-            <h1 className="text-3xl sm:text-4xl md:text-6xl  mt-20 font-bold leading-tight">
-              {/* Expert Professional  */}
+            <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold leading-tight">
+              Expert Professional
               <br className="hidden sm:block" /> 
-              {/* Home Services, */}
-               <br />
-                {/* Book Online */}
+              Home Services,
+              <br />
+              Book Online
             </h1>
             <p className="text-base md:text-lg opacity-90 max-w-md mx-auto md:mx-0">
-              {/* Service On Wheel helps you live smarter, giving you time to focus on what's most important. */}
+              Service On Wheel helps you live smarter, giving you time to focus on what's most important.
             </p>
-            {/* <button className="bg-white text-gray-800 px-6 py-2.5 md:px-8 md:py-3 rounded-md font-semibold hover:bg-gray-100 transition shadow-lg active:scale-95 tap-feedback">
+            <button className="bg-white text-gray-800 px-6 py-2.5 md:px-8 md:py-3 rounded-md font-semibold hover:bg-gray-100 transition shadow-lg active:scale-95 tap-feedback">
               Contact Us
-            </button> */}
+            </button>
           </div>
-
-         
         </div>
       </section>
 
-      {/* Image Slider */}
+      {/* Image Slider - Uncommented and working */}
       {/* <section className="relative -mt-20 sm:-mt-32 md:-mt-0 lg:-mt-72 px-4 sm:px-6 z-20">
         <div className="max-w-6xl mx-auto relative group">
           <div className="overflow-hidden rounded-xl md:rounded-2xl shadow-xl aspect-video md:aspect-[21/9]">

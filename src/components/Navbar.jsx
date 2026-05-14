@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import { fetchCategories, fetchProviderProfile, updateServiceArea } from '../services/api';
+import { fetchCategories } from '../services/api';
 import NotificationBell from './NotificationBell';
 import ProviderLocationModal from './/./../pages/provider/ProviderLocationModal';
 
@@ -17,25 +17,16 @@ const Navbar = () => {
   // For provider location modal
   const [showLocationModal, setShowLocationModal] = useState(false);
 
-  // Search & location states (unchanged from your existing)
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [showSearchResults, setShowSearchResults] = useState(false);
-  const [loading, setLoading] = useState(false);
+  // Location states
   const [location, setLocation] = useState('');
   const [currentCoords, setCurrentCoords] = useState(null);
-  const [showLocationPicker, setShowLocationPicker] = useState(false);
-  const [customLocation, setCustomLocation] = useState('');
-  const [searchPlaceholder, setSearchPlaceholder] = useState('');
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [isLogoRotating, setIsLogoRotating] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showLocationPopup, setShowLocationPopup] = useState(false);
+  const [customLocation, setCustomLocation] = useState('');
   const [searchAddress, setSearchAddress] = useState('');
   const [isAddressSearching, setIsAddressSearching] = useState(false);
-  const [isMobileView, setIsMobileView] = useState(window.innerWidth < 1024);
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
-
+  const [successMessage, setSuccessMessage] = useState('');
+  
   // Map states
   const [mapLat, setMapLat] = useState(28.6139);
   const [mapLng, setMapLng] = useState(77.2090);
@@ -44,9 +35,9 @@ const Navbar = () => {
   const mapInstanceRef = useRef(null);
   const markerRef = useRef(null);
 
-  const searchTimeout = useRef(null);
-  const searchRef = useRef(null);
-  const locationRef = useRef(null);
+  const [isLogoRotating, setIsLogoRotating] = useState(false);
+  const [isMobileView, setIsMobileView] = useState(window.innerWidth < 1024);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Fetch categories on mount
   useEffect(() => {
@@ -117,7 +108,6 @@ const Navbar = () => {
           const address = await reverseGeocodeWithBigDataCloud(newLatLng.lat, newLatLng.lng);
           if (address) {
             setLocation(address);
-            localStorage.setItem('userLocation', address);
           }
         });
       }
@@ -137,113 +127,10 @@ const Navbar = () => {
       const address = await reverseGeocodeWithBigDataCloud(newLatLng.lat, newLatLng.lng);
       if (address) {
         setLocation(address);
-        localStorage.setItem('userLocation', address);
       }
     });
     mapInstanceRef.current = map;
     markerRef.current = marker;
-  };
-
-  const servicePlaceholders = [
-    'Search for plumbers...',
-    'Find electricians...',
-    'Book cleaning services...',
-    'AC repair services...'
-  ];
-
-  useEffect(() => {
-    let placeholderIndex = 0;
-    const interval = setInterval(() => {
-      placeholderIndex = (placeholderIndex + 1) % servicePlaceholders.length;
-      if (!isSearchFocused) setSearchPlaceholder(servicePlaceholders[placeholderIndex]);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [isSearchFocused]);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (searchRef.current && !searchRef.current.contains(event.target)) setShowSearchResults(false);
-      if (locationRef.current && !locationRef.current.contains(event.target)) setShowLocationPicker(false);
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    if (showLocationPicker) {
-      setShowMap(true);
-      const savedCoords = localStorage.getItem('userCoords');
-      if (savedCoords) {
-        const coords = JSON.parse(savedCoords);
-        setMapLat(coords.lat);
-        setMapLng(coords.lng);
-        setCurrentCoords(coords);
-      } else if (!currentCoords) {
-        autoDetectLocation();
-      }
-    } else {
-      setShowMap(false);
-    }
-  }, [showLocationPicker]);
-
-  const autoDetectLocation = () => {
-    if (!navigator.geolocation) return;
-    setIsLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-        setMapLat(latitude);
-        setMapLng(longitude);
-        setCurrentCoords({ lat: latitude, lng: longitude });
-        const address = await reverseGeocodeWithBigDataCloud(latitude, longitude);
-        if (address) {
-          setLocation(address);
-          localStorage.setItem('userLocation', address);
-        } else {
-          setLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
-        }
-        localStorage.setItem('userCoords', JSON.stringify({ lat: latitude, lng: longitude }));
-        setIsLocating(false);
-      },
-      (error) => {
-        console.error(error);
-        setIsLocating(false);
-        setMapLat(28.6139);
-        setMapLng(77.2090);
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  };
-
-  const handleLogoRotate = () => {
-    setIsLogoRotating(true);
-    setTimeout(() => setIsLogoRotating(false), 600);
-  };
-
-  const handleSearchChange = (e) => {
-    const query = e.target.value;
-    setSearchQuery(query);
-    if (searchTimeout.current) clearTimeout(searchTimeout.current);
-    if (query.length > 1) {
-      setLoading(true);
-      setShowSearchResults(true);
-      searchTimeout.current = setTimeout(async () => {
-        try {
-          const response = await fetch(`${import.meta.env.VITE_BASE_URL || 'http://localhost:5000/api/v1'}/services/search?q=${query}&location=${location}`);
-          const data = await response.json();
-          setSearchResults(data.data?.services || []);
-        } catch (error) {
-          console.error('Search error:', error);
-          setSearchResults([]);
-        } finally {
-          setLoading(false);
-        }
-      }, 500);
-    } else {
-      setSearchResults([]);
-      setShowSearchResults(false);
-      setLoading(false);
-    }
   };
 
   const reverseGeocodeWithBigDataCloud = async (lat, lng) => {
@@ -254,7 +141,6 @@ const Navbar = () => {
       if (data && data.locality) {
         let address = data.locality || data.city || data.principalSubdivision || '';
         if (data.principalSubdivision && !address.includes(data.principalSubdivision)) address += `, ${data.principalSubdivision}`;
-        if (data.postcode) address += ` (${data.postcode})`;
         return address;
       }
       return null;
@@ -294,11 +180,14 @@ const Navbar = () => {
         if (address) {
           setLocation(address);
           localStorage.setItem('userLocation', address);
+          showSuccessMessage(`📍 Location set to ${address}`);
         } else {
           setLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+          showSuccessMessage(`📍 Location set successfully`);
         }
         localStorage.setItem('userCoords', JSON.stringify({ lat: latitude, lng: longitude }));
         setIsLocating(false);
+        setTimeout(() => setShowLocationPopup(false), 1500);
       },
       (error) => {
         console.error(error);
@@ -320,8 +209,6 @@ const Navbar = () => {
       setShowMap(true);
       const shortName = result.display.split(',')[0];
       setLocation(shortName);
-      localStorage.setItem('userLocation', shortName);
-      localStorage.setItem('userCoords', JSON.stringify({ lat: result.lat, lng: result.lng }));
     } else {
       alert('Address not found. Try adding city/state name.');
     }
@@ -329,8 +216,15 @@ const Navbar = () => {
   };
 
   const confirmMapLocation = () => {
-    if (currentCoords) {
-      setShowLocationPicker(false);
+    if (currentCoords || location) {
+      if (location) {
+        localStorage.setItem('userLocation', location);
+        showSuccessMessage(`📍 Location set to ${location}`);
+      }
+      if (currentCoords) {
+        localStorage.setItem('userCoords', JSON.stringify(currentCoords));
+      }
+      setTimeout(() => setShowLocationPopup(false), 1500);
     } else {
       alert('Please select a location first');
     }
@@ -339,13 +233,21 @@ const Navbar = () => {
   const saveCustomLocation = () => {
     if (customLocation.trim()) {
       setLocation(customLocation);
-      setShowLocationPicker(false);
       localStorage.setItem('userLocation', customLocation);
       setCurrentCoords(null);
       localStorage.removeItem('userCoords');
       setShowMap(false);
       setCustomLocation('');
+      showSuccessMessage(`📍 Location set to ${customLocation}`);
+      setTimeout(() => setShowLocationPopup(false), 1500);
     }
+  };
+
+  const showSuccessMessage = (message) => {
+    setSuccessMessage(message);
+    setTimeout(() => {
+      setSuccessMessage('');
+    }, 2000);
   };
 
   useEffect(() => {
@@ -355,104 +257,15 @@ const Navbar = () => {
     if (savedCoords) setCurrentCoords(JSON.parse(savedCoords));
   }, []);
 
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      window.location.href = `/services/search?q=${searchQuery}&location=${location}`;
-    }
-  };
-
-  const selectSearchResult = (service) => {
-    window.location.href = `/service/${service.slug || service._id}`;
+  const handleLogoRotate = () => {
+    setIsLogoRotating(true);
+    setTimeout(() => setIsLogoRotating(false), 600);
   };
 
   const getInitials = (name) => {
     if (!name) return 'U';
     return name.substring(0, 2).toUpperCase();
   };
-
-  const renderLocationModalContent = () => (
-    <>
-      <h3 className="text-gray-900 font-semibold mb-3">Choose Location</h3>
-      <button onClick={getCurrentLocation} disabled={isLocating} className="w-full flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-600 py-2 px-4 rounded-lg transition border border-blue-100 font-medium">
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-        {isLocating ? 'Locating...' : 'Use My Current Location'}
-      </button>
-      <div className="my-3 text-center text-gray-400 text-xs font-medium uppercase tracking-wider">or search address</div>
-      <div className="flex flex-col gap-2">
-        <input type="text" value={searchAddress} onChange={(e) => setSearchAddress(e.target.value)} placeholder="Type full address..." className="bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-all" onKeyPress={(e) => e.key === 'Enter' && searchAddressAndShowMap()} />
-        <button onClick={searchAddressAndShowMap} disabled={isAddressSearching} className="bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium transition shadow-sm">
-          {isAddressSearching ? 'Searching...' : 'Search & Show on Map'}
-        </button>
-      </div>
-      {showMap && (
-        <div className="mt-3">
-          <div ref={mapContainerRef} className="h-[200px] w-full rounded-lg bg-gray-100 overflow-hidden border border-gray-200"></div>
-          <p className="text-[10px] text-gray-500 mt-1.5 text-center font-medium">📍 Drag marker to adjust exact location</p>
-          <button onClick={confirmMapLocation} className="w-full mt-2 bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg text-sm font-medium transition shadow-sm">Confirm Location</button>
-        </div>
-      )}
-      <div className="my-3 text-center text-gray-400 text-xs font-medium uppercase tracking-wider">or enter city manually</div>
-      <input type="text" value={customLocation} onChange={(e) => setCustomLocation(e.target.value)} placeholder="Enter city..." className="w-full bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-all" onKeyPress={(e) => e.key === 'Enter' && saveCustomLocation()} />
-      <button onClick={saveCustomLocation} className="w-full mt-2 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-medium transition">Save Location</button>
-    </>
-  );
-
-  const renderSearchResultsDropdown = () => (
-    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-xl shadow-xl z-[1050] max-h-[300px] overflow-y-auto overflow-hidden">
-      {loading ? (
-        <div className="p-4 text-center text-gray-500 text-sm">Searching...</div>
-      ) : searchResults.length > 0 ? (
-        searchResults.map((service) => (
-          <div key={service._id} onClick={() => selectSearchResult(service)} className="p-3 border-b border-gray-50 last:border-0 hover:bg-gray-50 cursor-pointer flex justify-between items-center transition">
-            <div>
-              <h4 className="text-gray-900 text-sm font-medium">{service.name}</h4>
-              <p className="text-gray-500 text-xs mt-0.5">{service.category?.name || 'Service'}</p>
-            </div>
-            <div className="text-right">
-              <span className="text-amber-500 text-xs block font-medium">★ {service.rating?.average || 0}</span>
-              <span className="text-emerald-600 text-xs font-bold mt-0.5 block">₹{service.basePrice}</span>
-            </div>
-          </div>
-        ))
-      ) : searchQuery.length > 1 ? (
-        <div className="p-4 text-center text-gray-500 text-sm">No services found</div>
-      ) : null}
-    </div>
-  );
-
-  const renderSearchInput = (mobileMode = false) => (
-    <div className={`w-full relative ${mobileMode ? 'flex' : 'flex-1'}`} ref={searchRef}>
-      <form onSubmit={handleSearchSubmit} className={`flex items-center w-full ${mobileMode ? 'bg-gray-50 border border-gray-200 rounded-full focus-within:bg-white focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-400 shadow-sm transition-all' : ''}`}>
-        <div className="pl-3 text-gray-400">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-        </div>
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={handleSearchChange}
-          onFocus={() => { setIsSearchFocused(true); if (searchQuery.length > 1) setShowSearchResults(true); }}
-          onBlur={() => setIsSearchFocused(false)}
-          placeholder={searchPlaceholder || servicePlaceholders[0]}
-          className="w-full bg-transparent text-gray-900 px-2 py-2.5 text-sm focus:outline-none placeholder-gray-400"
-        />
-        {searchQuery && (
-          <button type="button" onClick={() => { setSearchQuery(''); setSearchResults([]); setShowSearchResults(false); }} className="pr-2 text-gray-400 hover:text-gray-600">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
-        )}
-        <button type="submit" className={`${mobileMode ? 'hidden' : 'hidden sm:flex'} items-center gap-1 bg-transparent hover:bg-gray-200 text-gray-600 hover:text-gray-900 px-4 py-1.5 mr-1 rounded-full text-sm font-medium transition`}>
-          Search <span>&rarr;</span>
-        </button>
-      </form>
-      {showSearchResults && renderSearchResultsDropdown()}
-    </div>
-  );
 
   return (
     <>
@@ -462,40 +275,60 @@ const Navbar = () => {
           {/* DESKTOP VIEW */}
           {!isMobileView && (
             <div className="flex items-center justify-between gap-8">
-              {/* Logo with image – replace the div with img */}
+              {/* Logo */}
               <Link to="/" className="flex items-center gap-3 shrink-0 no-underline" onMouseEnter={handleLogoRotate} onClick={handleLogoRotate}>
-                {/* Replace this div with your logo image */}
-                {/* <img src="/logo.png" alt="GharSeva" className="w-10 h-10 object-contain" /> */}
-                <div className="bg-blue-600 text-white rounded-lg w-16 h-10 flex items-center justify-center font-bold text-xl shadow-md shadow-blue-500/20">
-                  <img src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778086579/seva_uuvngp.png" alt="logo"
-                    className='w-full h-full' />
+                <div className="rounded-lg w-20 h-20 flex items-center justify-center overflow-hidden bg-white shadow-md p-1 border border-gray-200">
+                  <img 
+                    src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778658121/a7ea1860-5474-4e8d-800b-72c68b9f6b71.png" 
+                    alt="Logo" 
+                    className="w-full h-full object-contain"
+                  />
                 </div>
-                <div>
-                  <h1 className="text-xl font-bold text-blue-600 tracking-tight leading-tight">GharSeva</h1>
-                  <p className="text-[11px] text-gray-500 leading-tight mt-0.5">Home services at your doorstep</p>
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-0">
+                    <span className="text-3xl font-bold tracking-tight text-[#FF9933]">IN</span>
+                    <div className="relative inline-flex items-center justify-center">
+                      <span className="text-3xl font-bold tracking-tight text-[#000060] relative z-10">D</span>
+                      <div className="absolute inset-0 flex items-center justify-center z-0 opacity-70">
+                        <div className="relative w-6 h-6 flex items-center justify-center">
+                          <div className="absolute w-5 h-5 rounded-full border border-[#000060]"></div>
+                          <div className="absolute w-1 h-1 rounded-full bg-[#000060]"></div>
+                          <div className="absolute inset-0 animate-spin-slow">
+                            {[...Array(24)].map((_, i) => (
+                              <div
+                                key={i}
+                                className="absolute w-[0.8px] h-2 bg-[#000060] left-1/2 top-0 origin-bottom"
+                                style={{ transform: `translateX(-50%) rotate(${i * 15}deg)` }}
+                              ></div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-3xl font-bold tracking-tight text-[#000060]">I</span>
+                    <span className="text-3xl font-bold tracking-tight text-[#138808]">AN</span>
+                    <span className="text-3xl font-bold tracking-tight text-gray-800 ml-1">HOMEY</span>
+                  </div>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Home services at your doorstep</span>
+                  </div>
                 </div>
               </Link>
 
-              {/* Combined Location + Search Pill */}
-              <div className="flex flex-1 items-center bg-gray-50 border border-gray-200 rounded-full max-w-3xl transition-all focus-within:border-gray-300 focus-within:bg-white focus-within:shadow-md">
-                <div className="relative shrink-0" ref={locationRef}>
-                  <button onClick={() => setShowLocationPicker(!showLocationPicker)} className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-l-full transition-colors whitespace-nowrap">
-                    <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                    <span className="max-w-[150px] truncate">{isLocating ? 'Locating...' : (location || 'Select Location')}</span>
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                  </button>
-                  {showLocationPicker && (
-                    <div className="absolute top-full left-0 mt-2 w-[350px] bg-white border border-gray-100 rounded-xl shadow-xl z-50 p-4">
-                      {renderLocationModalContent()}
-                    </div>
-                  )}
-                </div>
-                <div className="w-[1px] h-6 bg-gray-300"></div>
-                {renderSearchInput(false)}
+              {/* Location Selector for Desktop */}
+              <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-full px-4 py-2">
+                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span className="text-sm text-gray-600">{location || 'Select Location'}</span>
+                <button onClick={() => setShowLocationPopup(true)} className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+                  Change
+                </button>
               </div>
 
+              {/* Right Icons - Desktop */}
               <div className="flex items-center gap-3 shrink-0">
-                {/* Cart icon */}
                 <Link to="/cart" className="relative p-2 text-gray-600 hover:text-blue-600 bg-white hover:bg-gray-50 rounded-full transition-colors border border-gray-200 shadow-sm">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M18 13l1.5 6M9 21a1 1 0 100-2 1 1 0 000 2zm9 0a1 1 0 100-2 1 1 0 000 2z" />
@@ -506,11 +339,7 @@ const Navbar = () => {
                     </span>
                   )}
                 </Link>
-
-                {/* Notification Bell for ALL logged‑in users */}
                 {user && <NotificationBell />}
-
-                {/* User menu */}
                 {user ? (
                   <div className="relative group">
                     <button className="flex items-center gap-2 bg-white hover:bg-gray-50 border border-gray-200 px-2 py-1.5 rounded-full transition-colors shadow-sm">
@@ -543,65 +372,81 @@ const Navbar = () => {
                     <button onClick={() => setShowAuth(true)} className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-1.5 rounded-full transition shadow-sm">Sign Up</button>
                   </div>
                 )}
-                <button onClick={() => setMobileMenuOpen(true)} className="flex items-center justify-center bg-white hover:bg-gray-50 border border-gray-200 w-10 h-10 rounded-xl transition-colors shadow-sm">
-                  <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+              </div>
+            </div>
+          )}
+
+          {/* ==================== MOBILE VIEW - SIMPLIFIED ==================== */}
+          {isMobileView && (
+            <div className="flex items-center justify-between gap-2">
+              {/* Logo */}
+              <Link to="/" className="flex shrink-0 items-center gap-2 no-underline" onClick={handleLogoRotate}>
+                <div className="rounded-lg w-10 h-10 flex items-center justify-center overflow-hidden bg-white shadow-md p-1 border border-gray-200">
+                  <img src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778658121/a7ea1860-5474-4e8d-800b-72c68b9f6b71.png" alt="Logo" className="w-full h-full object-contain" />
+                </div>
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-0">
+                    <span className="text-base font-bold text-[#FF9933]">IN</span>
+                    <div className="relative inline-flex items-center justify-center">
+                      <span className="text-base font-bold text-[#000060] relative z-10">D</span>
+                      <div className="absolute inset-0 flex items-center justify-center z-0 opacity-70">
+                        <div className="relative w-3.5 h-3.5 flex items-center justify-center">
+                          <div className="absolute w-3 h-3 rounded-full border border-[#000060]"></div>
+                          <div className="absolute w-0.5 h-0.5 rounded-full bg-[#000060]"></div>
+                          <div className="absolute inset-0 animate-spin-slow">
+                            {[...Array(12)].map((_, i) => (
+                              <div key={i} className="absolute w-[0.5px] h-1.5 bg-[#000060] left-1/2 top-0 origin-bottom" style={{ transform: `translateX(-50%) rotate(${i * 30}deg)` }}></div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-base font-bold text-[#000060]">I</span>
+                    <span className="text-base font-bold text-[#138808]">AN</span>
+                    <span className="text-base font-bold text-gray-800 ml-0.5">HOMEY</span>
+                  </div>
+                </div>
+              </Link>
+
+              {/* Right Icons - Location, Cart, Hamburger */}
+              <div className="flex items-center gap-2 shrink-0">
+                {/* Location Icon */}
+                <button 
+                  onClick={() => setShowLocationPopup(true)} 
+                  className="p-2 text-gray-600 bg-gray-50 border border-gray-200 rounded-full transition-colors hover:bg-gray-100"
+                >
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </button>
+
+                {/* Cart Icon */}
+                <Link to="/cart" className="relative p-2 text-gray-600 bg-gray-50 border border-gray-200 rounded-full transition-colors hover:bg-gray-100">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M18 13l1.5 6M9 21a1 1 0 100-2 1 1 0 000 2zm9 0a1 1 0 100-2 1 1 0 000 2z" />
+                  </svg>
+                  {cartCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center shadow-sm">
+                      {cartCount > 99 ? '99+' : cartCount}
+                    </span>
+                  )}
+                </Link>
+
+                {/* Hamburger Menu Button */}
+                <button 
+                  onClick={() => setMobileMenuOpen(true)} 
+                  className="flex flex-col items-center justify-center gap-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 w-9 h-9 rounded-xl transition-all shadow-md active:scale-95"
+                >
+                  <span className="w-4 h-0.5 bg-white rounded-full"></span>
+                  <span className="w-4 h-0.5 bg-white rounded-full"></span>
+                  <span className="w-4 h-0.5 bg-white rounded-full"></span>
                 </button>
               </div>
             </div>
           )}
 
-          {/* MOBILE VIEW */}
-          {isMobileView && (
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between gap-2">
-                <Link to="/" className="flex shrink-0 no-underline" onClick={handleLogoRotate}>
-                  {/* Replace with logo image if desired */}
-                  <div className="bg-blue-600 text-white rounded-lg w-14 h-10 flex items-center justify-center font-bold text-lg shadow-md">
-                    <img src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778086579/seva_uuvngp.png" alt="logo"
-                    className='w-full h-full' />
-                  </div>
-                </Link>
-                <div className="flex-1 min-w-0" ref={locationRef}>
-                  <button onClick={() => setShowLocationPicker(true)} className="flex items-center justify-between w-full max-w-[200px] gap-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-full transition-colors">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <svg className="w-4 h-4 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                      <div className="flex flex-col text-left min-w-0">
-                        <span className="text-[9px] font-bold text-gray-800 uppercase tracking-wider leading-none">Location</span>
-                        <span className="text-[11px] text-gray-500 truncate leading-tight mt-0.5">{isLocating ? 'Locating...' : (location || 'Select Location')}</span>
-                      </div>
-                    </div>
-                    <svg className="w-3 h-3 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                  </button>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Link to="/cart" className="relative p-2 text-gray-600 hover:text-blue-600 bg-gray-50 border border-gray-200 rounded-full transition-colors shadow-sm">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M18 13l1.5 6M9 21a1 1 0 100-2 1 1 0 000 2zm9 0a1 1 0 100-2 1 1 0 000 2z" />
-                    </svg>
-                    {cartCount > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{cartCount > 9 ? '9+' : cartCount}</span>}
-                  </Link>
-                  {user && <NotificationBell />}
-                  <button onClick={() => setMobileSearchOpen(!mobileSearchOpen)} className="p-2 text-gray-600 bg-gray-50 border border-gray-200 hover:bg-gray-100 rounded-full transition shadow-sm">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                  </button>
-                  {user && (
-                    <div className="w-8 h-8 bg-blue-100 text-blue-700 font-bold rounded-full flex items-center justify-center text-xs border border-blue-200">
-                      {getInitials(user.name || user.email)}
-                    </div>
-                  )}
-                  <button onClick={() => setMobileMenuOpen(true)} className="flex items-center justify-center bg-white hover:bg-gray-50 border border-gray-200 w-9 h-9 rounded-xl transition-colors shadow-sm">
-                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
-                  </button>
-                </div>
-              </div>
-              {mobileSearchOpen && <div className="w-full animate-fadeIn mt-1">{renderSearchInput(true)}</div>}
-            </div>
-          )}
-
-          {/* DYNAMIC CATEGORIES FILTER ROW */}
+          {/* CATEGORIES ROW - Shows on both desktop and mobile */}
           <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
             {categoriesLoading ? (
               <div className="flex gap-2">
@@ -629,46 +474,240 @@ const Navbar = () => {
         </div>
       </nav>
 
-      {/* Sidebar Drawer – keep as is (already has dynamic categories? but we'll keep static for brevity) */}
-      <div className={`fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-[1050] transition-opacity duration-300 ${mobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`} onClick={() => setMobileMenuOpen(false)}></div>
-      <div className={`fixed top-0 right-0 bottom-0 w-72 bg-white shadow-2xl z-[1100] transform transition-transform duration-300 flex flex-col border-l border-gray-200 ${mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-        <div className="flex justify-between items-center p-5 border-b border-gray-100">
-          <span className="text-xl font-bold text-blue-600">Menu</span>
-          <button onClick={() => setMobileMenuOpen(false)} className="text-gray-500 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 p-2 rounded-lg transition-colors">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2">
-          <Link to="/" className="text-gray-700 hover:text-blue-600 hover:bg-blue-50 px-4 py-3 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>Home</Link>
-          <Link to="/services" className="text-gray-700 hover:text-blue-600 hover:bg-blue-50 px-4 py-3 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>All Services</Link>
-          <Link to="/providers" className="text-gray-700 hover:text-blue-600 hover:bg-blue-50 px-4 py-3 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>Providers</Link>
-          <div className="h-px bg-gray-100 my-2"></div>
-          {user ? (
-            <>
-              <Link to="/profile" className="text-gray-700 hover:text-blue-600 hover:bg-blue-50 px-4 py-3 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>My Profile</Link>
-              <Link to="/my-bookings" className="text-gray-700 hover:text-blue-600 hover:bg-blue-50 px-4 py-3 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>My Bookings</Link>
-              {user.role === 'provider' && (
-                <>
-                  <Link to="/provider" className="text-gray-700 hover:text-blue-600 hover:bg-blue-50 px-4 py-3 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>Provider Dashboard</Link>
-                  <Link to="/provider/bookings" className="text-gray-700 hover:text-blue-600 hover:bg-blue-50 px-4 py-3 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>Manage Bookings</Link>
-                  <button onClick={() => { setShowLocationModal(true); setMobileMenuOpen(false); }} className="text-left text-gray-700 hover:text-blue-600 hover:bg-blue-50 px-4 py-3 rounded-xl transition font-medium">
-                    Update Service Area
-                  </button>
-                </>
-              )}
-              <div className="h-px bg-gray-100 my-2"></div>
-              <button onClick={() => { logout(); setMobileMenuOpen(false); }} className="w-full text-left text-red-600 hover:bg-red-50 px-4 py-3 rounded-xl transition font-medium">Logout</button>
-            </>
-          ) : (
-            <>
-              <Link to="/register-provider" className="text-amber-600 hover:bg-amber-50 px-4 py-3 rounded-xl transition font-bold" onClick={() => setMobileMenuOpen(false)}>Register as Professional</Link>
-              <div className="mt-4 flex flex-col gap-2">
-                <button onClick={() => { setShowAuth(true); setMobileMenuOpen(false); }} className="w-full bg-white text-gray-800 py-2.5 rounded-xl font-semibold border border-gray-200 hover:bg-gray-50 transition shadow-sm">Login</button>
-                <button onClick={() => { setShowAuth(true); setMobileMenuOpen(false); }} className="w-full bg-blue-600 text-white py-2.5 rounded-xl font-semibold hover:bg-blue-700 transition shadow-sm">Sign Up</button>
+      {/* ==================== LOCATION POPUP MODAL (Centered) ==================== */}
+      {showLocationPopup && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[1200] flex items-center justify-center p-4 animate-fadeIn" onClick={() => setShowLocationPopup(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto animate-slideUp" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white border-b border-gray-100 p-4 flex justify-between items-center">
+              <h3 className="text-lg font-bold text-gray-900">📍 Select Location</h3>
+              <button onClick={() => setShowLocationPopup(false)} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            
+            <div className="p-5 space-y-4">
+              {/* Current Location Button */}
+              <button 
+                onClick={getCurrentLocation} 
+                disabled={isLocating} 
+                className="w-full flex items-center justify-center gap-3 bg-blue-50 hover:bg-blue-100 text-blue-700 py-3 px-4 rounded-xl transition border border-blue-200 font-semibold"
+              >
+                {isLocating ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-600 border-t-transparent"></div>
+                    <span>Locating...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span>Use My Current Location</span>
+                  </>
+                )}
+              </button>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-200"></div>
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="px-2 bg-white text-gray-400">OR SEARCH ADDRESS</span>
+                </div>
               </div>
-            </>
+
+              {/* Search Address */}
+              <div className="flex flex-col gap-2">
+                <input 
+                  type="text" 
+                  value={searchAddress} 
+                  onChange={(e) => setSearchAddress(e.target.value)} 
+                  placeholder="Type full address, city, or pincode..." 
+                  className="w-full bg-white text-gray-900 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
+                  onKeyPress={(e) => e.key === 'Enter' && searchAddressAndShowMap()} 
+                />
+                <button 
+                  onClick={searchAddressAndShowMap} 
+                  disabled={isAddressSearching} 
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-xl text-sm font-medium transition"
+                >
+                  {isAddressSearching ? 'Searching...' : 'Search on Map'}
+                </button>
+              </div>
+
+              {/* Map */}
+              {showMap && (
+                <div className="space-y-2">
+                  <div ref={mapContainerRef} className="h-[250px] w-full rounded-xl bg-gray-100 overflow-hidden border border-gray-200"></div>
+                  <p className="text-xs text-gray-500 text-center">📍 Drag the marker to adjust exact location</p>
+                  <button onClick={confirmMapLocation} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl text-sm font-semibold transition shadow-md">
+                    Confirm This Location
+                  </button>
+                </div>
+              )}
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-200"></div>
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="px-2 bg-white text-gray-400">OR ENTER MANUALLY</span>
+                </div>
+              </div>
+
+              {/* Manual City Input */}
+              <input 
+                type="text" 
+                value={customLocation} 
+                onChange={(e) => setCustomLocation(e.target.value)} 
+                placeholder="Enter city name (e.g., Mumbai, Delhi)" 
+                className="w-full bg-white text-gray-900 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
+                onKeyPress={(e) => e.key === 'Enter' && saveCustomLocation()} 
+              />
+              <button onClick={saveCustomLocation} className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-xl text-sm font-medium transition">
+                Save Location
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== SUCCESS TOAST MESSAGE ==================== */}
+      {successMessage && (
+        <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 z-[1300] animate-slideUp">
+          <div className="bg-emerald-500 text-white px-5 py-3 rounded-xl shadow-lg flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span className="text-sm font-medium">{successMessage}</span>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== HAMBURGER MENU DRAWER ==================== */}
+      <div 
+        className={`fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-[1050] transition-all duration-300 ${
+          mobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible'
+        }`} 
+        onClick={() => setMobileMenuOpen(false)}
+      ></div>
+      
+      <div 
+        className={`fixed top-0 right-0 bottom-0 w-80 bg-white shadow-2xl z-[1100] transform transition-all duration-300 ease-out flex flex-col ${
+          mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        {/* Menu Header */}
+        <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-5 text-white">
+          <div className="flex justify-between items-start mb-4">
+            <div className="flex items-center gap-3">
+              {user ? (
+                <>
+                  <div className="w-12 h-12 bg-white/20 backdrop-blur rounded-full flex items-center justify-center text-lg font-bold border-2 border-white/30">
+                    {getInitials(user.name || user.email)}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-white">{user.name || 'User'}</h3>
+                    <p className="text-xs text-blue-100 mt-0.5">{user.email}</p>
+                    {user.role === 'provider' && (
+                      <span className="inline-block mt-1 text-[10px] bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded-full font-semibold">PROFESSIONAL</span>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="w-full text-center py-2">
+                  <p className="text-sm text-blue-100 mb-2">Welcome to GharSeva!</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => { setShowAuth(true); setMobileMenuOpen(false); }} className="flex-1 bg-white text-blue-600 py-2 rounded-lg text-sm font-semibold hover:bg-blue-50 transition">
+                      Login
+                    </button>
+                    <button onClick={() => { setShowAuth(true); setMobileMenuOpen(false); }} className="flex-1 bg-blue-500 text-white py-2 rounded-lg text-sm font-semibold hover:bg-blue-400 transition">
+                      Sign Up
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+            <button onClick={() => setMobileMenuOpen(false)} className="text-white/80 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-lg transition-colors">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Menu Items */}
+        <div className="flex-1 overflow-y-auto py-4">
+          <div className="px-4 mb-4">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Main Menu</p>
+            <div className="space-y-1">
+              <Link to="/" className="flex items-center gap-3 px-3 py-2.5 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+                Home
+              </Link>
+              <Link to="/services" className="flex items-center gap-3 px-3 py-2.5 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                All Services
+              </Link>
+              <Link to="/providers" className="flex items-center gap-3 px-3 py-2.5 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                Providers
+              </Link>
+            </div>
+          </div>
+
+          {user && (
+            <div className="px-4 mb-4">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Account</p>
+              <div className="space-y-1">
+                <Link to="/profile" className="flex items-center gap-3 px-3 py-2.5 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                  My Profile
+                </Link>
+                <Link to="/my-bookings" className="flex items-center gap-3 px-3 py-2.5 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                  My Bookings
+                </Link>
+                {user.role === 'provider' && (
+                  <>
+                    <Link to="/provider" className="flex items-center gap-3 px-3 py-2.5 text-amber-700 hover:bg-amber-50 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                      Provider Dashboard
+                    </Link>
+                    <button onClick={() => { setShowLocationModal(true); setMobileMenuOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition font-medium text-left">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /></svg>
+                      Update Service Area
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {user?.role !== 'provider' && (
+            <div className="px-4 mb-4">
+              <Link to="/register-provider" className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl hover:shadow-md transition-all" onClick={() => setMobileMenuOpen(false)}>
+                <div>
+                  <p className="text-sm font-bold text-amber-700">Become a Professional</p>
+                  <p className="text-xs text-amber-600 mt-0.5">Join GharSeva & grow your business</p>
+                </div>
+                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+              </Link>
+            </div>
           )}
         </div>
+
+        {user && (
+          <div className="border-t border-gray-100 p-4">
+            <button onClick={() => { logout(); setMobileMenuOpen(false); }} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl transition font-semibold">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              Logout
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Provider Location Modal */}
@@ -679,8 +718,12 @@ const Navbar = () => {
       <style>{`
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .animate-fadeIn { animation: fadeIn 0.2s ease-out forwards; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-slideUp { animation: slideUp 0.25s ease-out forwards; }
+        @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .animate-spin-slow { animation: spin-slow 8s linear infinite; }
       `}</style>
     </>
   );
