@@ -32,6 +32,9 @@ const CheckoutPage = () => {
   const [scheduledTimeStart, setScheduledTimeStart] = useState('10:00');
   const [scheduledTimeEnd, setScheduledTimeEnd] = useState('12:00');
   const [notes, setNotes] = useState('');
+  
+  // ✅ New: Payment method selection
+  const [paymentMethod, setPaymentMethod] = useState('online'); // 'online' or 'cod'
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -129,7 +132,6 @@ const CheckoutPage = () => {
     setLoading(true);
     setError('');
 
-    // Determine category from the first cart item
     const firstCartItem = cartItems[0];
     if (!firstCartItem.categoryId) {
       setError('Category information missing. Please remove and re-add the service.');
@@ -146,7 +148,7 @@ const CheckoutPage = () => {
     const bookingData = {
       provider: selectedProvider._id,
       services: items,
-      category: firstCartItem.categoryId,   // ✅ ADD THIS LINE
+      category: firstCartItem.categoryId,
       scheduledDate,
       scheduledTime: {
         start: scheduledTimeStart,
@@ -160,7 +162,7 @@ const CheckoutPage = () => {
         landmark: selectedAddress.landmark || '',
       },
       payment: {
-        method: 'online',
+        method: paymentMethod, // ✅ Use selected payment method
       },
       notes: notes,
     };
@@ -168,8 +170,17 @@ const CheckoutPage = () => {
     try {
       const res = await createBooking(bookingData);
       if (res.success) {
-        clearCart();
-        navigate('/my-bookings', { state: { bookingCreated: true } });
+        const booking = res.data.booking;
+        
+        // ✅ If COD, just clear cart and go to bookings
+        if (paymentMethod === 'cod') {
+          clearCart();
+          navigate('/my-bookings', { state: { bookingCreated: true, message: 'Booking confirmed! Pay at time of service.' } });
+        } else {
+          // ✅ For online payment, redirect to payment page or handle Razorpay
+          clearCart();
+          navigate(`/payment/${booking._id}`);
+        }
       } else {
         setError(res.message || 'Booking failed');
       }
@@ -212,6 +223,41 @@ const CheckoutPage = () => {
             <div className="border-t pt-3 mt-3 flex justify-between font-bold">
               <span>Total</span>
               <span>₹{cartTotal}</span>
+            </div>
+          </div>
+
+          {/* ✅ Payment Method Selection */}
+          <div className="bg-white rounded-xl shadow-sm border p-6">
+            <h2 className="font-bold text-lg mb-4">Payment Method</h2>
+            <div className="space-y-3">
+              <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                <input 
+                  type="radio" 
+                  name="paymentMethod" 
+                  value="online"
+                  checked={paymentMethod === 'online'}
+                  onChange={() => setPaymentMethod('online')}
+                  className="w-4 h-4"
+                />
+                <div>
+                  <p className="font-medium">Online Payment (Razorpay)</p>
+                  <p className="text-sm text-gray-500">Pay via Credit/Debit Card, UPI, Net Banking</p>
+                </div>
+              </label>
+              <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                <input 
+                  type="radio" 
+                  name="paymentMethod" 
+                  value="cod"
+                  checked={paymentMethod === 'cod'}
+                  onChange={() => setPaymentMethod('cod')}
+                  className="w-4 h-4"
+                />
+                <div>
+                  <p className="font-medium">Cash on Delivery (COD)</p>
+                  <p className="text-sm text-gray-500">Pay cash to the service provider after service completion</p>
+                </div>
+              </label>
             </div>
           </div>
 
@@ -327,9 +373,14 @@ const CheckoutPage = () => {
               disabled={loading || !selectedProvider || !selectedAddress}
               className="w-full mt-6 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
-              {loading ? 'Placing Order...' : 'Place Order & Pay'}
+              {loading ? 'Placing Order...' : `Place Order (${paymentMethod === 'online' ? 'Pay Online' : 'Cash on Delivery'})`}
             </button>
-            <p className="text-xs text-gray-400 text-center mt-3">Payment will be processed after order confirmation.</p>
+            {paymentMethod === 'cod' && (
+              <p className="text-xs text-gray-400 text-center mt-3">Pay cash to the provider after service completion.</p>
+            )}
+            {paymentMethod === 'online' && (
+              <p className="text-xs text-gray-400 text-center mt-3">You will be redirected to Razorpay payment page.</p>
+            )}
           </div>
         </div>
       </div>
