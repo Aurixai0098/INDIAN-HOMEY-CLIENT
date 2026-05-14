@@ -1,9 +1,8 @@
-
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
-// Modern Lucide Icons (install: npm install lucide-react)
+// Modern Lucide Icons
 import {
   LayoutDashboard,
   Users,
@@ -19,7 +18,22 @@ import {
   LogOut,
   Menu,
   X,
-  Crown
+  Star,
+  DollarSign,
+  MapPin,
+  Wrench,
+  Megaphone,
+  Settings,
+  Building2,
+  QrCode,
+  Receipt,
+  Percent,
+  Headphones,
+  Activity,
+  Cpu,
+  Globe,
+  ChevronDown,
+  ChevronRight as ChevronRightIcon
 } from 'lucide-react';
 
 const AdminLayout = () => {
@@ -27,6 +41,28 @@ const AdminLayout = () => {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
+  // Section toggle state for collapsible menus
+  const [openSections, setOpenSections] = useState({
+    provider: true,
+    booking: true,
+    payment: true,
+    service: true,
+    marketing: true,
+    settings: true,
+    bank: true,
+  });
+
+  // Close mobile menu on window resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setMobileMenuOpen(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   if (user?.role !== 'admin') {
     return (
@@ -40,175 +76,331 @@ const AdminLayout = () => {
     );
   }
 
-  const navItems = [
-    { path: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
-    { path: '/admin/users', label: 'Users', icon: Users },
-    { path: '/admin/providers', label: 'Provider Verifications', icon: ShieldCheck },
-    { path: '/admin/categories', label: 'Categories', icon: FolderTree },
-    { path: '/admin/services', label: 'Services', icon: Briefcase },
-    { path: '/admin/bookings', label: 'Bookings', icon: CalendarDays },
-    { path: '/admin/withdrawals', label: 'Withdrawals', icon: Wallet },
-  ];
-
-  const isActivePath = (path) => {
-    if (path === '/admin') return location.pathname === '/admin';
-    return location.pathname.startsWith(path);
+  const toggleSection = (section) => {
+    setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
   };
 
-  return (
-    <div className="min-h-screen bg-slate-50 flex">
-      {/* Mobile Overlay */}
-      {mobileMenuOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
-          onClick={() => setMobileMenuOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
-      <aside
-        className={`fixed lg:static inset-y-0 left-0 z-50 bg-slate-900 text-white transition-all duration-300 ease-in-out flex flex-col
-          ${sidebarOpen ? 'w-72' : 'w-20'} 
-          ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-          shadow-2xl`}
+  // Reusable nav link component for non-collapsible items
+  const NavItem = ({ to, icon: Icon, label, end = false }) => {
+    const active = end ? location.pathname === to : location.pathname.startsWith(to);
+    return (
+      <NavLink
+        to={to}
+        end={end}
+        onClick={() => setMobileMenuOpen(false)}
+        className={`group flex items-center gap-3 px-3 py-3 rounded-xl transition-all hover:text-black duration-200 relative overflow-hidden
+          ${active
+            ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg  shadow-blue-500/25'
+            : 'text-slate-400 hover:text-black hover:bg-white/5'
+          }
+          ${!sidebarOpen && 'justify-center'}
+        `}
       >
-        {/* Logo Area */}
-        <div className={`h-16 flex items-center px-4 border-b border-white/10 ${sidebarOpen ? 'justify-between' : 'justify-center'}`}>
+        {active && (
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-transparent" />
+        )}
+        <Icon className={`w-5 h-5 relative z-10 ${active ? 'text-white' : 'group-hover:text-black'}`} />
+        {sidebarOpen && (
+          <span className="font-medium text-sm relative z-10">{label}</span>
+        )}
+        {active && sidebarOpen && (
+          <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white shadow-lg shadow-white/50 relative z-10" />
+        )}
+      </NavLink>
+    );
+  };
+
+  // Collapsible section component
+  const CollapsibleSection = ({ section, icon: Icon, title, children }) => {
+    const isOpen = openSections[section];
+    return (
+      <div className="mt-2">
+        <button
+          onClick={() => toggleSection(section)}
+          className={`group flex items-center justify-between w-full px-3 py-3 rounded-xl transition-all duration-200 text-slate-400 hover:text-black hover:bg-white/5
+            ${!sidebarOpen && 'justify-center'}
+          `}
+        >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
-              <Crown className="w-5 h-5 text-white" />
-            </div>
-            {sidebarOpen && (
-              <div>
-                <h1 className="font-bold text-lg tracking-tight">Admin Panel</h1>
-                <p className="text-xs text-slate-400">Super Admin</p>
-              </div>
-            )}
+            <Icon className="w-5 h-5" />
+            {sidebarOpen && <span className="font-medium text-sm">{title}</span>}
           </div>
-          <button
+          {sidebarOpen && (
+            <div className="text-slate-500">
+              {isOpen ? <ChevronDown size={16} /> : <ChevronRightIcon size={16} />}
+            </div>
+          )}
+        </button>
+        {sidebarOpen && isOpen && (
+          <div className="ml-6 mt-1 space-y-1">
+            {children}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const SubNavItem = ({ to, label }) => (
+    <NavLink
+      to={to}
+      onClick={() => setMobileMenuOpen(false)}
+      className={({ isActive }) =>
+        `block px-3 py-2 text-sm rounded-lg transition-colors ${
+          isActive
+            ? 'bg-blue-600/20 text-blue-400 font-medium'
+            : 'text-slate-400 hover:text-black hover:bg-white/5'
+        }`
+      }
+    >
+      {label}
+    </NavLink>
+  );
+
+  return (
+    <div className="h-screen flex flex-col overflow-hidden bg-slate-50">
+      {/* Main Layout Container - Fixed height, no scroll */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        
+        {/* Mobile Overlay */}
+        {mobileMenuOpen && (
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
             onClick={() => setMobileMenuOpen(false)}
-            className="lg:hidden p-1 hover:bg-white/10 rounded-lg"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+          />
+        )}
 
-        {/* Navigation */}
-        <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
-          {navItems.map((item) => {
-            const active = isActivePath(item.path);
-            const Icon = item.icon;
-            return (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                end={item.end}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`group flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 relative overflow-hidden
-                  ${active
-                    ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/25'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
-                  }
-                  ${!sidebarOpen && 'justify-center'}
-                `}
-              >
-                {/* Active indicator glow */}
-                {active && (
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-transparent" />
-                )}
-                <Icon className={`w-5 h-5 relative z-10 ${active ? 'text-white' : 'group-hover:text-white'}`} />
-                {sidebarOpen && (
-                  <span className="font-medium text-sm relative z-10">{item.label}</span>
-                )}
-                {active && sidebarOpen && (
-                  <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white shadow-lg shadow-white/50 relative z-10" />
-                )}
-              </NavLink>
-            );
-          })}
-        </nav>
-
-        {/* User Profile & Collapse */}
-        <div className="p-3 border-t border-white/10 space-y-2">
-          {/* Collapse Toggle (Desktop) */}
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="hidden lg:flex w-full items-center justify-center p-2 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white transition-colors"
-          >
-            {sidebarOpen ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
-          </button>
-
-          {/* User Mini Profile */}
-          <div className={`flex items-center gap-3 p-2 rounded-xl bg-white/5 ${!sidebarOpen && 'justify-center'}`}>
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-bold text-sm shadow-lg">
-              {user?.name?.[0]?.toUpperCase() || 'A'}
-            </div>
-            {sidebarOpen && (
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">{user?.name || 'Admin'}</p>
-                <p className="text-xs text-slate-400 truncate">{user?.email || 'admin@system.com'}</p>
-              </div>
-            )}
-          </div>
-
-          {/* Logout */}
-          <button
-            onClick={logout}
-            className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors text-sm font-medium ${!sidebarOpen && 'justify-center'}`}
-          >
-            <LogOut className="w-4 h-4" />
-            {sidebarOpen && <span>Sign Out</span>}
-          </button>
-        </div>
-      </aside>
-
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Top Header */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-8 sticky top-0 z-30">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setMobileMenuOpen(true)}
-              className="lg:hidden p-2 hover:bg-slate-100 rounded-lg text-slate-600"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-            <div className="hidden md:flex items-center gap-2 bg-slate-100 rounded-xl px-4 py-2 w-80">
-              <Search className="w-4 h-4 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search anything..."
-                className="bg-transparent outline-none text-sm text-slate-700 placeholder-slate-400 w-full"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button className="relative p-2 hover:bg-slate-100 rounded-xl text-slate-600 transition-colors">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
-            </button>
-            <div className="w-px h-8 bg-slate-200 mx-1" />
+        {/* Sidebar - Fixed, no scroll on entire sidebar, but nav area scrolls */}
+        <aside
+          className={`fixed lg:relative inset-y-0 left-0 z-50  text-white transition-all duration-300 ease-in-out flex flex-col
+            ${sidebarOpen ? 'w-72' : 'w-20'} 
+            ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+            shadow-2xl h-full`}
+        >
+          {/* Logo Area - Fixed - with Company Logo Images */}
+          <div className={`h-20 flex-shrink-0 flex items-center px-4 border-b border-white/10 ${sidebarOpen ? 'justify-between' : 'justify-center'}`}>
             <div className="flex items-center gap-3">
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-semibold text-slate-800">{user?.name || 'Admin'}</p>
-                <p className="text-xs text-slate-500">Administrator</p>
-              </div>
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-md">
+              {/* Company Logo Image */}
+              <img 
+                src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778781548/a7ea1860-5474-4e8d-800b-72c68b9f6b71-removebg-preview_cpmi08.png"
+                alt="Company Logo"
+                className="w-10 h-10 rounded-xl object-cover "
+              />
+              {sidebarOpen && (
+                <div className="flex  ">
+                  {/* Company Name Image */}
+                  <img 
+                    src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778657661/ChatGPT_Image_May_13__2026__12_33_54_AM-removebg-preview_w7uxh5.png"
+                    alt="GharSeva"
+                    className="h-20 w-auto  object-contain"
+                  />
+                  
+                </div>
+              )}
+            </div>
+            <button
+              onClick={() => setMobileMenuOpen(false)}
+              className="lg:hidden p-1 hover:bg-white/10 rounded-lg"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Navigation - This area will scroll if needed - Hidden Scrollbar */}
+          <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto min-h-0 custom-scrollbar">
+            {/* Dashboard */}
+            <NavItem to="/admin" icon={LayoutDashboard} label="Dashboard" end />
+
+            {/* Provider Management Section */}
+            <CollapsibleSection section="provider" icon={Users} title="Provider Management">
+              <SubNavItem to="/admin/providers" label="All Providers" />
+              <SubNavItem to="/admin/provider-verification" label="KYC Verification" />
+              <SubNavItem to="/admin/skills-verification" label="Skills Verification" />
+              <SubNavItem to="/admin/provider-earnings" label="Earnings & Ratings" />
+              <SubNavItem to="/admin/provider-status" label="Online/Offline Status" />
+            </CollapsibleSection>
+
+            {/* Booking Management Section */}
+            <CollapsibleSection section="booking" icon={Briefcase} title="Booking Management">
+              <SubNavItem to="/admin/bookings" label="All Bookings" />
+              <SubNavItem to="/admin/new-bookings" label="New" />
+              <SubNavItem to="/admin/assigned-bookings" label="Assigned" />
+              <SubNavItem to="/admin/ongoing-bookings" label="Ongoing" />
+              <SubNavItem to="/admin/completed-bookings" label="Completed" />
+              <SubNavItem to="/admin/cancelled-bookings" label="Cancelled" />
+              <SubNavItem to="/admin/reschedule-requests" label="Reschedule Requests" />
+            </CollapsibleSection>
+
+            {/* Payments & Earnings Section */}
+            <CollapsibleSection section="payment" icon={DollarSign} title="Payments & Earnings">
+              <SubNavItem to="/admin/total-revenue" label="Total Revenue" />
+              <SubNavItem to="/admin/commission-system" label="Commission System" />
+              <SubNavItem to="/admin/provider-payouts" label="Provider Payouts" />
+              <SubNavItem to="/admin/pending-settlements" label="Pending Settlements" />
+              <SubNavItem to="/admin/wallet-system" label="Wallet System" />
+              <SubNavItem to="/admin/coupons-offers" label="Coupons / Offers" />
+            </CollapsibleSection>
+
+            {/* Live Tracking */}
+            <NavItem to="/admin/live-tracking" icon={MapPin} label="Live Tracking" />
+
+            {/* Service Management Section */}
+            <CollapsibleSection section="service" icon={Wrench} title="Service Management">
+              <SubNavItem to="/admin/categories" label="Categories" />
+              <SubNavItem to="/admin/services" label="All Services" />
+              <SubNavItem to="/admin/services/plumbing" label="Plumbing" />
+              <SubNavItem to="/admin/services/ac-repair" label="AC Repair" />
+              <SubNavItem to="/admin/services/electrician" label="Electrician" />
+              <SubNavItem to="/admin/services/laundry" label="Laundry" />
+              <SubNavItem to="/admin/services/cleaning" label="Cleaning" />
+              <SubNavItem to="/admin/services/painting" label="Painting" />
+              <SubNavItem to="/admin/services/carpenter" label="Carpenter" />
+              <SubNavItem to="/admin/services/ro-service" label="RO Service" />
+              <SubNavItem to="/admin/services/pest-control" label="Pest Control" />
+            </CollapsibleSection>
+
+            {/* Review & Rating */}
+            <NavItem to="/admin/reviews" icon={Star} label="Review & Rating" />
+
+            {/* Marketing Panel Section */}
+            <CollapsibleSection section="marketing" icon={Megaphone} title="Marketing Panel">
+              <SubNavItem to="/admin/push-notifications" label="Push Notifications" />
+              <SubNavItem to="/admin/sms-alerts" label="SMS Alerts" />
+              <SubNavItem to="/admin/email-campaigns" label="Email Campaigns" />
+              <SubNavItem to="/admin/banner-management" label="Banner Management" />
+            </CollapsibleSection>
+
+            {/* Individual Menu Items - EXACTLY matching App.jsx routes */}
+            <NavItem to="/admin/qr-code" icon={QrCode} label="QR Code Generation" />
+            <NavItem to="/admin/user-wallet" icon={Wallet} label="User Wallet System" />
+            <NavItem to="/admin/provider-wallet" icon={Wallet} label="Provider Wallet System" />
+            <NavItem to="/admin/withdrawals" icon={DollarSign} label="Provider Withdrawal System" />
+            <NavItem to="/admin/super-wallet" icon={ShieldCheck} label="Super Admin Wallet" />
+            <NavItem to="/admin/invoices" icon={Receipt} label="Invoice & Billing" />
+            <NavItem to="/admin/commission-management" icon={Percent} label="Commission Management" />
+            <NavItem to="/admin/escrow" icon={ShieldCheck} label="Escrow Payment System" />
+            <NavItem to="/admin/fraud-security" icon={ShieldCheck} label="Fraud & Security" />
+            <NavItem to="/admin/support" icon={Headphones} label="Customer Support" />
+            <NavItem to="/admin/live-operations" icon={Activity} label="Live Operations" />
+            <NavItem to="/admin/automation" icon={Bell} label="Automation & Reminders" />
+            <NavItem to="/admin/ai-systems" icon={Cpu} label="AI Smart Systems" />
+            <NavItem to="/admin/multi-city" icon={Globe} label="Multi City System" />
+
+            {/* Settings Section */}
+            <CollapsibleSection section="settings" icon={Settings} title="Settings">
+              <SubNavItem to="/admin/app-settings" label="App Settings" />
+              <SubNavItem to="/admin/taxes-gst" label="Taxes / GST" />
+              <SubNavItem to="/admin/commission-percent" label="Commission %" />
+              <SubNavItem to="/admin/payment-gateway" label="Payment Gateway" />
+              <SubNavItem to="/admin/roles-permissions" label="Roles & Permissions" />
+            </CollapsibleSection>
+
+            {/* Company Bank Accounts Section */}
+            <CollapsibleSection section="bank" icon={Building2} title="Company Bank Accounts">
+              <SubNavItem to="/admin/bank-accounts" label="Manage Accounts" />
+              <SubNavItem to="/admin/primary-account" label="Set Primary" />
+              <SubNavItem to="/admin/upi-management" label="UPI ID Management" />
+            </CollapsibleSection>
+          </nav>
+
+          {/* User Profile - Fixed at bottom (Removed Collapse Button) */}
+          <div className="flex-shrink-0 p-3 border-t border-white/10">
+            {/* User Mini Profile */}
+            <div className={`flex items-center gap-3 p-2 rounded-xl bg-white/5 ${!sidebarOpen && 'justify-center'}`}>
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-bold text-sm shadow-lg">
                 {user?.name?.[0]?.toUpperCase() || 'A'}
               </div>
+              {sidebarOpen && (
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white truncate">{user?.name || 'Admin'}</p>
+                  <p className="text-xs text-slate-400 truncate">{user?.email || 'admin@system.com'}</p>
+                </div>
+              )}
             </div>
-          </div>
-        </header>
 
-        {/* Page Content */}
-        <main className="flex-1 p-4 lg:p-8 overflow-auto">
-          <Outlet />
-        </main>
+            {/* Logout */}
+            <button
+              onClick={logout}
+              className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors text-sm font-medium mt-2 ${!sidebarOpen && 'justify-center'}`}
+            >
+              <LogOut className="w-4 h-4" />
+              {sidebarOpen && <span>Sign Out</span>}
+            </button>
+          </div>
+        </aside>
+
+        {/* Right Side - Header + Content */}
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          
+          {/* Top Header - Fixed */}
+          <header className="h-16 flex-shrink-0 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-8">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setMobileMenuOpen(true)}
+                className="lg:hidden p-2 hover:bg-slate-100 rounded-lg text-slate-600"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+              <div className="hidden md:flex items-center gap-2 bg-slate-100 rounded-xl px-4 py-2 w-80">
+                <Search className="w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search anything..."
+                  className="bg-transparent outline-none text-sm text-slate-700 placeholder-slate-400 w-full"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button className="relative p-2 hover:bg-slate-100 rounded-xl text-slate-600 transition-colors">
+                <Bell className="w-5 h-5" />
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
+              </button>
+              <div className="w-px h-8 bg-slate-200 mx-1" />
+              <div className="flex items-center gap-3">
+                <div className="text-right hidden sm:block">
+                  <p className="text-sm font-semibold text-slate-800">{user?.name || 'Admin'}</p>
+                  <p className="text-xs text-slate-500 uppercase">Operation Center</p>
+                </div>
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-md">
+                  {user?.name?.[0]?.toUpperCase() || 'A'}
+                </div>
+              </div>
+            </div>
+          </header>
+
+          {/* Page Content - ONLY this area scrolls with hidden scrollbar */}
+          <main className="flex-1 overflow-y-auto p-4 lg:p-8 min-h-0 custom-scrollbar">
+            <Outlet />
+          </main>
+        </div>
       </div>
+
+      {/* Global Styles for Custom Scrollbar */}
+      <style jsx>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+          height: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(100, 116, 139, 0.3);
+          border-radius: 10px;
+          transition: all 0.2s ease;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(100, 116, 139, 0.5);
+        }
+        /* For Firefox */
+        .custom-scrollbar {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(100, 116, 139, 0.3) transparent;
+        }
+      `}</style>
     </div>
   );
 };
 
 export default AdminLayout;
- 
