@@ -2,6 +2,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchCategories, fetchFeaturedServices, fetchPopularServices } from '../services/api';
+import InfiniteReviewsMarquee from '../components/SliderImages';
 
 const sliderImages = [
   "https://www.urbancompany.com/img?bucket=urbanclap-prod&quality=90&format=auto/w_1232,dpr_2,fl_progressive:steep,q_auto:low,f_auto,c_limit/images/supply/customer-app-supply/1778178479978-7aada8.jpeg",
@@ -350,47 +351,10 @@ export default function Home() {
       </section>
 
       {/* Customer Reviews */}
-      <section className="py-14 md:py-20 px-5 sm:px-6 bg-slate-50">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 md:mb-12">
-            <div>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-2">Our Customer Reviews</h2>
-              <p className="text-slate-500 italic text-sm md:text-base">What our happy clients say about Ghar Seva</p>
-            </div>
-            <div className="flex gap-3 self-end sm:self-auto">
-              <button onClick={() => scrollReview('left')} className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-white rounded-full shadow-md border border-gray-100 text-slate-600 hover:bg-emerald-600 hover:text-white transition-all active:scale-90 tap-feedback">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5 md:w-6 md:h-6">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-                </svg>
-              </button>
-              <button onClick={() => scrollReview('right')} className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-white rounded-full shadow-md border border-gray-100 text-slate-600 hover:bg-emerald-600 hover:text-white transition-all active:scale-90 tap-feedback">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5 md:w-6 md:h-6">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                </svg>
-              </button>
-            </div>
-          </div>
-          <div ref={reviewScrollRef} className="flex gap-5 overflow-x-auto no-scrollbar horizontal-scroll pb-6 md:pb-8 scroll-smooth">
-            {reviews.map((review) => (
-              <div key={review.id} className="min-w-[280px] sm:min-w-[360px] md:min-w-[400px] bg-white p-5 md:p-8 rounded-2xl shadow-md border border-gray-50 flex flex-col justify-between">
-                <div>
-                  <div className="flex gap-1 mb-4">
-                    {[...Array(review.rating)].map((_, i) => <span key={i} className="text-yellow-500 text-lg md:text-xl">★</span>)}
-                  </div>
-                  <p className="text-slate-600 leading-relaxed italic text-sm md:text-base mb-6">"{review.comment}"</p>
-                </div>
-                <div className="flex items-center gap-3 md:gap-4">
-                  <img src={review.image} alt={review.name} className="w-10 h-10 md:w-12 md:h-12 rounded-full object-cover border-2 border-white shadow-md" />
-                  <div>
-                    <h4 className="font-bold text-slate-900 text-sm md:text-base">{review.name}</h4>
-                    <p className="text-xs text-slate-400">{review.date}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+         <InfiniteReviewsMarquee/>
+
+    
+      
 
       <style>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -403,3 +367,31 @@ export default function Home() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
