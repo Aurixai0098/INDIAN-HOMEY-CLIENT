@@ -78,10 +78,10 @@ export default function Home() {
     const checkScreenSize = () => {
       setIsMobile(window.innerWidth < 768);
     };
-    
+
     checkScreenSize();
     window.addEventListener('resize', checkScreenSize);
-    
+
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
 
@@ -143,8 +143,8 @@ export default function Home() {
   };
 
   // Different images for different screen sizes
-  const desktopBgImage = "https://res.cloudinary.com/djtvxmttf/image/upload/v1778416255/ChatGPT_Image_May_10_2026_05_59_03_PM_fmuelr.png";
-  const mobileBgImage = "https://res.cloudinary.com/dfqsa6hoc/image/upload/v1778677612/l0_pebpwe.png";
+  const desktopBgImage = "https://res.cloudinary.com/djtvxmttf/image/upload/v1778755088/banner_1_vl9ona.png";
+  const mobileBgImage = "https://res.cloudinary.com/djtvxmttf/image/upload/v1778755202/banner_mobile_1_ottjgx.png";
 
   if (loading) {
     return (
@@ -162,7 +162,7 @@ export default function Home() {
       {/* Hero Section with Responsive Background */}
       <section
         className="relative pt-8 pb-20 md:pt-32 md:pb-32 px-5 sm:px-6 overflow-hidden bg-cover bg-center bg-no-repeat"
-        style={{ 
+        style={{
           backgroundImage: `url('${isMobile ? mobileBgImage : desktopBgImage}')`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
@@ -170,23 +170,23 @@ export default function Home() {
         }}
       >
         {/* Dark overlay for better text readability */}
-        <div className="absolute inset-0 bg-black/40 z-0"></div>
+        <div className="absolute inset-0  z-0"></div>
 
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center relative z-10 gap-8">
-          <div className="md:w-1/2 text-white space-y-5 md:space-y-6 text-center md:text-left">
-            <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold leading-tight">
-              Expert Professional
-              <br className="hidden sm:block" /> 
-              Home Services,
-              <br />
-              Book Online
-            </h1>
-            <p className="text-base md:text-lg opacity-90 max-w-md mx-auto md:mx-0">
-              Service On Wheel helps you live smarter, giving you time to focus on what's most important.
-            </p>
-            <button className="bg-white text-gray-800 px-6 py-2.5 md:px-8 md:py-3 rounded-md font-semibold hover:bg-gray-100 transition shadow-lg active:scale-95 tap-feedback">
-              Contact Us
-            </button>
+          <div className="w-full flex     justify-center  items-end mt-24  text-white space-y-5 md:space-y-6 text-center md:text-left">
+            <div>
+              <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold leading-tight">
+                {/* Expert Professional */}
+                <br className="hidden sm:block" />
+                {/* Home Services, */}
+                <br />
+                {/* Book Online */}
+              </h1>
+              <p className="text-base md:text-lg opacity-90 max-w-md mx-auto md:mx-0">
+                {/* Service On Wheel helps you live smarter, giving you time to focus on what's most important. */}
+              </p>
+            </div>
+           
           </div>
         </div>
       </section>
@@ -351,10 +351,10 @@ export default function Home() {
       </section>
 
       {/* Customer Reviews */}
-         <InfiniteReviewsMarquee/>
+      <InfiniteReviewsMarquee />
 
-    
-      
+
+
 
       <style>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }

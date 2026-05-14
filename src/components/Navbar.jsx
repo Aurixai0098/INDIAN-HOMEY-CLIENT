@@ -26,7 +26,7 @@ const Navbar = () => {
   const [searchAddress, setSearchAddress] = useState('');
   const [isAddressSearching, setIsAddressSearching] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-  
+
   // Map states
   const [mapLat, setMapLat] = useState(28.6139);
   const [mapLng, setMapLng] = useState(77.2090);
@@ -278,40 +278,20 @@ const Navbar = () => {
               {/* Logo */}
               <Link to="/" className="flex items-center gap-3 shrink-0 no-underline" onMouseEnter={handleLogoRotate} onClick={handleLogoRotate}>
                 <div className="rounded-lg w-20 h-20 flex items-center justify-center overflow-hidden bg-white   p-1  ">
-                  <img 
-                    src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778658121/a7ea1860-5474-4e8d-800b-72c68b9f6b71.png" 
-                    alt="Logo" 
+                  <img
+                    src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778658121/a7ea1860-5474-4e8d-800b-72c68b9f6b71.png"
+                    alt="Logo"
                     className="w-full h-full object-contain"
                   />
                 </div>
                 <div className="flex flex-col">
-                  <div className="flex items-center gap-0">
-                    <span className="text-3xl font-bold tracking-tight text-[#FF9933]">IN</span>
-                    <div className="relative inline-flex items-center justify-center">
-                      <span className="text-3xl font-bold tracking-tight text-[#000060] relative z-10">D</span>
-                      <div className="absolute inset-0 flex items-center justify-center z-0 opacity-70">
-                        <div className="relative w-6 h-6 flex items-center justify-center">
-                          <div className="absolute w-5 h-5 rounded-full border border-[#000060]"></div>
-                          <div className="absolute w-1 h-1 rounded-full bg-[#000060]"></div>
-                          <div className="absolute inset-0 animate-spin-slow">
-                            {[...Array(24)].map((_, i) => (
-                              <div
-                                key={i}
-                                className="absolute w-[0.8px] h-2 bg-[#000060] left-1/2 top-0 origin-bottom"
-                                style={{ transform: `translateX(-50%) rotate(${i * 15}deg)` }}
-                              ></div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <span className="text-3xl font-bold tracking-tight text-[#000060]">I</span>
-                    <span className="text-3xl font-bold tracking-tight text-[#138808]">AN</span>
-                    <span className="text-3xl font-bold tracking-tight text-gray-800 ml-1">HOMEY</span>
+                  <div className="w-32 h-16">
+                    <img src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778752596/3b3dd98d-e461-4412-ba36-b5086a6e6331.png" alt="logo name"
+                      className=' w-full  h-full'
+                    />
+
                   </div>
-                  <div className="flex items-center gap-1 mt-0.5">
-                    <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Home services at your doorstep</span>
-                  </div>
+
                 </div>
               </Link>
 
@@ -385,25 +365,11 @@ const Navbar = () => {
                   <img src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778658121/a7ea1860-5474-4e8d-800b-72c68b9f6b71.png" alt="Logo" className="w-full h-full object-contain" />
                 </div>
                 <div className="flex flex-col">
-                  <div className="flex items-center gap-0">
-                    <span className="text-base font-bold text-[#FF9933]">IN</span>
-                    <div className="relative inline-flex items-center justify-center">
-                      <span className="text-base font-bold text-[#000060] relative z-10">D</span>
-                      <div className="absolute inset-0 flex items-center justify-center z-0 opacity-70">
-                        <div className="relative w-3.5 h-3.5 flex items-center justify-center">
-                          <div className="absolute w-3 h-3 rounded-full border border-[#000060]"></div>
-                          <div className="absolute w-0.5 h-0.5 rounded-full bg-[#000060]"></div>
-                          <div className="absolute inset-0 animate-spin-slow">
-                            {[...Array(12)].map((_, i) => (
-                              <div key={i} className="absolute w-[0.5px] h-1.5 bg-[#000060] left-1/2 top-0 origin-bottom" style={{ transform: `translateX(-50%) rotate(${i * 30}deg)` }}></div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <span className="text-base font-bold text-[#000060]">I</span>
-                    <span className="text-base font-bold text-[#138808]">AN</span>
-                    <span className="text-base font-bold text-gray-800 ml-0.5">HOMEY</span>
+                  <div className="w-32 h-16">
+                    <img src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778752596/3b3dd98d-e461-4412-ba36-b5086a6e6331.png" alt="logo name"
+                      className=' w-full  h-full'
+                    />
+
                   </div>
                 </div>
               </Link>
@@ -411,8 +377,8 @@ const Navbar = () => {
               {/* Right Icons - Location, Cart, Hamburger */}
               <div className="flex items-center gap-2 shrink-0">
                 {/* Location Icon */}
-                <button 
-                  onClick={() => setShowLocationPopup(true)} 
+                <button
+                  onClick={() => setShowLocationPopup(true)}
                   className="p-2 text-gray-600 bg-gray-50 border border-gray-200 rounded-full transition-colors hover:bg-gray-100"
                 >
                   <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -434,8 +400,8 @@ const Navbar = () => {
                 </Link>
 
                 {/* Hamburger Menu Button */}
-                <button 
-                  onClick={() => setMobileMenuOpen(true)} 
+                <button
+                  onClick={() => setMobileMenuOpen(true)}
                   className="flex flex-col items-center justify-center gap-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 w-9 h-9 rounded-xl transition-all shadow-md active:scale-95"
                 >
                   <span className="w-4 h-0.5 bg-white rounded-full"></span>
@@ -484,12 +450,12 @@ const Navbar = () => {
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
-            
+
             <div className="p-5 space-y-4">
               {/* Current Location Button */}
-              <button 
-                onClick={getCurrentLocation} 
-                disabled={isLocating} 
+              <button
+                onClick={getCurrentLocation}
+                disabled={isLocating}
                 className="w-full flex items-center justify-center gap-3 bg-blue-50 hover:bg-blue-100 text-blue-700 py-3 px-4 rounded-xl transition border border-blue-200 font-semibold"
               >
                 {isLocating ? (
@@ -519,17 +485,17 @@ const Navbar = () => {
 
               {/* Search Address */}
               <div className="flex flex-col gap-2">
-                <input 
-                  type="text" 
-                  value={searchAddress} 
-                  onChange={(e) => setSearchAddress(e.target.value)} 
-                  placeholder="Type full address, city, or pincode..." 
+                <input
+                  type="text"
+                  value={searchAddress}
+                  onChange={(e) => setSearchAddress(e.target.value)}
+                  placeholder="Type full address, city, or pincode..."
                   className="w-full bg-white text-gray-900 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
-                  onKeyPress={(e) => e.key === 'Enter' && searchAddressAndShowMap()} 
+                  onKeyPress={(e) => e.key === 'Enter' && searchAddressAndShowMap()}
                 />
-                <button 
-                  onClick={searchAddressAndShowMap} 
-                  disabled={isAddressSearching} 
+                <button
+                  onClick={searchAddressAndShowMap}
+                  disabled={isAddressSearching}
                   className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-xl text-sm font-medium transition"
                 >
                   {isAddressSearching ? 'Searching...' : 'Search on Map'}
@@ -557,13 +523,13 @@ const Navbar = () => {
               </div>
 
               {/* Manual City Input */}
-              <input 
-                type="text" 
-                value={customLocation} 
-                onChange={(e) => setCustomLocation(e.target.value)} 
-                placeholder="Enter city name (e.g., Mumbai, Delhi)" 
+              <input
+                type="text"
+                value={customLocation}
+                onChange={(e) => setCustomLocation(e.target.value)}
+                placeholder="Enter city name (e.g., Mumbai, Delhi)"
                 className="w-full bg-white text-gray-900 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
-                onKeyPress={(e) => e.key === 'Enter' && saveCustomLocation()} 
+                onKeyPress={(e) => e.key === 'Enter' && saveCustomLocation()}
               />
               <button onClick={saveCustomLocation} className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-xl text-sm font-medium transition">
                 Save Location
@@ -586,17 +552,15 @@ const Navbar = () => {
       )}
 
       {/* ==================== HAMBURGER MENU DRAWER ==================== */}
-      <div 
-        className={`fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-[1050] transition-all duration-300 ${
-          mobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible'
-        }`} 
+      <div
+        className={`fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-[1050] transition-all duration-300 ${mobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible'
+          }`}
         onClick={() => setMobileMenuOpen(false)}
       ></div>
-      
-      <div 
-        className={`fixed top-0 right-0 bottom-0 w-80 bg-white shadow-2xl z-[1100] transform transition-all duration-300 ease-out flex flex-col ${
-          mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
+
+      <div
+        className={`fixed top-0 right-0 bottom-0 w-80 bg-white shadow-2xl z-[1100] transform transition-all duration-300 ease-out flex flex-col ${mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
+          }`}
       >
         {/* Menu Header */}
         <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-5 text-white">
