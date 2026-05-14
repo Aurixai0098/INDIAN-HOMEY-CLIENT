@@ -113,9 +113,9 @@ const InfiniteReviewsMarquee = ({ reviews }) => {
         {/* Marquee Container */}
         <div className="relative space-y-5">
           {/* Left Fade */}
-          <div className="absolute left-0 top-0 bottom-0 w-16 md:w-32 bg-gradient-to-r from-slate-50 to-transparent z-10 pointer-events-none"></div>
+          <div className="absolute left-0 top-0 bottom-0 w-16 md:w-32  z-10 pointer-events-none"></div>
           {/* Right Fade */}
-          <div className="absolute right-0 top-0 bottom-0 w-16 md:w-32 bg-gradient-to-l from-slate-50 to-transparent z-10 pointer-events-none"></div>
+          <div className="absolute right-0 top-0 bottom-0 w-16 md:w-32  z-10 pointer-events-none"></div>
 
           {/* Track 1 - Scrolls Left */}
           <div className="flex gap-5 animate-marquee-left hover:[animation-play-state:paused]">
