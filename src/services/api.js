@@ -1,6 +1,28 @@
 // src/services/api.js
 
-const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:5000/api/v1';
+// ✅ Dynamic BASE_URL - works on local network too
+const getBaseUrl = () => {
+    // If in production (Vercel), use the deployed backend URL
+    if (import.meta.env.PROD) {
+        return import.meta.env.VITE_BASE_URL || 'https://ghar-seva-server-1.onrender.com/api/v1';
+    }
+    
+    // For development - check if we're on local network
+    const hostname = window.location.hostname;
+    
+    // If accessing via IP address (not localhost)
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+        // Use the same IP but with backend port
+        return `http://${hostname}:5000/api/v1`;
+    }
+    
+    // Default localhost
+    return 'http://localhost:5000/api/v1';
+};
+
+const BASE_URL = getBaseUrl();
+
+console.log('🔧 API BASE_URL:', BASE_URL);
 
 // Cache for categories
 let categoriesCache = {
