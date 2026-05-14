@@ -1,8 +1,251 @@
-// src/pages/ServiceDetailPage.jsx
+ 
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { fetchServiceBySlug, fetchCategories } from '../services/api';
 import { useCart } from '../context/CartContext';
+
+// Modern Lucide Icons (install: npm install lucide-react)
+import {
+  ShoppingCart,
+  Check,
+  Plus,
+  Star,
+  Clock,
+  ShieldCheck,
+  Truck,
+  ChevronRight,
+  ChevronLeft,
+  ChevronDown,
+  Heart,
+  Share2,
+  MapPin,
+  Phone,
+  Mail,
+  Award,
+  Users,
+  Sparkles,
+  X,
+  ImageIcon,
+  ArrowRight,
+  Home,
+  Tag,
+  ThumbsUp,
+  MessageCircle,
+  CalendarDays,
+  Zap
+} from 'lucide-react';
+
+// ─── Shimmer Skeleton ───────────────────────────────────────────────
+const ShimmerSkeleton = () => (
+  <div className="animate-pulse space-y-6">
+    <div className="h-8 bg-slate-200 rounded-lg w-64"></div>
+    <div className="grid md:grid-cols-2 gap-6">
+      <div className="aspect-video bg-slate-200 rounded-2xl"></div>
+      <div className="space-y-4">
+        <div className="h-8 bg-slate-200 rounded-lg w-3/4"></div>
+        <div className="h-4 bg-slate-200 rounded-lg w-full"></div>
+        <div className="h-4 bg-slate-200 rounded-lg w-2/3"></div>
+        <div className="h-12 bg-slate-200 rounded-xl w-40"></div>
+      </div>
+    </div>
+  </div>
+);
+
+// ─── Image Gallery ──────────────────────────────────────────────────
+const ImageGallery = ({ images, name }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+
+  if (!images || images.length === 0) {
+    return (
+      <div className="aspect-[4/3] bg-gradient-to-br from-slate-100 to-slate-200 rounded-2xl flex items-center justify-center">
+        <div className="text-center">
+          <ImageIcon className="w-16 h-16 text-slate-300 mx-auto mb-2" />
+          <p className="text-slate-400 text-sm">No images available</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Main Image */}
+      <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-slate-100 group cursor-pointer" onClick={() => setLightboxOpen(true)}>
+        <img
+          src={images[currentIndex].url}
+          alt={name}
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+        />
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+        
+        {/* Navigation Arrows */}
+        {images.length > 1 && (
+          <>
+            <button
+              onClick={(e) => { e.stopPropagation(); setCurrentIndex(prev => prev === 0 ? images.length - 1 : prev - 1); }}
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white"
+            >
+              <ChevronLeft className="w-5 h-5 text-slate-700" />
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); setCurrentIndex(prev => prev === images.length - 1 ? 0 : prev + 1); }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white"
+            >
+              <ChevronRight className="w-5 h-5 text-slate-700" />
+            </button>
+          </>
+        )}
+        
+        {/* Image Counter */}
+        <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-full">
+          {currentIndex + 1} / {images.length}
+        </div>
+      </div>
+
+      {/* Thumbnails */}
+      {images.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {images.map((img, idx) => (
+            <button
+              key={idx}
+              onClick={() => setCurrentIndex(idx)}
+              className={`flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border-2 transition-all
+                ${currentIndex === idx ? 'border-emerald-500 shadow-md' : 'border-transparent hover:border-slate-300'}`}
+            >
+              <img src={img.url} alt={`${name} ${idx + 1}`} className="w-full h-full object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Lightbox */}
+      {lightboxOpen && (
+        <div className="fixed inset-0 z-[1000] bg-black/95 flex items-center justify-center p-4 animate-fadeIn" onClick={() => setLightboxOpen(false)}>
+          <button className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors">
+            <X className="w-6 h-6" />
+          </button>
+          <img
+            src={images[currentIndex].url}
+            alt={name}
+            className="max-w-full max-h-[90vh] object-contain rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4">
+            <button
+              onClick={(e) => { e.stopPropagation(); setCurrentIndex(prev => prev === 0 ? images.length - 1 : prev - 1); }}
+              className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+            <span className="text-white text-sm font-medium">{currentIndex + 1} / {images.length}</span>
+            <button
+              onClick={(e) => { e.stopPropagation(); setCurrentIndex(prev => prev === images.length - 1 ? 0 : prev + 1); }}
+              className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
+            >
+              <ChevronRight className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─── Accordion Component ────────────────────────────────────────────
+const Accordion = ({ title, children, defaultOpen = false }) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  return (
+    <div className="border border-slate-100 rounded-xl overflow-hidden">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between p-4 bg-white hover:bg-slate-50 transition-colors"
+      >
+        <span className="font-semibold text-slate-800">{title}</span>
+        <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+      {isOpen && (
+        <div className="p-4 bg-slate-50/50 border-t border-slate-100 animate-fadeIn">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─── Review Card ────────────────────────────────────────────────────
+const ReviewCard = ({ review }) => (
+  <div className="bg-white rounded-xl p-4 border border-slate-100">
+    <div className="flex items-center gap-3 mb-3">
+      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-sm">
+        {review.user?.name?.[0]?.toUpperCase() || '?'}
+      </div>
+      <div>
+        <p className="font-semibold text-slate-800 text-sm">{review.user?.name || 'Anonymous'}</p>
+        <div className="flex items-center gap-1">
+          {[...Array(5)].map((_, i) => (
+            <Star key={i} className={`w-3 h-3 ${i < review.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-200'}`} />
+          ))}
+        </div>
+      </div>
+      <span className="ml-auto text-xs text-slate-400">{new Date(review.createdAt).toLocaleDateString()}</span>
+    </div>
+    <p className="text-sm text-slate-600 leading-relaxed">{review.comment}</p>
+  </div>
+);
+
+// ─── Related Service Card ───────────────────────────────────────────
+const RelatedCard = ({ service }) => (
+  <Link to={`/service/${service.slug}`} className="group bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-xl hover:shadow-slate-200/50 hover:-translate-y-1 transition-all duration-300">
+    <div className="aspect-[4/3] bg-slate-100 overflow-hidden relative">
+      <img
+        src={service.images?.[0]?.url || `https://ui-avatars.com/api/?name=${encodeURIComponent(service.name)}&background=random&size=400`}
+        alt={service.name}
+        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+      />
+      <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg text-xs font-bold text-slate-800">
+        ₹{service.basePrice}
+      </div>
+    </div>
+    <div className="p-4">
+      <h3 className="font-semibold text-slate-800 line-clamp-1 group-hover:text-emerald-600 transition-colors">{service.name}</h3>
+      <div className="flex items-center gap-2 mt-2">
+        <div className="flex items-center gap-1">
+          <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+          <span className="text-xs font-medium text-slate-600">{service.rating?.average || '4.5'}</span>
+        </div>
+        <span className="text-slate-300">|</span>
+        <span className="text-xs text-slate-500">{service.bookingsCount || '0'}+ bookings</span>
+      </div>
+    </div>
+  </Link>
+);
+
+// ─── Sidebar Category Item ──────────────────────────────────────────
+const CategoryItem = ({ cat, isActive }) => (
+  <Link
+    to={`/category/${cat.slug}`}
+    className={`flex items-center gap-3 px-4 py-3.5 transition-all duration-200 group
+      ${isActive
+        ? 'bg-gradient-to-r from-emerald-50 to-white text-emerald-700 font-semibold'
+        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+      }`}
+  >
+    <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all
+      ${isActive
+        ? 'bg-emerald-100 text-emerald-600 shadow-sm'
+        : 'bg-slate-100 text-slate-400 group-hover:bg-white group-hover:shadow-sm'
+      }`}
+    >
+      {cat.icon?.url ? (
+        <img src={cat.icon.url} alt={cat.name} className="w-5 h-5 object-contain" />
+      ) : (
+        <Tag className="w-4 h-4" />
+      )}
+    </div>
+    <span className="text-sm">{cat.name}</span>
+    {isActive && <ChevronRight className="w-4 h-4 text-emerald-500 ml-auto" />}
+  </Link>
+);
 
 const ServiceDetailPage = () => {
   const { slug } = useParams();
@@ -15,10 +258,9 @@ const ServiceDetailPage = () => {
   const [loadingSidebar, setLoadingSidebar] = useState(true);
   const [error, setError] = useState(null);
   const [added, setAdded] = useState(false);
+  const [liked, setLiked] = useState(false);
 
- useEffect(()=>{
-    window.scrollTo(0,0)
-  },[])
+  useEffect(() => { window.scrollTo(0, 0); }, []);
 
   const loadService = async () => {
     setLoading(true);
@@ -43,9 +285,7 @@ const ServiceDetailPage = () => {
     setLoadingSidebar(true);
     try {
       const res = await fetchCategories();
-      if (res.success) {
-        setAllCategories(res.data.categories || []);
-      }
+      if (res.success) setAllCategories(res.data.categories || []);
     } catch (err) {
       console.error('Error loading categories:', err);
     } finally {
@@ -61,29 +301,36 @@ const ServiceDetailPage = () => {
   const handleAddToCart = () => {
     addToCart(service);
     setAdded(true);
-    setTimeout(() => setAdded(false), 1500);
+    setTimeout(() => setAdded(false), 2000);
   };
 
+  // ─── Loading State ────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading service details...</p>
+      <div className="min-h-screen bg-slate-50">
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <ShimmerSkeleton />
         </div>
       </div>
     );
   }
 
+  // ─── Error State ──────────────────────────────────────────────────
   if (error || !service) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center max-w-md px-4">
-          <div className="text-6xl mb-4">🔧</div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">Service not found</h1>
-          <p className="text-gray-600 mb-6">{error || 'The service you are looking for does not exist.'}</p>
-          <Link to="/" className="bg-emerald-600 text-white px-6 py-2 rounded-xl hover:bg-emerald-700 transition">
-            Go Home
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
+        <div className="text-center max-w-md">
+          <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Zap className="w-12 h-12 text-slate-400" />
+          </div>
+          <h1 className="text-3xl font-bold text-slate-800 mb-3">Service Not Found</h1>
+          <p className="text-slate-500 mb-8">{error || 'The service you are looking for does not exist or has been removed.'}</p>
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 bg-slate-900 text-white px-8 py-3 rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 hover:shadow-xl hover:-translate-y-0.5 font-medium"
+          >
+            <Home className="w-4 h-4" />
+            Back to Home
           </Link>
         </div>
       </div>
@@ -91,76 +338,118 @@ const ServiceDetailPage = () => {
   }
 
   return (
-    <div className="bg-gray-50 min-h-screen">
+    <div className="bg-slate-50 min-h-screen">
+      {/* Breadcrumb */}
+      <div className="bg-white border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <nav className="flex items-center gap-2 text-sm text-slate-500">
+            <Link to="/" className="flex items-center gap-1 hover:text-emerald-600 transition-colors">
+              <Home className="w-3.5 h-3.5" />
+              Home
+            </Link>
+            <ChevronRight className="w-3.5 h-3.5" />
+            <Link to={`/category/${service.category?.slug}`} className="hover:text-emerald-600 transition-colors">
+              {service.category?.name}
+            </Link>
+            <ChevronRight className="w-3.5 h-3.5" />
+            <span className="text-slate-800 font-medium">{service.name}</span>
+          </nav>
+        </div>
+      </div>
+
       <div className="max-w-7xl mx-auto px-4 py-8 md:py-12">
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* MAIN CONTENT */}
-          <main className="flex-1">
-            {/* Breadcrumb */}
-            <div className="text-sm text-gray-500 mb-4">
-              <Link to="/" className="hover:text-emerald-600">Home</Link> / 
-              <Link to={`/category/${service.category?.slug}`} className="hover:text-emerald-600 ml-1">
-                {service.category?.name}
-              </Link> / 
-              <span className="text-gray-700 ml-1">{service.name}</span>
-            </div>
-
-            {/* Image + Basic Info + Includes/Excludes Grid */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-8">
-              <div className="grid md:grid-cols-2 gap-6 p-6">
-                {/* LEFT: Image */}
-                <div className="aspect-video bg-gray-100 rounded-xl overflow-hidden">
-                  {service.images && service.images.length > 0 ? (
-                    <img
-                      src={service.images[0].url}
-                      alt={service.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-400">
-                      No image available
-                    </div>
-                  )}
+          {/* ═══ MAIN CONTENT ═══ */}
+          <main className="flex-1 min-w-0 space-y-8">
+            {/* Hero Section */}
+            <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+              <div className="grid md:grid-cols-2 gap-0">
+                {/* Image Gallery */}
+                <div className="p-6">
+                  <ImageGallery images={service.images} name={service.name} />
                 </div>
 
-                {/* RIGHT: Title, Rating, Description, Price, Add to Cart */}
-                <div>
-                  <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">{service.name}</h1>
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="flex items-center gap-1">
-                      <span className="text-amber-500">★</span>
-                      <span className="font-medium">{service.rating?.average || 0}</span>
-                      <span className="text-gray-400">({service.rating?.count || 0} reviews)</span>
+                {/* Info Section */}
+                <div className="p-6 md:p-8 flex flex-col justify-center border-l border-slate-100">
+                  <div className="flex items-start justify-between gap-4 mb-3">
+                    <h1 className="text-2xl md:text-3xl font-bold text-slate-800 leading-tight">{service.name}</h1>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <button
+                        onClick={() => setLiked(!liked)}
+                        className={`p-2.5 rounded-xl transition-all ${liked ? 'bg-red-50 text-red-500' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
+                      >
+                        <Heart className={`w-5 h-5 ${liked ? 'fill-red-500' : ''}`} />
+                      </button>
+                      <button className="p-2.5 bg-slate-100 text-slate-400 hover:bg-slate-200 rounded-xl transition-colors">
+                        <Share2 className="w-5 h-5" />
+                      </button>
                     </div>
-                    <span className="text-gray-300">|</span>
-                    <span className="text-gray-500 text-sm">{service.bookingsCount || 0}+ bookings</span>
                   </div>
-                  <p className="text-gray-600 leading-relaxed mb-6">{service.description}</p>
 
-                  {/* Price & Add to Cart */}
-                  <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-gray-100">
+                  {/* Rating & Stats */}
+                  <div className="flex flex-wrap items-center gap-4 mb-4">
+                    <div className="flex items-center gap-1.5 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-200">
+                      <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                      <span className="font-bold text-amber-700">{service.rating?.average || '4.5'}</span>
+                      <span className="text-amber-600 text-sm">({service.rating?.count || '0'} reviews)</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-slate-500 text-sm">
+                      <Users className="w-4 h-4" />
+                      <span>{service.bookingsCount || '0'}+ bookings</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-slate-500 text-sm">
+                      <Clock className="w-4 h-4" />
+                      <span>Same day service</span>
+                    </div>
+                  </div>
+
+                  <p className="text-slate-600 leading-relaxed mb-6">{service.description}</p>
+
+                  {/* Trust Badges */}
+                  <div className="flex flex-wrap gap-3 mb-6">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 text-xs font-medium rounded-lg border border-emerald-200">
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      Verified Provider
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-lg border border-blue-200">
+                      <Truck className="w-3.5 h-3.5" />
+                      Free Cancellation
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-700 text-xs font-medium rounded-lg border border-purple-200">
+                      <Award className="w-3.5 h-3.5" />
+                      Best Price
+                    </span>
+                  </div>
+
+                  {/* Price & CTA */}
+                  <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-100">
                     <div>
-                      <span className="text-3xl font-bold text-emerald-600">₹{service.basePrice}</span>
-                      <span className="text-gray-400 ml-1">
-                        /{service.priceUnit?.replace('_', ' ') || 'service'}
-                      </span>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                          ₹{service.basePrice}
+                        </span>
+                        <span className="text-slate-400 text-sm">
+                          /{service.priceUnit?.replace('_', ' ') || 'service'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-1">Inclusive of all taxes</p>
                     </div>
                     <button
                       onClick={handleAddToCart}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-xl font-semibold transition-all active:scale-95 flex items-center gap-2 shadow-md"
+                      className={`flex items-center gap-2 px-8 py-4 rounded-2xl font-bold text-sm transition-all shadow-lg
+                        ${added
+                          ? 'bg-emerald-500 text-white shadow-emerald-500/30 scale-[0.98]'
+                          : 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-900/20 hover:shadow-xl hover:-translate-y-0.5 active:scale-95'
+                        }`}
                     >
                       {added ? (
                         <>
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                          </svg>
-                          Added to Cart
+                          <Check className="w-5 h-5 animate-bounce" />
+                          Added to Cart!
                         </>
                       ) : (
                         <>
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                          </svg>
+                          <ShoppingCart className="w-5 h-5" />
                           Add to Cart
                         </>
                       )}
@@ -168,121 +457,196 @@ const ServiceDetailPage = () => {
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* INCLUDES / EXCLUDES / REQUIREMENTS - 3 small boxes below the image+info row */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 pt-0 border-t border-gray-100">
-                {service.includes && service.includes.length > 0 && (
-                  <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                    <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2 text-sm uppercase tracking-wide">
-                      <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                      </svg>
-                      What's Included
-                    </h3>
-                    <ul className="space-y-1.5 text-sm text-gray-600">
-                      {service.includes.map((item, idx) => (
-                        <li key={idx} className="flex items-start gap-2">
-                          <span className="text-emerald-500 text-xs">✓</span> {item}
-                        </li>
-                      ))}
-                    </ul>
+            {/* Details Accordions */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {service.includes && service.includes.length > 0 && (
+                <div className="bg-white rounded-2xl border border-slate-100 p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
+                      <Check className="w-4 h-4 text-emerald-600" />
+                    </div>
+                    <h3 className="font-bold text-slate-800">What's Included</h3>
                   </div>
-                )}
+                  <ul className="space-y-2.5">
+                    {service.includes.map((item, idx) => (
+                      <li key={idx} className="flex items-start gap-2.5 text-sm text-slate-600">
+                        <Check className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
-                {service.excludes && service.excludes.length > 0 && (
-                  <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                    <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2 text-sm uppercase tracking-wide">
-                      <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                      Exclusions
-                    </h3>
-                    <ul className="space-y-1.5 text-sm text-gray-600">
-                      {service.excludes.map((item, idx) => (
-                        <li key={idx} className="flex items-start gap-2">
-                          <span className="text-red-400 text-xs">✗</span> {item}
-                        </li>
-                      ))}
-                    </ul>
+              {service.excludes && service.excludes.length > 0 && (
+                <div className="bg-white rounded-2xl border border-slate-100 p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
+                      <X className="w-4 h-4 text-red-500" />
+                    </div>
+                    <h3 className="font-bold text-slate-800">Exclusions</h3>
                   </div>
-                )}
+                  <ul className="space-y-2.5">
+                    {service.excludes.map((item, idx) => (
+                      <li key={idx} className="flex items-start gap-2.5 text-sm text-slate-600">
+                        <X className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
-                {service.requirements && service.requirements.length > 0 && (
-                  <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                    <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2 text-sm uppercase tracking-wide">
-                      <svg className="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      Requirements
-                    </h3>
-                    <ul className="space-y-1.5 text-sm text-gray-600">
-                      {service.requirements.map((item, idx) => (
-                        <li key={idx} className="flex items-start gap-2">
-                          <span className="text-amber-500 text-xs">•</span> {item}
-                        </li>
-                      ))}
-                    </ul>
+              {service.requirements && service.requirements.length > 0 && (
+                <div className="bg-white rounded-2xl border border-slate-100 p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
+                      <Sparkles className="w-4 h-4 text-amber-600" />
+                    </div>
+                    <h3 className="font-bold text-slate-800">Requirements</h3>
                   </div>
+                  <ul className="space-y-2.5">
+                    {service.requirements.map((item, idx) => (
+                      <li key={idx} className="flex items-start gap-2.5 text-sm text-slate-600">
+                        <Sparkles className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            {/* Reviews Section */}
+            {service.reviews && service.reviews.length > 0 && (
+              <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-800">Customer Reviews</h2>
+                    <p className="text-slate-500 text-sm mt-1">{service.reviews.length} reviews from verified customers</p>
+                  </div>
+                  <div className="flex items-center gap-2 bg-amber-50 px-4 py-2 rounded-xl border border-amber-200">
+                    <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
+                    <span className="font-bold text-amber-700">{service.rating?.average || '4.5'}</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {service.reviews.slice(0, 4).map((review, idx) => (
+                    <ReviewCard key={idx} review={review} />
+                  ))}
+                </div>
+                {service.reviews.length > 4 && (
+                  <button className="w-full mt-4 py-3 bg-slate-50 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-100 transition-colors">
+                    View all {service.reviews.length} reviews
+                  </button>
                 )}
               </div>
-            </div>
+            )}
 
             {/* Related Services */}
             {relatedServices.length > 0 && (
-              <div className="mt-8">
-                <h2 className="text-xl font-bold text-gray-800 mb-4">You might also like</h2>
+              <div>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold text-slate-800">You might also like</h2>
+                  <Link to={`/category/${service.category?.slug}`} className="text-sm text-emerald-600 font-medium hover:text-emerald-700 flex items-center gap-1 transition-colors">
+                    View all <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                   {relatedServices.map(rel => (
-                    <Link key={rel._id} to={`/service/${rel.slug}`} className="bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md transition group">
-                      <div className="aspect-video bg-gray-100 overflow-hidden">
-                        <img
-                          src={rel.images?.[0]?.url || 'https://via.placeholder.com/400x300'}
-                          alt={rel.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                        />
-                      </div>
-                      <div className="p-3">
-                        <h3 className="font-semibold text-gray-800 line-clamp-1">{rel.name}</h3>
-                        <p className="text-emerald-600 font-bold mt-1">₹{rel.basePrice}</p>
-                      </div>
-                    </Link>
+                    <RelatedCard key={rel._id} service={rel} />
                   ))}
                 </div>
               </div>
             )}
           </main>
 
-          {/* RIGHT SIDEBAR - All Categories (unchanged) */}
+          {/* ═══ RIGHT SIDEBAR ═══ */}
           <aside className="lg:w-72 flex-shrink-0">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 sticky top-24 overflow-hidden">
-              <div className="p-4 border-b border-gray-100 bg-gray-50">
-                <h2 className="font-bold text-gray-800">All Categories</h2>
-              </div>
-              <div className="max-h-[70vh] overflow-y-auto divide-y divide-gray-100">
-                {loadingSidebar ? (
-                  <div className="p-4 space-y-2">
-                    {[1,2,3,4,5].map(i => <div key={i} className="h-8 bg-gray-100 rounded animate-pulse"></div>)}
+            <div className="sticky top-6 space-y-6">
+              {/* Sticky Price Card */}
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm text-slate-500">Price</span>
+                  <span className="text-2xl font-bold text-slate-800">₹{service.basePrice}</span>
+                </div>
+                <button
+                  onClick={handleAddToCart}
+                  className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm transition-all shadow-lg
+                    ${added
+                      ? 'bg-emerald-500 text-white shadow-emerald-500/30'
+                      : 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-900/20 hover:shadow-xl active:scale-95'
+                    }`}
+                >
+                  {added ? (
+                    <>
+                      <Check className="w-5 h-5" />
+                      Added!
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingCart className="w-5 h-5" />
+                      Add to Cart
+                    </>
+                  )}
+                </button>
+                <div className="mt-4 space-y-2">
+                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                    Secure payment
                   </div>
-                ) : (
-                  allCategories.map(cat => (
-                    <Link
-                      key={cat._id}
-                      to={`/category/${cat.slug}`}
-                      className={`flex items-center gap-3 px-4 py-3 hover:bg-emerald-50 transition-colors ${
-                        cat._id === service.category?._id
-                          ? 'bg-emerald-50 text-emerald-700 font-medium border-l-4 border-emerald-600'
-                          : 'text-gray-700'
-                      }`}
-                    >
-                      {cat.icon?.url ? (
-                        <img src={cat.icon.url} alt={cat.name} className="w-6 h-6 object-contain" />
-                      ) : (
-                        <span className="text-lg">📁</span>
-                      )}
-                      <span className="text-sm">{cat.name}</span>
-                    </Link>
-                  ))
-                )}
+                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <Truck className="w-3.5 h-3.5 text-blue-500" />
+                    Free cancellation
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <Clock className="w-3.5 h-3.5 text-amber-500" />
+                    Same day service
+                  </div>
+                </div>
+              </div>
+
+              {/* Categories */}
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div className="p-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
+                  <h2 className="font-bold text-slate-800 flex items-center gap-2">
+                    <Tag className="w-4 h-4 text-emerald-600" />
+                    Categories
+                  </h2>
+                </div>
+                <div className="max-h-[60vh] overflow-y-auto">
+                  {loadingSidebar ? (
+                    <div className="p-4 space-y-3">
+                      {[1, 2, 3, 4, 5].map(i => (
+                        <div key={i} className="h-10 bg-slate-100 rounded-xl animate-pulse"></div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-slate-50">
+                      {allCategories.map(cat => (
+                        <CategoryItem
+                          key={cat._id}
+                          cat={cat}
+                          isActive={cat._id === service.category?._id}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Promo */}
+              <div className="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl p-5 text-white shadow-lg shadow-emerald-500/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="w-5 h-5 text-emerald-200" />
+                  <span className="font-bold text-sm">First Booking Offer</span>
+                </div>
+                <p className="text-emerald-100 text-sm mb-3">Get 15% off on your first service booking!</p>
+                <button className="w-full bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white text-sm font-medium py-2.5 rounded-xl transition-colors">
+                  Book Now
+                </button>
               </div>
             </div>
           </aside>
@@ -293,3 +657,4 @@ const ServiceDetailPage = () => {
 };
 
 export default ServiceDetailPage;
+ 

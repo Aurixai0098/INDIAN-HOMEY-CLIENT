@@ -277,7 +277,7 @@ const Navbar = () => {
             <div className="flex items-center justify-between gap-8">
               {/* Logo */}
               <Link to="/" className="flex items-center gap-3 shrink-0 no-underline" onMouseEnter={handleLogoRotate} onClick={handleLogoRotate}>
-                <div className="rounded-lg w-20 h-20 flex items-center justify-center overflow-hidden bg-white shadow-md p-1 border border-gray-200">
+                <div className="rounded-lg w-20 h-20 flex items-center justify-center overflow-hidden bg-white   p-1  ">
                   <img 
                     src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778658121/a7ea1860-5474-4e8d-800b-72c68b9f6b71.png" 
                     alt="Logo" 
