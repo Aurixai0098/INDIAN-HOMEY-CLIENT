@@ -1,6 +1,8 @@
 // src/pages/provider/ProviderBookings.jsx
 import { useState, useEffect, useRef } from 'react';
-import { fetchMyBookings, confirmBooking, startBooking, completeBooking, generateBookingOTP } from '../../services/api';
+import { Link } from 'react-router-dom';
+import { fetchMyBookings, confirmBooking, startBooking, completeBooking, generateBookingOTP, fetchProviderVerificationStatus } from '../../services/api';
+import { Shield, AlertTriangle, Loader2 } from 'lucide-react';
 
 const ProviderBookings = () => {
   const [bookings, setBookings] = useState([]);
@@ -9,7 +11,36 @@ const ProviderBookings = () => {
   const [actionLoading, setActionLoading] = useState(null);
   const [otpModal, setOtpModal] = useState({ show: false, bookingId: null, otp: '', generating: false });
   const [completing, setCompleting] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState(null);
   const pollingRef = useRef(null);
+
+  useEffect(() => {
+    checkVerification();
+  }, []);
+
+  const checkVerification = async () => {
+    try {
+      const res = await fetchProviderVerificationStatus();
+      if (res.success) {
+        setVerificationStatus(res.data);
+        if (res.data.verificationStatus === 'verified') {
+          loadBookings(true);
+          startPolling();
+        } else {
+          setLoading(false);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      setLoading(false);
+    }
+  };
+
+  const startPolling = () => {
+    pollingRef.current = setInterval(() => {
+      loadBookings(false);
+    }, 10000);
+  };
 
   const loadBookings = async (showLoading = true) => {
     if (showLoading) setLoading(true);
@@ -23,15 +54,16 @@ const ProviderBookings = () => {
     }
   };
 
-  // Start polling every 10 seconds
   useEffect(() => {
-    loadBookings(true);
-    pollingRef.current = setInterval(() => {
-      loadBookings(false); // silent refresh
-    }, 10000);
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
+  }, []);
+
+  useEffect(() => {
+    if (verificationStatus?.verificationStatus === 'verified') {
+      loadBookings(true);
+    }
   }, [filter]);
 
   const handleConfirm = async (bookingId) => {
@@ -129,7 +161,36 @@ const ProviderBookings = () => {
     }
   };
 
-  if (loading && bookings.length === 0) return <div className="text-center py-10">Loading bookings...</div>;
+  // If not verified, show KYC required message
+  if (verificationStatus && verificationStatus.verificationStatus !== 'verified') {
+    return (
+      <div className="text-center py-16">
+        <Shield className="w-20 h-20 text-yellow-500 mx-auto mb-4" />
+        <h2 className="text-2xl font-bold mb-2">KYC Verification Required</h2>
+        <p className="text-gray-500 mb-6 max-w-md mx-auto">
+          Please complete your KYC verification first to accept and manage bookings.
+          This is mandatory for all service providers on GharSeva platform.
+        </p>
+        <Link to="/provider/kyc" className="bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-700 inline-flex items-center gap-2">
+          <Shield size={18} />
+          Complete KYC Verification
+        </Link>
+        {verificationStatus.verificationStatus === 'pending' && (
+          <p className="text-sm text-yellow-600 mt-4">Your documents are pending admin verification.</p>
+        )}
+        {verificationStatus.verificationStatus === 'rejected' && (
+          <p className="text-sm text-red-600 mt-4">Your KYC was rejected. Please upload correct documents.</p>
+        )}
+      </div>
+    );
+  }
+
+  if (loading && bookings.length === 0) return (
+    <div className="text-center py-10">
+      <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-3" />
+      <p className="text-gray-500">Loading bookings...</p>
+    </div>
+  );
 
   return (
     <div>

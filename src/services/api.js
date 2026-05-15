@@ -34,12 +34,19 @@ let categoriesCache = {
 const apiFetch = async (endpoint, options = {}) => {
   let response;
   try {
+    // Ensure headers are properly set
+    const headers = {
+      ...options.headers,
+    };
+    
+    // Only set Content-Type if not FormData
+    if (!(options.body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json';
+    }
+    
     response = await fetch(`${BASE_URL}${endpoint}`, {
       credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      headers,
       ...options,
     });
   } catch (networkError) {
@@ -171,19 +178,32 @@ export const fetchAdminUserDetails = async (userId) => {
 export const updateAdminUserStatus = async (userId, status) => {
   return apiFetch(`/admin/users/${userId}/status`, {
     method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify({ status }),
   });
 };
 
-export const fetchAdminVerifications = async (page = 1, limit = 20) => {
-  return apiFetch(`/admin/verifications?page=${page}&limit=${limit}`);
+export const fetchAdminVerifications = async (page = 1, limit = 20, status = '', accountStatus = '') => {
+  let url = `/admin/verifications?page=${page}&limit=${limit}`;
+  if (status && status !== 'all') url += `&status=${status}`;
+  if (accountStatus && accountStatus !== 'all') url += `&accountStatus=${accountStatus}`;
+  return apiFetch(url);
 };
 
 export const verifyProvider = async (providerId, status, note = '') => {
   return apiFetch(`/admin/verifications/${providerId}`, {
     method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify({ status, note }),
   });
+};
+
+export const fetchProviderDocuments = async (providerId) => {
+  return apiFetch(`/admin/providers/${providerId}/documents`);
 };
 
 export const createCategory = async (categoryData) => {
@@ -313,6 +333,19 @@ export const updateBankDetails = async (bankData) => {
   });
 };
 
+// ========== Provider KYC Document Upload APIs ==========
+export const uploadProviderKYCDocuments = async (formData) => {
+  return apiFetch('/providers/upload-kyc', {
+    method: 'POST',
+    body: formData,
+    // Don't set Content-Type for FormData, browser will set it with boundary
+  });
+};
+
+export const fetchProviderVerificationStatus = async () => {
+  return apiFetch('/providers/verification-status');
+};
+
 export const searchProviders = async (latitude, longitude, radius = 10, serviceCategoryId, pincode = null, city = null) => {
   let url = `/providers/search?radius=${radius}`;
   if (latitude && longitude) {
@@ -381,6 +414,9 @@ export const fetchAllWithdrawals = async (status = '', page = 1, limit = 20) => 
 export const approveWithdrawal = async (withdrawalId, transactionId, adminNote) => {
   return apiFetch(`/admin/withdrawals/${withdrawalId}/approve`, {
     method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify({ transactionId, adminNote }),
   });
 };
@@ -388,6 +424,9 @@ export const approveWithdrawal = async (withdrawalId, transactionId, adminNote) 
 export const rejectWithdrawal = async (withdrawalId, adminNote) => {
   return apiFetch(`/admin/withdrawals/${withdrawalId}/reject`, {
     method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify({ adminNote }),
   });
 };

@@ -33,6 +33,8 @@ import AdminCategories from "./pages/admin/AdminCategories";
 import AdminServices from "./pages/admin/AdminServices";
 import AdminBookings from "./pages/admin/AdminBookings";
 import AdminWithdrawals from "./pages/admin/AdminWithdrawals";
+import AdminKycVerification from "./pages/admin/AdminKycVerification";
+import ProviderKYCVerification from "./pages/provider/ProviderKYCVerification";
 
 // Main App Content Component
 const AppContent = () => {
@@ -67,6 +69,7 @@ const AppContent = () => {
         <Route path="/provider" element={<PrivateRoute><ProviderLayout /></PrivateRoute>}>
           <Route index element={<ProviderDashboard />} />
           <Route path="bookings" element={<ProviderBookings />} />
+          <Route path="kyc" element={<ProviderKYCVerification/>} />
           <Route path="services" element={<ProviderServices />} />
           <Route path="profile" element={<ProviderProfile />} />
           <Route path="wallet" element={<ProviderWallet />} />
@@ -77,6 +80,7 @@ const AppContent = () => {
           <Route index element={<AdminDashboard />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="providers" element={<AdminProviders />} />
+          <Route path="kyc-verification-providers" element={<AdminKycVerification/>} />
           <Route path="categories" element={<AdminCategories />} />
           <Route path="services" element={<AdminServices />} />
           <Route path="bookings" element={<AdminBookings />} />

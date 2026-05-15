@@ -1,9 +1,10 @@
+// src/pages/provider/ProviderServices.jsx
 import { useState, useEffect } from 'react';
-import { fetchProviderProfile, addProviderService, removeProviderService, fetchCategories, fetchServices } from '../../services/api';
-import { useAuth } from '../../context/AuthContext';
+import { Link } from 'react-router-dom';
+import { fetchProviderProfile, addProviderService, removeProviderService, fetchCategories, fetchServices, fetchProviderVerificationStatus } from '../../services/api';
+import { Shield, Loader2, Plus, Trash2 } from 'lucide-react';
 
 const ProviderServices = () => {
-  const { user } = useAuth();
   const [services, setServices] = useState([]);
   const [categories, setCategories] = useState([]);
   const [availableServices, setAvailableServices] = useState([]);
@@ -11,10 +12,28 @@ const ProviderServices = () => {
   const [selectedServices, setSelectedServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState(null);
 
   useEffect(() => {
-    loadData();
+    checkVerification();
   }, []);
+
+  const checkVerification = async () => {
+    try {
+      const res = await fetchProviderVerificationStatus();
+      if (res.success) {
+        setVerificationStatus(res.data);
+        if (res.data.verificationStatus === 'verified') {
+          loadData();
+        } else {
+          setLoading(false);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      setLoading(false);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -68,7 +87,36 @@ const ProviderServices = () => {
     }
   };
 
-  if (loading) return <div className="text-center py-10">Loading...</div>;
+  // If not verified, show KYC required message
+  if (verificationStatus && verificationStatus.verificationStatus !== 'verified') {
+    return (
+      <div className="text-center py-16">
+        <Shield className="w-20 h-20 text-yellow-500 mx-auto mb-4" />
+        <h2 className="text-2xl font-bold mb-2">KYC Verification Required</h2>
+        <p className="text-gray-500 mb-6 max-w-md mx-auto">
+          Please complete your KYC verification first to add and manage services.
+          This is mandatory for all service providers on GharSeva platform.
+        </p>
+        <Link to="/provider/kyc" className="bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-700 inline-flex items-center gap-2">
+          <Shield size={18} />
+          Complete KYC Verification
+        </Link>
+        {verificationStatus.verificationStatus === 'pending' && (
+          <p className="text-sm text-yellow-600 mt-4">Your documents are pending admin verification.</p>
+        )}
+        {verificationStatus.verificationStatus === 'rejected' && (
+          <p className="text-sm text-red-600 mt-4">Your KYC was rejected. Please upload correct documents.</p>
+        )}
+      </div>
+    );
+  }
+
+  if (loading) return (
+    <div className="text-center py-10">
+      <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-3" />
+      <p className="text-gray-500">Loading services...</p>
+    </div>
+  );
 
   return (
     <div>
@@ -76,7 +124,10 @@ const ProviderServices = () => {
 
       {/* Add Service Form */}
       <div className="bg-white rounded-xl shadow-sm border p-6 mb-8">
-        <h2 className="font-semibold mb-4">Add New Service</h2>
+        <h2 className="font-semibold mb-4 flex items-center gap-2">
+          <Plus size={18} className="text-emerald-600" />
+          Add New Service
+        </h2>
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">Category</label>
@@ -110,8 +161,9 @@ const ProviderServices = () => {
           <button
             onClick={handleAddService}
             disabled={submitting}
-            className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 disabled:opacity-50"
+            className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-2"
           >
+            {submitting ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
             {submitting ? 'Adding...' : 'Add Service'}
           </button>
         </div>
@@ -123,7 +175,7 @@ const ProviderServices = () => {
           <h2 className="font-semibold">Currently Offering</h2>
         </div>
         {services.length === 0 ? (
-          <p className="p-4 text-gray-500">No services added yet.</p>
+          <p className="p-4 text-gray-500 text-center">No services added yet.</p>
         ) : (
           <div className="divide-y">
             {services.map(service => (
@@ -136,8 +188,9 @@ const ProviderServices = () => {
                 </div>
                 <button
                   onClick={() => handleRemove(service._id)}
-                  className="text-red-600 hover:text-red-800 text-sm"
+                  className="text-red-600 hover:text-red-800 text-sm flex items-center gap-1"
                 >
+                  <Trash2 size={14} />
                   Remove
                 </button>
               </div>

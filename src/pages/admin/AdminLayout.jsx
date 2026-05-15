@@ -164,7 +164,7 @@ const AdminLayout = () => {
         {/* Mobile Overlay */}
         {mobileMenuOpen && (
           <div
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
+            className="fixed inset-0 bg-white backdrop-blur-sm z-40 lg:hidden"
             onClick={() => setMobileMenuOpen(false)}
           />
         )}
@@ -213,7 +213,7 @@ const AdminLayout = () => {
             {/* Provider Management Section */}
             <CollapsibleSection section="provider" icon={Users} title="Provider Management">
               <SubNavItem to="/admin/providers" label="All Providers" />
-              <SubNavItem to="/admin/provider-verification" label="KYC Verification" />
+              <SubNavItem to="/admin/kyc-verification-providers" label="KYC Verification" />
               <SubNavItem to="/admin/skills-verification" label="Skills Verification" />
               <SubNavItem to="/admin/provider-earnings" label="Earnings & Ratings" />
               <SubNavItem to="/admin/provider-status" label="Online/Offline Status" />
