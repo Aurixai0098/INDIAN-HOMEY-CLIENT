@@ -1,10 +1,12 @@
+// src/components/Navbar.jsx
+
 import { Link } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import { fetchCategories } from '../services/api';
+import { fetchCategories, searchServices } from '../services/api';
 import NotificationBell from './NotificationBell';
-import ProviderLocationModal from './/./../pages/provider/ProviderLocationModal';
+import ProviderLocationModal from '../pages/provider/ProviderLocationModal';
 
 const Navbar = () => {
   const { user, logout, setShowAuth } = useAuth();
@@ -13,6 +15,15 @@ const Navbar = () => {
   // Dynamic categories
   const [categories, setCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
+
+  // Search states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const searchRef = useRef(null);
+  const mobileSearchRef = useRef(null);
 
   // For provider location modal
   const [showLocationModal, setShowLocationModal] = useState(false);
@@ -55,6 +66,45 @@ const Navbar = () => {
       }
     };
     loadCategories();
+  }, []);
+
+  // Handle search input change with debounce
+  useEffect(() => {
+    const delayDebounce = setTimeout(async () => {
+      if (searchQuery.trim().length > 0) {
+        setIsSearching(true);
+        try {
+          const res = await searchServices(searchQuery);
+          if (res.success) {
+            setSearchResults(res.services || []);
+            setShowSearchDropdown(true);
+          }
+        } catch (err) {
+          console.error('Search error:', err);
+          setSearchResults([]);
+        } finally {
+          setIsSearching(false);
+        }
+      } else {
+        setSearchResults([]);
+        setShowSearchDropdown(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(delayDebounce);
+  }, [searchQuery]);
+
+  // Close search dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target) && 
+          mobileSearchRef.current && !mobileSearchRef.current.contains(event.target)) {
+        setShowSearchDropdown(false);
+        setMobileSearchOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   // Handle window resize
@@ -272,12 +322,12 @@ const Navbar = () => {
       <nav className="bg-white text-gray-800 border-b border-gray-200 font-sans sticky top-0 z-[1000] shadow-sm">
         <div className="max-w-[1500px] mx-auto px-4 py-3">
 
-          {/* DESKTOP VIEW */}
+          {/* ==================== DESKTOP VIEW ==================== */}
           {!isMobileView && (
             <div className="flex items-center justify-between gap-8">
               {/* Logo */}
               <Link to="/" className="flex items-center gap-3 shrink-0 no-underline" onMouseEnter={handleLogoRotate} onClick={handleLogoRotate}>
-                <div className="rounded-lg w-20 h-20 flex items-center justify-center overflow-hidden bg-white   p-1  ">
+                <div className="rounded-lg w-20 h-20 flex items-center justify-center overflow-hidden bg-white p-1">
                   <img
                     src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778658121/a7ea1860-5474-4e8d-800b-72c68b9f6b71.png"
                     alt="Logo"
@@ -286,16 +336,77 @@ const Navbar = () => {
                 </div>
                 <div className="flex flex-col">
                   <div className="w-32 h-16">
-                    <img src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778752596/3b3dd98d-e461-4412-ba36-b5086a6e6331.png" alt="logo name"
-                      className=' w-full  h-full'
+                    <img 
+                      src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778752596/3b3dd98d-e461-4412-ba36-b5086a6e6331.png" 
+                      alt="logo name" 
+                      className="w-full h-full object-contain"
                     />
-
                   </div>
-
                 </div>
               </Link>
 
-              {/* Location Selector for Desktop */}
+              {/* Search Bar - Desktop */}
+              <div className="flex-1 max-w-xl relative" ref={searchRef}>
+                <div className="relative">
+                  <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onFocus={() => searchQuery.trim() && searchResults.length > 0 && setShowSearchDropdown(true)}
+                    placeholder="Search for services (e.g., Plumbing, AC Repair, Cleaning)..."
+                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  />
+                  {isSearching && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Search Results Dropdown - Desktop */}
+                {showSearchDropdown && searchResults.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 max-h-96 overflow-y-auto z-50">
+                    {searchResults.map((service) => (
+                      <Link
+                        key={service._id}
+                        to={`/service/${service.slug}`}
+                        onClick={() => {
+                          setShowSearchDropdown(false);
+                          setSearchQuery('');
+                        }}
+                        className="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-0"
+                      >
+                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                          {service.images && service.images[0]?.url ? (
+                            <img src={service.images[0].url} alt={service.name} className="w-full h-full object-cover" />
+                          ) : service.icon?.url ? (
+                            <img src={service.icon.url} alt={service.name} className="w-full h-full object-contain p-2" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-800">{service.name}</p>
+                          <p className="text-xs text-gray-500">{service.category?.name || 'Service'}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-semibold text-emerald-600">₹{service.basePrice}</p>
+                          <p className="text-xs text-gray-400">{service.priceUnit?.replace('_', ' ') || 'Starting'}</p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Location Selector */}
               <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-full px-4 py-2">
                 <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -307,7 +418,7 @@ const Navbar = () => {
                 </button>
               </div>
 
-              {/* Right Icons - Desktop */}
+              {/* Right Icons */}
               <div className="flex items-center gap-3 shrink-0">
                 <Link to="/cart" className="relative p-2 text-gray-600 hover:text-blue-600 bg-white hover:bg-gray-50 rounded-full transition-colors border border-gray-200 shadow-sm">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -356,63 +467,150 @@ const Navbar = () => {
             </div>
           )}
 
-          {/* ==================== MOBILE VIEW - SIMPLIFIED ==================== */}
+          {/* ==================== MOBILE VIEW ==================== */}
           {isMobileView && (
-            <div className="flex items-center justify-between gap-2">
-              {/* Logo */}
-              <Link to="/" className="flex shrink-0 items-center gap-2 no-underline" onClick={handleLogoRotate}>
-                <div className="rounded-lg w-16 h-16 flex items-center justify-center overflow-hidden bg-white   p-1  ">
-                  <img src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778658121/a7ea1860-5474-4e8d-800b-72c68b9f6b71.png" alt="Logo" className="w-full h-full object-contain" />
-                </div>
-                <div className="flex flex-col">
-                  <div className="w-32 h-16">
-                    <img src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778752596/3b3dd98d-e461-4412-ba36-b5086a6e6331.png" alt="logo name"
-                      className=' w-full  h-full'
+            <div className="flex flex-col gap-3">
+              {/* Top Row - Logo, Search Icon, Location, Cart, Hamburger */}
+              <div className="flex items-center justify-between gap-2">
+                {/* Logo */}
+                <Link to="/" className="flex shrink-0 items-center gap-2 no-underline" onClick={handleLogoRotate}>
+                  <div className="rounded-lg w-14 h-14 flex items-center justify-center overflow-hidden bg-white p-1">
+                    <img 
+                      src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778658121/a7ea1860-5474-4e8d-800b-72c68b9f6b71.png" 
+                      alt="Logo" 
+                      className="w-full h-full object-contain" 
                     />
-
                   </div>
-                </div>
-              </Link>
-
-              {/* Right Icons - Location, Cart, Hamburger */}
-              <div className="flex items-center gap-2 shrink-0">
-                {/* Location Icon */}
-                <button
-                  onClick={() => setShowLocationPopup(true)}
-                  className="p-2 text-gray-600 bg-gray-50 border border-gray-200 rounded-full transition-colors hover:bg-gray-100"
-                >
-                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                </button>
-
-                {/* Cart Icon */}
-                <Link to="/cart" className="relative p-2 text-gray-600 bg-gray-50 border border-gray-200 rounded-full transition-colors hover:bg-gray-100">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M18 13l1.5 6M9 21a1 1 0 100-2 1 1 0 000 2zm9 0a1 1 0 100-2 1 1 0 000 2z" />
-                  </svg>
-                  {cartCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center shadow-sm">
-                      {cartCount > 99 ? '99+' : cartCount}
-                    </span>
-                  )}
+                  <div className="w-24 h-12">
+                    <img 
+                      src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778752596/3b3dd98d-e461-4412-ba36-b5086a6e6331.png" 
+                      alt="logo name" 
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
                 </Link>
 
-                {/* Hamburger Menu Button */}
-                <button
-                  onClick={() => setMobileMenuOpen(true)}
-                  className="flex flex-col items-center justify-center gap-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 w-9 h-9 rounded-xl transition-all shadow-md active:scale-95"
-                >
-                  <span className="w-4 h-0.5 bg-white rounded-full"></span>
-                  <span className="w-4 h-0.5 bg-white rounded-full"></span>
-                  <span className="w-4 h-0.5 bg-white rounded-full"></span>
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  {/* Search Icon */}
+                  <button
+                    onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
+                    className="p-2 text-gray-600 bg-gray-50 border border-gray-200 rounded-full transition-colors hover:bg-gray-100"
+                  >
+                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </button>
+
+                  {/* Location Icon */}
+                  <button
+                    onClick={() => setShowLocationPopup(true)}
+                    className="p-2 text-gray-600 bg-gray-50 border border-gray-200 rounded-full transition-colors hover:bg-gray-100"
+                  >
+                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </button>
+
+                  {/* Cart Icon */}
+                  <Link to="/cart" className="relative p-2 text-gray-600 bg-gray-50 border border-gray-200 rounded-full transition-colors hover:bg-gray-100">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M18 13l1.5 6M9 21a1 1 0 100-2 1 1 0 000 2zm9 0a1 1 0 100-2 1 1 0 000 2z" />
+                    </svg>
+                    {cartCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center shadow-sm">
+                        {cartCount > 99 ? '99+' : cartCount}
+                      </span>
+                    )}
+                  </Link>
+
+                  {/* Hamburger Menu */}
+                  <button
+                    onClick={() => setMobileMenuOpen(true)}
+                    className="flex flex-col items-center justify-center gap-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 w-9 h-9 rounded-xl transition-all shadow-md active:scale-95"
+                  >
+                    <span className="w-4 h-0.5 bg-white rounded-full"></span>
+                    <span className="w-4 h-0.5 bg-white rounded-full"></span>
+                    <span className="w-4 h-0.5 bg-white rounded-full"></span>
+                  </button>
+                </div>
               </div>
+
+              {/* Expandable Search Bar - Mobile */}
+              {mobileSearchOpen && (
+                <div className="relative w-full animate-fadeIn" ref={mobileSearchRef}>
+                  <div className="relative">
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onFocus={() => searchQuery.trim() && searchResults.length > 0 && setShowSearchDropdown(true)}
+                      placeholder="Search for services..."
+                      className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-full text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      autoFocus
+                    />
+                    {isSearching && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    )}
+                    <button
+                      onClick={() => setMobileSearchOpen(false)}
+                      className="absolute right-12 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Search Results Dropdown - Mobile */}
+                  {showSearchDropdown && searchResults.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 max-h-80 overflow-y-auto z-50">
+                      {searchResults.map((service) => (
+                        <Link
+                          key={service._id}
+                          to={`/service/${service.slug}`}
+                          onClick={() => {
+                            setShowSearchDropdown(false);
+                            setSearchQuery('');
+                            setMobileSearchOpen(false);
+                          }}
+                          className="flex items-center gap-3 px-3 py-2 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-0"
+                        >
+                          <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                            {service.images && service.images[0]?.url ? (
+                              <img src={service.images[0].url} alt={service.name} className="w-full h-full object-cover" />
+                            ) : service.icon?.url ? (
+                              <img src={service.icon.url} alt={service.name} className="w-full h-full object-contain p-1.5" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                </svg>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-800 text-sm">{service.name}</p>
+                            <p className="text-xs text-gray-500">{service.category?.name || 'Service'}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-semibold text-emerald-600">₹{service.basePrice}</p>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
-          {/* CATEGORIES ROW - Shows on both desktop and mobile */}
+          {/* Categories Row */}
           <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
             {categoriesLoading ? (
               <div className="flex gap-2">
@@ -428,7 +626,9 @@ const Navbar = () => {
                   {cat.icon?.url ? (
                     <img src={cat.icon.url} alt={cat.name} className="w-4 h-4 object-contain" />
                   ) : (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
                   )}
                   {cat.name}
                 </Link>
@@ -440,19 +640,20 @@ const Navbar = () => {
         </div>
       </nav>
 
-      {/* ==================== LOCATION POPUP MODAL (Centered) ==================== */}
+      {/* Location Popup Modal */}
       {showLocationPopup && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[1200] flex items-center justify-center p-4 animate-fadeIn" onClick={() => setShowLocationPopup(false)}>
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto animate-slideUp" onClick={(e) => e.stopPropagation()}>
             <div className="sticky top-0 bg-white border-b border-gray-100 p-4 flex justify-between items-center">
               <h3 className="text-lg font-bold text-gray-900">📍 Select Location</h3>
               <button onClick={() => setShowLocationPopup(false)} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
 
             <div className="p-5 space-y-4">
-              {/* Current Location Button */}
               <button
                 onClick={getCurrentLocation}
                 disabled={isLocating}
@@ -483,7 +684,6 @@ const Navbar = () => {
                 </div>
               </div>
 
-              {/* Search Address */}
               <div className="flex flex-col gap-2">
                 <input
                   type="text"
@@ -502,7 +702,6 @@ const Navbar = () => {
                 </button>
               </div>
 
-              {/* Map */}
               {showMap && (
                 <div className="space-y-2">
                   <div ref={mapContainerRef} className="h-[250px] w-full rounded-xl bg-gray-100 overflow-hidden border border-gray-200"></div>
@@ -522,7 +721,6 @@ const Navbar = () => {
                 </div>
               </div>
 
-              {/* Manual City Input */}
               <input
                 type="text"
                 value={customLocation}
@@ -539,7 +737,7 @@ const Navbar = () => {
         </div>
       )}
 
-      {/* ==================== SUCCESS TOAST MESSAGE ==================== */}
+      {/* Success Toast */}
       {successMessage && (
         <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 z-[1300] animate-slideUp">
           <div className="bg-emerald-500 text-white px-5 py-3 rounded-xl shadow-lg flex items-center gap-2">
@@ -551,18 +749,15 @@ const Navbar = () => {
         </div>
       )}
 
-      {/* ==================== HAMBURGER MENU DRAWER ==================== */}
+      {/* Mobile Menu Drawer */}
       <div
-        className={`fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-[1050] transition-all duration-300 ${mobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible'
-          }`}
+        className={`fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-[1050] transition-all duration-300 ${mobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}
         onClick={() => setMobileMenuOpen(false)}
-      ></div>
+      />
 
       <div
-        className={`fixed top-0 right-0 bottom-0 w-80 bg-white shadow-2xl z-[1100] transform transition-all duration-300 ease-out flex flex-col ${mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
-          }`}
+        className={`fixed top-0 right-0 bottom-0 w-80 bg-white shadow-2xl z-[1100] transform transition-all duration-300 ease-out flex flex-col ${mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
-        {/* Menu Header */}
         <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-5 text-white">
           <div className="flex justify-between items-start mb-4">
             <div className="flex items-center gap-3">
@@ -601,21 +796,26 @@ const Navbar = () => {
           </div>
         </div>
 
-        {/* Menu Items */}
         <div className="flex-1 overflow-y-auto py-4">
           <div className="px-4 mb-4">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Main Menu</p>
             <div className="space-y-1">
               <Link to="/" className="flex items-center gap-3 px-3 py-2.5 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
                 Home
               </Link>
               <Link to="/services" className="flex items-center gap-3 px-3 py-2.5 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
                 All Services
               </Link>
               <Link to="/providers" className="flex items-center gap-3 px-3 py-2.5 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
                 Providers
               </Link>
             </div>
@@ -626,21 +826,29 @@ const Navbar = () => {
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Account</p>
               <div className="space-y-1">
                 <Link to="/profile" className="flex items-center gap-3 px-3 py-2.5 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
                   My Profile
                 </Link>
                 <Link to="/my-bookings" className="flex items-center gap-3 px-3 py-2.5 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
                   My Bookings
                 </Link>
                 {user.role === 'provider' && (
                   <>
                     <Link to="/provider" className="flex items-center gap-3 px-3 py-2.5 text-amber-700 hover:bg-amber-50 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                      </svg>
                       Provider Dashboard
                     </Link>
                     <button onClick={() => { setShowLocationModal(true); setMobileMenuOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition font-medium text-left">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /></svg>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      </svg>
                       Update Service Area
                     </button>
                   </>
@@ -656,7 +864,9 @@ const Navbar = () => {
                   <p className="text-sm font-bold text-amber-700">Become a Professional</p>
                   <p className="text-xs text-amber-600 mt-0.5">Join GharSeva & grow your business</p>
                 </div>
-                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
               </Link>
             </div>
           )}
@@ -686,8 +896,6 @@ const Navbar = () => {
         .animate-fadeIn { animation: fadeIn 0.2s ease-out forwards; }
         @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .animate-slideUp { animation: slideUp 0.25s ease-out forwards; }
-        @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        .animate-spin-slow { animation: spin-slow 8s linear infinite; }
       `}</style>
     </>
   );

@@ -128,6 +128,12 @@ export const markNotificationRead = async (notificationId) => {
   });
 };
 
+export const markAllNotificationsRead = async () => {
+  return apiFetch('/users/notifications/read-all', {
+    method: 'PATCH',
+  });
+};
+
 // ========== Address APIs ==========
 export const fetchAddresses = async () => {
   return apiFetch('/users/addresses');
@@ -346,6 +352,22 @@ export const fetchProviderVerificationStatus = async () => {
   return apiFetch('/providers/verification-status');
 };
 
+export const fetchProviderNotifications = async () => {
+  return apiFetch('/providers/notifications');
+};
+
+export const mar9yMnTm4NSzvG9rrwjM2ec8xZgh1cafXH8 = async (notificationId) => {
+  return apiFetch(`/providers/notifications/${notificationId}/read`, {
+    method: 'PATCH',
+  });
+};
+
+export const markAllProviderNotificationsRead = async () => {
+  return apiFetch('/providers/notifications/read-all', {
+    method: 'PATCH',
+  });
+};
+
 export const searchProviders = async (latitude, longitude, radius = 10, serviceCategoryId, pincode = null, city = null) => {
   let url = `/providers/search?radius=${radius}`;
   if (latitude && longitude) {
@@ -355,16 +377,6 @@ export const searchProviders = async (latitude, longitude, radius = 10, serviceC
   if (pincode) url += `&pincode=${pincode}`;
   if (city) url += `&city=${encodeURIComponent(city)}`;
   return apiFetch(url);
-};
-
-export const fetchProviderNotifications = async () => {
-  return apiFetch('/providers/notifications');
-};
-
-export const mar9yMnTm4NSzvG9rrwjM2ec8xZgh1cafXH8 = async (notificationId) => {
-  return apiFetch(`/providers/notifications/${notificationId}/read`, {
-    method: 'PATCH',
-  });
 };
 
 // ========== Payment APIs ==========
