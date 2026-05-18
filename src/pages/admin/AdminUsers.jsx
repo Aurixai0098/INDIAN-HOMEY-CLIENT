@@ -1,389 +1,548 @@
-import { useState, useEffect } from 'react';
-import { fetchAdminUsers, fetchAdminUserDetails, updateAdminUserStatus } from '../../services/api';
-
-// Modern Lucide Icons
+// src/pages/admin/AdminAllUsers.jsx
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Users,
-  UserCheck,
-  UserX,
-  Shield,
-  Eye,
-  Ban,
-  CheckCircle2,
-  X,
-  Search,
-  Filter,
-  ChevronLeft,
-  ChevronRight,
-  MoreHorizontal,
-  Mail,
-  Phone,
-  Calendar,
-  AlertTriangle,
-  Sparkles,
-  Crown,
-  UserCircle
+  Users, Search, Filter, ChevronLeft, ChevronRight, Eye, Phone, Bell, Edit2,
+  MoreVertical, CheckCircle, XCircle, AlertCircle, Loader2, RefreshCw,
+  Wallet, Calendar, ShoppingBag, Star, TrendingUp, Clock, MessageCircle,
+  Send, X, Save, User, Mail, Smartphone, UserCheck, UserX, Shield,
+  Activity, BookOpen, DollarSign, Award, Mail as MailIcon
 } from 'lucide-react';
+import {
+  fetchAdminUsers,
+  updateAdminUserStatus,
+  sendPushNotification,
+  sendSmsAlert,
+  fetchAdminUserDetails,
+  updateUserByAdmin,
+  getUserStats
+} from '../../services/api';
 
-// ─── Avatar Component with Image Support ────────────────────────────
-const UserAvatar = ({ user, size = 'md' }) => {
-  const avatarUrl = user?.avatar?.url;
-  const name = user?.fullName || user?.firstName || '?';
-  const colors = [
-    'from-blue-400 to-blue-600', 'from-emerald-400 to-emerald-600',
-    'from-purple-400 to-purple-600', 'from-rose-400 to-rose-600',
-    'from-amber-400 to-amber-600', 'from-cyan-400 to-cyan-600',
-    'from-indigo-400 to-indigo-600', 'from-pink-400 to-pink-600'
-  ];
-  const colorIndex = name.length % colors.length;
-  const gradient = colors[colorIndex];
-  const sizeClasses = {
-    sm: 'w-8 h-8 text-xs', md: 'w-10 h-10 text-sm',
-    lg: 'w-16 h-16 text-xl', xl: 'w-24 h-24 text-3xl'
+const formatDate = (date) => new Date(date).toLocaleDateString('en-IN');
+const formatCurrency = (amount) => amount ? `₹${amount.toLocaleString('en-IN')}` : '₹0';
+
+// Notification Modal
+const NotificationModal = ({ user, onClose, onSend }) => {
+  const [message, setMessage] = useState('');
+  const [type, setType] = useState('push');
+  const [sending, setSending] = useState(false);
+
+  const handleSend = async () => {
+    if (!message.trim()) return;
+    setSending(true);
+    try {
+      if (type === 'push') {
+        await sendPushNotification('specific_user', user._id, message);
+      } else {
+        await sendSmsAlert('specific_user', user._id, message);
+      }
+      onSend();
+      onClose();
+    } catch (err) {
+      alert('Failed to send: ' + err.message);
+    } finally {
+      setSending(false);
+    }
   };
-  if (avatarUrl) {
-    return (
-      <img
-        src={avatarUrl}
-        alt={name}
-        className={`${sizeClasses[size]} rounded-full object-cover ring-2 ring-white shadow-md`}
-      />
-    );
-  }
+
   return (
-    <div className={`${sizeClasses[size]} rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center text-white font-bold shadow-lg`}>
-      {name[0]?.toUpperCase() || '?'}
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
+      <div className="bg-white rounded-2xl max-w-md w-full p-4">
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="text-lg font-bold">Send to {user.fullName}</h3>
+          <button onClick={onClose}><X size={20} /></button>
+        </div>
+        <div className="mb-3">
+          <label className="block text-sm font-medium mb-1">Channel</label>
+          <div className="flex gap-2">
+            <button onClick={() => setType('push')} className={`px-3 py-1 rounded-lg text-sm ${type === 'push' ? 'bg-blue-600 text-white' : 'bg-gray-100'}`}>Push</button>
+            <button onClick={() => setType('sms')} className={`px-3 py-1 rounded-lg text-sm ${type === 'sms' ? 'bg-blue-600 text-white' : 'bg-gray-100'}`}>SMS</button>
+          </div>
+        </div>
+        <textarea rows={3} className="w-full border rounded-lg p-2" value={message} onChange={e => setMessage(e.target.value)} placeholder="Type message..." />
+        <div className="flex gap-2 mt-4">
+          <button onClick={onClose} className="flex-1 bg-gray-200 py-2 rounded-lg">Cancel</button>
+          <button onClick={handleSend} disabled={sending || !message} className="flex-1 bg-blue-600 text-white py-2 rounded-lg disabled:opacity-50">
+            {sending ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Send'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
 
-// ─── Shimmer Skeleton ────────────────────────────────────────────────
-const TableSkeleton = () => (
-  <div className="animate-pulse">
-    {[1, 2, 3, 4, 5, 6].map(i => (
-      <div key={i} className="flex items-center gap-4 px-6 py-4 border-b border-slate-50">
-        <div className="w-10 h-10 bg-slate-200 rounded-full"></div>
-        <div className="flex-1 space-y-2">
-          <div className="h-4 bg-slate-200 rounded-lg w-32"></div>
-          <div className="h-3 bg-slate-200 rounded-lg w-48"></div>
-        </div>
-        <div className="h-6 bg-slate-200 rounded-full w-20"></div>
-        <div className="h-6 bg-slate-200 rounded-full w-16"></div>
-        <div className="flex gap-2">
-          <div className="h-8 bg-slate-200 rounded-lg w-8"></div>
-          <div className="h-8 bg-slate-200 rounded-lg w-8"></div>
-        </div>
-      </div>
-    ))}
-  </div>
-);
+// Edit User Modal
+const EditUserModal = ({ user, onClose, onSave }) => {
+  const [form, setForm] = useState({ firstName: '', lastName: '', phone: '', email: '' });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
-const StatCard = ({ icon: Icon, label, value, color, subtext }) => (
-  <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all group">
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-slate-500 text-sm font-medium">{label}</p>
-        <p className="text-2xl font-bold text-slate-800 mt-1">{value}</p>
-        {subtext && <p className="text-xs text-slate-400 mt-1">{subtext}</p>}
-      </div>
-      <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all group-hover:scale-110 ${color}`}>
-        <Icon className="w-6 h-6" />
+  useEffect(() => {
+    if (user) {
+      setForm({
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        phone: user.phone || '',
+        email: user.email || ''
+      });
+    }
+  }, [user]);
+
+  const handleSubmit = async () => {
+    if (!form.firstName.trim() || !form.lastName.trim()) {
+      setError('First and last name are required');
+      return;
+    }
+    setSaving(true);
+    try {
+      await onSave(user._id, form);
+      onClose();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
+      <div className="bg-white rounded-2xl max-w-md w-full p-4">
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="text-lg font-bold">Edit User</h3>
+          <button onClick={onClose}><X size={20} /></button>
+        </div>
+        {error && <div className="mb-3 p-2 bg-red-50 text-red-700 rounded text-sm">{error}</div>}
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-sm">First Name</label>
+              <input type="text" className="w-full border rounded p-1" value={form.firstName} onChange={e => setForm({...form, firstName: e.target.value})} />
+            </div>
+            <div>
+              <label className="text-sm">Last Name</label>
+              <input type="text" className="w-full border rounded p-1" value={form.lastName} onChange={e => setForm({...form, lastName: e.target.value})} />
+            </div>
+          </div>
+          <div>
+            <label className="text-sm">Phone</label>
+            <input type="tel" className="w-full border rounded p-1" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} />
+          </div>
+          <div>
+            <label className="text-sm">Email</label>
+            <input type="email" className="w-full border rounded p-1 bg-gray-100" value={form.email} disabled />
+          </div>
+        </div>
+        <div className="flex gap-2 mt-4">
+          <button onClick={onClose} className="flex-1 bg-gray-200 py-2 rounded-lg">Cancel</button>
+          <button onClick={handleSubmit} disabled={saving} className="flex-1 bg-blue-600 text-white py-2 rounded-lg disabled:opacity-50">
+            {saving ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Save'}
+          </button>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
+// User Detail Drawer
+const UserDetailDrawer = ({ user, onClose, onUpdate }) => {
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('overview');
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      if (!user) return;
+      setLoading(true);
+      try {
+        const res = await getUserStats(user._id);
+        if (res.success) setStats(res.data);
+        else setStats(null);
+      } catch (err) {
+        console.error('Stats error:', err);
+        setStats(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, [user]);
+
+  if (!user) return null;
+
+  const handleCall = () => {
+    if (user.phone) window.location.href = `tel:${user.phone}`;
+  };
+  const handleWhatsApp = () => {
+    if (user.phone) window.open(`https://wa.me/${user.phone.replace(/\D/g, '')}`, '_blank');
+  };
+  const handleEmail = () => {
+    if (user.email) window.location.href = `mailto:${user.email}`;
+  };
+  const handleSMS = () => {
+    if (user.phone) window.location.href = `sms:${user.phone}`;
+  };
+
+  const isActive = user.status === 'active';
+
+  return (
+    <div className="fixed inset-y-0 right-0 w-full max-w-lg bg-white shadow-2xl z-[80] flex flex-col transition-transform duration-300 ease-in-out transform translate-x-0">
+      <div className="flex justify-between items-center p-4 border-b bg-gray-50">
+        <h2 className="text-xl font-bold">User Details</h2>
+        <button onClick={onClose} className="p-1 hover:bg-gray-200 rounded"><X size={20} /></button>
+      </div>
+      <div className="flex-1 overflow-y-auto p-4">
+        {loading ? (
+          <div className="flex justify-center py-10"><Loader2 className="animate-spin text-blue-600" size={32} /></div>
+        ) : (
+          <>
+            <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl p-4 mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
+                  {user.avatar?.url ? (
+                    <img src={user.avatar.url} alt={user.fullName} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-2xl font-bold">{user.fullName?.charAt(0) || 'U'}</span>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold">{user.fullName}</h3>
+                  <p className="text-sm opacity-90">{user.email}</p>
+                  <p className="text-sm opacity-90">{user.phone || 'No phone'}</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 mt-4 pt-2 border-t border-white/20">
+                {user.phone && (
+                  <>
+                    <button onClick={handleCall} className="flex items-center gap-1 px-3 py-1.5 bg-white/20 rounded-lg text-sm hover:bg-white/30 transition">
+                      <Phone size={14} /> Call
+                    </button>
+                    <button onClick={handleWhatsApp} className="flex items-center gap-1 px-3 py-1.5 bg-white/20 rounded-lg text-sm hover:bg-white/30 transition">
+                      <MessageCircle size={14} /> WhatsApp
+                    </button>
+                    <button onClick={handleSMS} className="flex items-center gap-1 px-3 py-1.5 bg-white/20 rounded-lg text-sm hover:bg-white/30 transition">
+                      <Smartphone size={14} /> SMS
+                    </button>
+                  </>
+                )}
+                {user.email && (
+                  <button onClick={handleEmail} className="flex items-center gap-1 px-3 py-1.5 bg-white/20 rounded-lg text-sm hover:bg-white/30 transition">
+                    <MailIcon size={14} /> Email
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="bg-gray-50 rounded-xl p-3">
+                <p className="text-xs text-gray-500">Joined</p>
+                <p className="text-sm font-medium">{formatDate(user.createdAt)}</p>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-3">
+                <p className="text-xs text-gray-500">Role</p>
+                <p className="text-sm font-medium capitalize">{user.role || 'customer'}</p>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-3">
+                <p className="text-xs text-gray-500">Status</p>
+                <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                  {isActive ? 'Active' : user.status === 'suspended' ? 'Suspended' : 'Inactive'}
+                </span>
+              </div>
+              {user.addresses && user.addresses.length > 0 && (
+                <div className="bg-gray-50 rounded-xl p-3 col-span-2">
+                  <p className="text-xs text-gray-500">Default Address</p>
+                  <p className="text-sm">
+                    {user.addresses.find(a => a.isDefault)?.street || 
+                     user.addresses[0]?.street || 'Not set'}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="bg-gray-50 rounded-xl p-3 text-center">
+                <Wallet size={20} className="mx-auto text-green-600 mb-1" />
+                <p className="text-xs text-gray-500">Wallet Balance</p>
+                <p className="text-lg font-bold text-green-700">{formatCurrency(stats?.walletBalance)}</p>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-3 text-center">
+                <DollarSign size={20} className="mx-auto text-blue-600 mb-1" />
+                <p className="text-xs text-gray-500">Total Spent</p>
+                <p className="text-lg font-bold text-blue-700">{formatCurrency(stats?.totalSpent)}</p>
+              </div>
+            </div>
+
+            <div className="flex border-b mb-3">
+              <button onClick={() => setActiveTab('overview')} className={`px-3 py-2 text-sm font-medium ${activeTab === 'overview' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500'}`}>Overview</button>
+              <button onClick={() => setActiveTab('bookings')} className={`px-3 py-2 text-sm font-medium ${activeTab === 'bookings' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500'}`}>Bookings</button>
+            </div>
+
+            {activeTab === 'overview' && (
+              <div className="space-y-4">
+                <div className="bg-gray-50 rounded-xl p-3">
+                  <h4 className="font-semibold mb-2 flex items-center gap-1"><Activity size={16} /> Booking Summary</h4>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div><p className="text-2xl font-bold text-green-600">{stats?.totalCompleted || 0}</p><p className="text-xs text-gray-500">Completed</p></div>
+                    <div><p className="text-2xl font-bold text-red-600">{stats?.totalCancelled || 0}</p><p className="text-xs text-gray-500">Cancelled</p></div>
+                    <div><p className="text-2xl font-bold text-yellow-600">{stats?.totalPending || 0}</p><p className="text-xs text-gray-500">Pending</p></div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'bookings' && (
+              <div className="space-y-2">
+                {stats?.recentBookings?.length > 0 ? stats.recentBookings.map(b => (
+                  <div key={b._id} className="border rounded-lg p-3 bg-white">
+                    <div className="flex justify-between text-sm">
+                      <span className="font-mono">{b.bookingId}</span>
+                      <span className={`px-2 py-0.5 rounded-full text-xs ${b.status === 'completed' ? 'bg-green-100 text-green-700' : b.status === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-yellow-100'}`}>{b.status}</span>
+                    </div>
+                    <div className="flex justify-between mt-1 text-sm">
+                      <span>Amount: {formatCurrency(b.amount)}</span>
+                      <span className="text-gray-400">{formatDate(b.date)}</span>
+                    </div>
+                  </div>
+                )) : <p className="text-gray-400 text-center py-4">No bookings yet</p>}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Main Component
 const AdminUsers = () => {
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [totalUsers, setTotalUsers] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
-  const [showModal, setShowModal] = useState(false);
-  const [statusUpdating, setStatusUpdating] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [roleFilter, setRoleFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDetailDrawer, setShowDetailDrawer] = useState(false);
   const [toast, setToast] = useState(null);
-  const [actionMenuOpen, setActionMenuOpen] = useState(null);
+
+  const showToast = (msg, type = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const loadUsers = async () => {
     setLoading(true);
     try {
-      const res = await fetchAdminUsers(page, 15);
+      // ✅ Only fetch users with role 'customer'
+      const res = await fetchAdminUsers(page, 20, 'customer', statusFilter);
       if (res.success) {
-        setUsers(res.data.users);
+        const mappedUsers = res.data.users.map(user => ({
+          ...user,
+          isActive: user.status === 'active'
+        }));
+        
+        let filteredUsers = mappedUsers;
+        if (searchTerm.trim()) {
+          const term = searchTerm.toLowerCase();
+          filteredUsers = mappedUsers.filter(u =>
+            u.fullName?.toLowerCase().includes(term) ||
+            u.email?.toLowerCase().includes(term) ||
+            u.phone?.includes(term)
+          );
+        }
+        
+        setUsers(filteredUsers);
         setTotalPages(Math.ceil(res.data.pagination.total / res.data.pagination.limit));
-        setTotalUsers(res.data.pagination.total);
+      } else {
+        showToast('Failed to load users', 'error');
       }
     } catch (err) {
-      console.error(err);
-      showToast('Failed to load users', 'error');
+      console.error('Load users error:', err);
+      showToast(err.message || 'Network error', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { loadUsers(); }, [page]);
+  useEffect(() => {
+    loadUsers();
+  }, [page, statusFilter]);
 
-  const showToast = (message, type = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  };
+  useEffect(() => {
+    if (!loading) loadUsers();
+  }, [searchTerm]);
 
-  const viewUserDetails = async (userId) => {
-    try {
-      const res = await fetchAdminUserDetails(userId);
-      if (res.success) {
-        setSelectedUser(res.data.user);
-        setShowModal(true);
-      }
-    } catch (err) {
-      showToast(err.message || 'Failed to load user details', 'error');
-    }
-  };
-
-  const updateStatus = async (userId, newStatus) => {
-    setStatusUpdating(true);
+  const handleStatusToggle = async (userId, currentIsActive) => {
+    const newStatus = currentIsActive ? 'suspended' : 'active';
     try {
       await updateAdminUserStatus(userId, newStatus);
-      loadUsers();
       showToast(`User ${newStatus === 'active' ? 'activated' : 'suspended'} successfully`);
+      loadUsers();
     } catch (err) {
-      showToast(err.message || 'Failed to update status', 'error');
-    } finally {
-      setStatusUpdating(false);
-      setActionMenuOpen(null);
+      showToast(err.message, 'error');
     }
   };
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         user.phone?.includes(searchQuery);
-    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
-    const matchesStatus = statusFilter === 'all' || user.status === statusFilter;
-    return matchesSearch && matchesRole && matchesStatus;
-  });
+  const handleEditSave = async (userId, data) => {
+    try {
+      await updateUserByAdmin(userId, data);
+      showToast('User updated successfully');
+      loadUsers();
+    } catch (err) {
+      throw err;
+    }
+  };
 
-  const activeCount = users.filter(u => u.status === 'active').length;
-  const suspendedCount = users.filter(u => u.status === 'suspended').length;
-  const adminCount = users.filter(u => u.role === 'admin').length;
+  const handleCall = (phone) => {
+    if (phone) window.location.href = `tel:${phone}`;
+  };
 
-  if (loading && users.length === 0) {
-    return (
-      <div className="space-y-6">
-        <div className="h-8 bg-slate-200 rounded-lg w-64 animate-pulse"></div>
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map(i => <div key={i} className="h-24 bg-slate-200 rounded-2xl animate-pulse"></div>)}
-        </div>
-        <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-          <div className="h-14 bg-slate-100 border-b border-slate-200"></div>
-          <TableSkeleton />
-        </div>
-      </div>
-    );
-  }
+  const handleWhatsApp = (phone) => {
+    if (phone) window.open(`https://wa.me/${phone.replace(/\D/g, '')}`, '_blank');
+  };
+
+  const getPaginatedUsers = () => {
+    const start = (page - 1) * 20;
+    const end = start + 20;
+    return users.slice(start, end);
+  };
+  const paginatedUsers = getPaginatedUsers();
 
   return (
-    <div className="space-y-6">
-      {/* Toast Notification */}
+    <div className="min-h-screen bg-gray-100 p-6">
       {toast && (
-        <div className={`fixed top-6 right-6 z-[1100] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl animate-slideInRight
-          ${toast.type === 'error' ? 'bg-red-50 border border-red-200 text-red-800' : 'bg-emerald-50 border border-emerald-200 text-emerald-800'}`}>
-          {toast.type === 'error' ? <AlertTriangle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
-          <span className="font-medium">{toast.message}</span>
-          <button onClick={() => setToast(null)} className="ml-2 hover:opacity-70"><X className="w-4 h-4" /></button>
+        <div className={`fixed top-20 right-4 z-50 flex items-center gap-2 px-4 py-2 rounded-lg shadow-lg ${
+          toast.type === 'error' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-green-50 text-green-700 border-green-200'
+        }`}>
+          {toast.type === 'error' ? <XCircle size={16} /> : <CheckCircle size={16} />}
+          {toast.msg}
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight">Users Management</h1>
-          <p className="text-slate-500 text-sm mt-1">Manage and monitor all registered users</p>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <Users className="text-blue-600" size={24} /> Customers
+        </h1>
+        <p className="text-gray-500">Manage all registered customers, view details, send notifications, and more</p>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 flex flex-col sm:flex-row gap-4 justify-between">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+          <input
+            type="text"
+            placeholder="Search by name, email, phone..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+          />
         </div>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={Users} label="Total Users" value={totalUsers} color="bg-blue-50 text-blue-600" />
-        <StatCard icon={UserCheck} label="Active Users" value={activeCount} color="bg-emerald-50 text-emerald-600" subtext={`${((activeCount / totalUsers) * 100 || 0).toFixed(0)}% of total`} />
-        <StatCard icon={UserX} label="Suspended" value={suspendedCount} color="bg-red-50 text-red-600" />
-        <StatCard icon={Shield} label="Admins" value={adminCount} color="bg-purple-50 text-purple-600" />
-      </div>
-
-      {/* Filters Toolbar */}
-      <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-        <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-          <div className="relative w-full sm:w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input type="text" placeholder="Search by name, email, phone..." value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 transition-all" />
-          </div>
+        <div className="flex gap-3">
           <div className="relative">
-            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}
-              className="pl-10 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 appearance-none cursor-pointer">
-              <option value="all">All Roles</option>
-              <option value="user">User</option>
-              <option value="provider">Provider</option>
-              <option value="admin">Admin</option>
-            </select>
-            <ChevronLeft className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 rotate-[-90deg] pointer-events-none" />
-          </div>
-          <div className="relative">
-            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-              className="pl-10 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 appearance-none cursor-pointer">
-              <option value="all">All Status</option>
+            <Filter size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <select
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
+              className="pl-10 pr-4 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Status</option>
               <option value="active">Active</option>
               <option value="suspended">Suspended</option>
             </select>
-            <ChevronLeft className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 rotate-[-90deg] pointer-events-none" />
           </div>
+          <button onClick={loadUsers} className="px-3 py-2 bg-gray-100 rounded-lg hover:bg-gray-200"><RefreshCw size={16} /></button>
         </div>
-        <div className="text-sm text-slate-500">Showing <span className="font-semibold text-slate-700">{filteredUsers.length}</span> of <span className="font-semibold text-slate-700">{totalUsers}</span> users</div>
       </div>
 
-      {/* Users Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-slate-50/80 border-b border-slate-100">
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">User</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Contact</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Role</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Joined</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
+          <table className="min-w-full">
+            <thead className="bg-gray-50 border-b">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Customer</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Contact</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Joined</th>
+                <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50">
-              {filteredUsers.map(user => (
-                <tr key={user._id} className="group hover:bg-slate-50/80 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <UserAvatar user={user} size="md" />
-                      <div>
-                        <p className="font-semibold text-slate-800">{user.fullName}</p>
-                        <p className="text-xs text-slate-500">ID: {user._id?.slice(-8)}</p>
+            <tbody className="divide-y">
+              {loading ? (
+                <tr><td colSpan="5" className="text-center py-10"><Loader2 className="animate-spin mx-auto text-blue-600" size={32} /></td></tr>
+              ) : paginatedUsers.length === 0 ? (
+                <tr><td colSpan="5" className="text-center py-10 text-gray-400">No customers found</td></tr>
+              ) : (
+                paginatedUsers.map(user => (
+                  <tr key={user._id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center overflow-hidden">
+                          {user.avatar?.url ? (
+                            <img src={user.avatar.url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-blue-600 font-bold">{user.fullName?.charAt(0) || 'U'}</span>
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">{user.fullName}</p>
+                          <p className="text-xs text-gray-500">{user.email}</p>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-sm text-slate-600"><Mail className="w-3.5 h-3.5 text-slate-400" /><span className="truncate max-w-[180px]">{user.email}</span></div>
-                      {user.phone && <div className="flex items-center gap-2 text-sm text-slate-600"><Phone className="w-3.5 h-3.5 text-slate-400" /><span>{user.phone}</span></div>}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${
-                      user.role === 'admin' ? 'bg-purple-100 text-purple-700' : 
-                      user.role === 'provider' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700'
-                    }`}>
-                      {user.role === 'admin' && <Crown className="w-3 h-3" />}
-                      {user.role === 'provider' && <Shield className="w-3 h-3" />}
-                      {user.role === 'user' && <UserCircle className="w-3 h-3" />}
-                      {user.role?.charAt(0).toUpperCase() + user.role?.slice(1)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <button onClick={() => updateStatus(user._id, user.status === 'active' ? 'suspended' : 'active')} disabled={statusUpdating}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-slate-900/20 focus:ring-offset-2 ${user.status === 'active' ? 'bg-emerald-500' : 'bg-slate-300'}`}>
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${user.status === 'active' ? 'translate-x-6' : 'translate-x-1'}`} />
-                    </button>
-                    <span className={`ml-2 text-xs font-medium ${user.status === 'active' ? 'text-emerald-600' : 'text-slate-500'}`}>{user.status}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2 text-sm text-slate-500">
-                      <Calendar className="w-3.5 h-3.5" />
-                      {new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center justify-end gap-2">
-                      <button onClick={() => viewUserDetails(user._id)} className="p-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100"><Eye className="w-4 h-4" /></button>
-                      <div className="relative">
-                        <button onClick={() => setActionMenuOpen(actionMenuOpen === user._id ? null : user._id)} className="p-2 rounded-xl bg-slate-50 text-slate-600 hover:bg-slate-100"><MoreHorizontal className="w-4 h-4" /></button>
-                        {actionMenuOpen === user._id && (
-                          <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-slate-100 py-1 z-50">
-                            {user.status === 'active' ? (
-                              <button onClick={() => updateStatus(user._id, 'suspended')} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50"><Ban className="w-4 h-4" /> Suspend User</button>
-                            ) : (
-                              <button onClick={() => updateStatus(user._id, 'active')} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-emerald-600 hover:bg-emerald-50"><CheckCircle2 className="w-4 h-4" /> Activate User</button>
-                            )}
-                          </div>
-                        )}
+                    </td>
+                    <td className="px-6 py-4 text-sm">{user.phone || 'N/A'}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${user.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                        {user.isActive ? 'Active' : user.status === 'suspended' ? 'Suspended' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm">{formatDate(user.createdAt)}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-center gap-2">
+                        <button onClick={() => handleCall(user.phone)} className="p-1.5 bg-green-50 rounded hover:bg-green-100" title="Call">
+                          <Phone size={14} className="text-green-600" />
+                        </button>
+                        <button onClick={() => handleWhatsApp(user.phone)} className="p-1.5 bg-green-50 rounded hover:bg-green-100" title="WhatsApp">
+                          <MessageCircle size={14} className="text-green-600" />
+                        </button>
+                        <button onClick={() => { setSelectedUser(user); setShowNotificationModal(true); }} className="p-1.5 bg-blue-50 rounded hover:bg-blue-100" title="Send Notification">
+                          <Bell size={14} className="text-blue-600" />
+                        </button>
+                        <button onClick={() => handleStatusToggle(user._id, user.isActive)} className="p-1.5 bg-orange-50 rounded hover:bg-orange-100" title={user.isActive ? 'Suspend' : 'Activate'}>
+                          {user.isActive ? <UserX size={14} className="text-orange-600" /> : <UserCheck size={14} className="text-green-600" />}
+                        </button>
+                        <button onClick={() => { setSelectedUser(user); setShowEditModal(true); }} className="p-1.5 bg-gray-100 rounded hover:bg-gray-200" title="Edit">
+                          <Edit2 size={14} className="text-gray-600" />
+                        </button>
+                        <button onClick={() => { setSelectedUser(user); setShowDetailDrawer(true); }} className="p-1.5 bg-purple-50 rounded hover:bg-purple-100" title="View Details">
+                          <Eye size={14} className="text-purple-600" />
+                        </button>
                       </div>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {filteredUsers.length === 0 && !loading && (
-                <tr><td colSpan={6} className="px-6 py-16 text-center"><div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4"><Search className="w-8 h-8 text-slate-400" /></div><p className="text-slate-500 font-medium">No users found</p><p className="text-slate-400 text-sm mt-1">Try adjusting your search or filters</p></td></tr>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
         </div>
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100">
-            <p className="text-sm text-slate-500">Page <span className="font-semibold text-slate-700">{page}</span> of <span className="font-semibold text-slate-700">{totalPages}</span></p>
-            <div className="flex items-center gap-2">
-              <button disabled={page === 1} onClick={() => setPage(p => p - 1)} className="flex items-center gap-1 px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-200 disabled:opacity-40"><ChevronLeft className="w-4 h-4" /> Previous</button>
-              <div className="flex items-center gap-1">
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let pageNum; if (totalPages <= 5) pageNum = i + 1; else if (page <= 3) pageNum = i + 1; else if (page >= totalPages - 2) pageNum = totalPages - 4 + i; else pageNum = page - 2 + i;
-                  return <button key={pageNum} onClick={() => setPage(pageNum)} className={`w-9 h-9 rounded-xl text-sm font-medium transition-colors ${page === pageNum ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>{pageNum}</button>;
-                })}
-              </div>
-              <button disabled={page === totalPages} onClick={() => setPage(p => p + 1)} className="flex items-center gap-1 px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-200 disabled:opacity-40">Next <ChevronRight className="w-4 h-4" /></button>
+          <div className="flex justify-between items-center p-4 border-t">
+            <span className="text-sm">Page {page} of {totalPages}</span>
+            <div className="flex gap-2">
+              <button disabled={page === 1} onClick={() => setPage(p => p-1)} className="p-1 border rounded disabled:opacity-50"><ChevronLeft size={16} /></button>
+              <button disabled={page === totalPages} onClick={() => setPage(p => p+1)} className="p-1 border rounded disabled:opacity-50"><ChevronRight size={16} /></button>
             </div>
           </div>
         )}
       </div>
 
-      {/* User Details Modal */}
-      {showModal && selectedUser && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fadeIn">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] overflow-y-auto animate-scaleIn">
-            <div className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-8 py-8 text-white overflow-hidden">
-              <button onClick={() => setShowModal(false)} className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-xl"><X className="w-5 h-5" /></button>
-              <div className="relative flex flex-col items-center text-center">
-                <UserAvatar user={selectedUser} size="xl" />
-                <h2 className="text-2xl font-bold mt-4">{selectedUser.fullName}</h2>
-                <p className="text-slate-400 text-sm mt-1">{selectedUser.email}</p>
-                <div className="flex items-center gap-2 mt-3">
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${selectedUser.role === 'admin' ? 'bg-purple-500/20 text-purple-300' : selectedUser.role === 'provider' ? 'bg-blue-500/20 text-blue-300' : 'bg-slate-500/20 text-slate-300'}`}>
-                    {selectedUser.role === 'admin' && <Crown className="w-3 h-3" />}{selectedUser.role?.charAt(0).toUpperCase() + selectedUser.role?.slice(1)}
-                  </span>
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${selectedUser.status === 'active' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-red-500/20 text-red-300'}`}>
-                    {selectedUser.status === 'active' ? <CheckCircle2 className="w-3 h-3" /> : <Ban className="w-3 h-3" />}{selectedUser.status}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div className="p-8 space-y-5">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-50 rounded-xl p-4"><div className="flex items-center gap-2 text-slate-500 text-xs font-medium uppercase tracking-wider mb-2"><Mail className="w-3.5 h-3.5" />Email</div><p className="text-sm font-medium text-slate-800 break-all">{selectedUser.email}</p></div>
-                <div className="bg-slate-50 rounded-xl p-4"><div className="flex items-center gap-2 text-slate-500 text-xs font-medium uppercase tracking-wider mb-2"><Phone className="w-3.5 h-3.5" />Phone</div><p className="text-sm font-medium text-slate-800">{selectedUser.phone || 'Not provided'}</p></div>
-                <div className="bg-slate-50 rounded-xl p-4"><div className="flex items-center gap-2 text-slate-500 text-xs font-medium uppercase tracking-wider mb-2"><Calendar className="w-3.5 h-3.5" />Joined</div><p className="text-sm font-medium text-slate-800">{new Date(selectedUser.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p></div>
-                <div className="bg-slate-50 rounded-xl p-4"><div className="flex items-center gap-2 text-slate-500 text-xs font-medium uppercase tracking-wider mb-2"><Sparkles className="w-3.5 h-3.5" />User ID</div><p className="text-sm font-mono text-slate-600">{selectedUser._id?.slice(-12)}</p></div>
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button onClick={() => setShowModal(false)} className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 font-semibold rounded-xl hover:bg-slate-200">Close</button>
-                {selectedUser.status === 'active' ? (
-                  <button onClick={() => { updateStatus(selectedUser._id, 'suspended'); setShowModal(false); }} className="flex-1 px-4 py-3 bg-red-600 text-white font-semibold rounded-xl hover:bg-red-700 flex items-center justify-center gap-2"><Ban className="w-4 h-4" /> Suspend User</button>
-                ) : (
-                  <button onClick={() => { updateStatus(selectedUser._id, 'active'); setShowModal(false); }} className="flex-1 px-4 py-3 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 flex items-center justify-center gap-2"><CheckCircle2 className="w-4 h-4" /> Activate User</button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
+      {showNotificationModal && selectedUser && (
+        <NotificationModal user={selectedUser} onClose={() => setShowNotificationModal(false)} onSend={() => showToast('Notification sent')} />
+      )}
+      {showEditModal && selectedUser && (
+        <EditUserModal user={selectedUser} onClose={() => setShowEditModal(false)} onSave={handleEditSave} />
+      )}
+      {showDetailDrawer && selectedUser && (
+        <UserDetailDrawer user={selectedUser} onClose={() => setShowDetailDrawer(false)} />
       )}
     </div>
   );

@@ -4,7 +4,7 @@ import {
   fetchNotifications, 
   markNotificationRead, 
   fetchProviderNotifications, 
-  marahJ91ZuNL8Y2px8iYciYeHN8sfSh5eXH8,   // ✅ Correct name
+  mar9yMnTm4NSzvG9rrwjM2ec8xZgh1cafXH8,   // ✅ Fixed: changed from marahJ91ZuNL8Y2px8iYciYeHN8sfSh5eXH8
   markAllNotificationsRead,
   markAllProviderNotificationsRead
 } from '../services/api';
@@ -79,7 +79,7 @@ const NotificationBell = () => {
     e?.stopPropagation();
     try {
       if (user?.role === 'provider') {
-        await marahJ91ZuNL8Y2px8iYciYeHN8sfSh5eXH8(id);   // ✅ Correct name
+        await mar9yMnTm4NSzvG9rrwjM2ec8xZgh1cafXH8(id);   // ✅ Fixed
       } else {
         await markNotificationRead(id);
       }
@@ -349,8 +349,6 @@ const NotificationBell = () => {
               ))
             )}
           </div>
-
-        
         </div>
       )}
     </div>

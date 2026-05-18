@@ -221,6 +221,35 @@ export const updateAdminUserStatus = async (userId, status) => {
   });
 };
 
+// ✅ NEW: Update user by admin (firstName, lastName, phone)
+export const updateUserByAdmin = async (userId, userData) => {
+  return apiFetch(`/admin/users/${userId}`, {
+    method: 'PUT',
+    body: JSON.stringify(userData),
+  });
+};
+
+// ✅ NEW: Get user stats (wallet, spending, bookings)
+export const getUserStats = async (userId) => {
+  return apiFetch(`/admin/users/${userId}/stats`);
+};
+
+// ✅ NEW: Send push notification
+export const sendPushNotification = async (targetType, targetId, message) => {
+  return apiFetch('/admin/notifications/push', {
+    method: 'POST',
+    body: JSON.stringify({ targetType, targetId, message }),
+  });
+};
+
+// ✅ NEW: Send SMS alert
+export const sendSmsAlert = async (targetType, targetId, message) => {
+  return apiFetch('/admin/notifications/sms', {
+    method: 'POST',
+    body: JSON.stringify({ targetType, targetId, message }),
+  });
+};
+
 export const fetchAdminVerifications = async (page = 1, limit = 20, status = '', accountStatus = '') => {
   let url = `/admin/verifications?page=${page}&limit=${limit}`;
   if (status && status !== 'all') url += `&status=${status}`;
@@ -384,7 +413,8 @@ export const fetchProviderNotifications = async () => {
   return apiFetch('/providers/notifications');
 };
 
-export const marahJ91ZuNL8Y2px8iYciYeHN8sfSh5eXH8 = async (notificationId) => {
+// ✅ Fixed function name
+export const mar9yMnTm4NSzvG9rrwjM2ec8xZgh1cafXH8 = async (notificationId) => {
   return apiFetch(`/providers/notifications/${notificationId}/read`, {
     method: 'PATCH',
   });
@@ -571,41 +601,20 @@ export const createReview = async (reviewData) => {
 };
 
 // ========== Provider Earnings & Ratings APIs ==========
-
-/**
- * Get list of providers with earnings, bookings, and rating summary
- * @param {number} page - Page number
- * @param {number} limit - Items per page
- * @param {string} search - Search term (name, email, business name)
- * @returns {Promise}
- */
 export const fetchProviderEarningsList = async (page = 1, limit = 20, search = '') => {
   let url = `/admin/provider-earnings?page=${page}&limit=${limit}`;
   if (search) url += `&search=${encodeURIComponent(search)}`;
   return apiFetch(url);
 };
 
-/**
- * Get detailed earnings & rating breakdown for a specific provider
- * @param {string} providerId - Provider ID (ServiceProvider _id or user id)
- * @returns {Promise}
- */
 export const fetchProviderEarningsDetails = async (providerId) => {
   return apiFetch(`/admin/provider-earnings/${providerId}`);
 };
 
-/**
- * Get ratings & reviews for a specific provider
- * @param {string} providerId - Provider ID
- * @param {number} page - Page number
- * @param {number} limit - Items per page
- * @returns {Promise}
- */
 export const fetchProviderReviews = async (providerId, page = 1, limit = 10) => {
   return apiFetch(`/reviews/provider/${providerId}?page=${page}&limit=${limit}`);
 };
 
-// Alias for backward compatibility (to fix existing import errors)
 export const fetchAdminProviders = fetchProviderEarningsList;
 
 // ========== Provider Status API ==========

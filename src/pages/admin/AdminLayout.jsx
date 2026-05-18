@@ -160,10 +160,9 @@ const AdminLayout = () => {
       to={to}
       onClick={() => setMobileMenuOpen(false)}
       className={({ isActive }) =>
-        `block px-3 py-2 text-sm rounded-lg transition-colors ${
-          isActive
-            ? 'bg-blue-600/20 text-blue-400 font-medium'
-            : 'text-slate-400 hover:text-black hover:bg-white/5'
+        `block px-3 py-2 text-sm rounded-lg transition-colors ${isActive
+          ? 'bg-blue-600/20 text-blue-400 font-medium'
+          : 'text-slate-400 hover:text-black hover:bg-white/5'
         }`
       }
     >
@@ -186,7 +185,7 @@ const AdminLayout = () => {
     <div className="h-screen flex flex-col overflow-hidden bg-slate-50">
       {/* Main Layout Container - Fixed height, no scroll */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        
+
         {/* Mobile Overlay */}
         {mobileMenuOpen && (
           <div
@@ -206,7 +205,7 @@ const AdminLayout = () => {
           <div className={`h-20 flex-shrink-0 flex items-center px-4 border-b border-white/10 ${sidebarOpen ? 'justify-between' : 'justify-center'}`}>
             <div className="flex items-center gap-3">
               {/* Company Logo Image */}
-              <img 
+              <img
                 src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778781548/a7ea1860-5474-4e8d-800b-72c68b9f6b71-removebg-preview_cpmi08.png"
                 alt="Company Logo"
                 className="w-10 h-10 rounded-xl object-cover"
@@ -214,7 +213,7 @@ const AdminLayout = () => {
               {sidebarOpen && (
                 <div className="flex">
                   {/* Company Name Image */}
-                  <img 
+                  <img
                     src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778657661/ChatGPT_Image_May_13__2026__12_33_54_AM-removebg-preview_w7uxh5.png"
                     alt="GharSeva"
                     className="h-20 w-auto object-contain"
@@ -242,6 +241,24 @@ const AdminLayout = () => {
               <SubNavItem to="/admin/provider-earnings" label="Earnings & Ratings" />
               <SubNavItem to="/admin/provider-status" label="Online/Offline Status" />
             </CollapsibleSection>
+
+
+            <div className="mt-2">
+              <button onClick={() => toggleSection('user')} className="flex items-center justify-between w-full px-3 py-2 text-left text-gray-600 font-medium hover:bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-2"><Users size={18} /> User Management</div>
+                {openSections.user ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+              </button>
+              {openSections.user && (
+                <div className="ml-6 mt-1 space-y-1">
+                  <NavLink to="/admin/users" className={({ isActive }) => `block px-3 py-1.5 text-sm rounded ${isActive ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`}>All Users</NavLink>
+                  <NavLink to="/admin/user-wallet" className={({ isActive }) => `block px-3 py-1.5 text-sm rounded ${isActive ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`}>User Wallet</NavLink>
+                  <NavLink to="/admin/user-details" className={({ isActive }) => `block px-3 py-1.5 text-sm rounded ${isActive ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`}>User Details</NavLink>
+                  <NavLink to="/admin/user-bookings" className={({ isActive }) => `block px-3 py-1.5 text-sm rounded ${isActive ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`}>User Bookings</NavLink>
+                  {/* 👇 ADD THIS NEW LINK */}
+                  <NavLink to="/admin/complaints" className={({ isActive }) => `block px-3 py-1.5 text-sm rounded ${isActive ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`}>Complaints</NavLink>
+                </div>
+              )}
+            </div>
 
             {/* Booking Management Section */}
             <CollapsibleSection section="booking" icon={Briefcase} title="Booking Management">
@@ -329,7 +346,7 @@ const AdminLayout = () => {
 
         {/* Right Side - Header + Content */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          
+
           {/* Top Header - Fixed with Avatar Dropdown */}
           <header className="h-16 flex-shrink-0 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-8">
             <div className="flex items-center gap-4">
@@ -355,7 +372,7 @@ const AdminLayout = () => {
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
               </button>
               <div className="w-px h-8 bg-slate-200 mx-1" />
-              
+
               {/* Avatar Dropdown */}
               <div className="relative" ref={dropdownRef}>
                 <button
