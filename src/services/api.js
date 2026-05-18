@@ -2,21 +2,16 @@
 
 // ✅ Dynamic BASE_URL - works on local network too
 const getBaseUrl = () => {
-    // If in production (Vercel), use the deployed backend URL
     if (import.meta.env.PROD) {
         return import.meta.env.VITE_BASE_URL || 'https://ghar-seva-server-1.onrender.com/api/v1';
     }
     
-    // For development - check if we're on local network
     const hostname = window.location.hostname;
     
-    // If accessing via IP address (not localhost)
     if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-        // Use the same IP but with backend port
         return `http://${hostname}:5000/api/v1`;
     }
     
-    // Default localhost
     return 'http://localhost:5000/api/v1';
 };
 
@@ -24,7 +19,6 @@ const BASE_URL = getBaseUrl();
 
 console.log('🔧 API BASE_URL:', BASE_URL);
 
-// Cache for categories
 let categoriesCache = {
   data: null,
   timestamp: null,
@@ -34,12 +28,10 @@ let categoriesCache = {
 const apiFetch = async (endpoint, options = {}) => {
   let response;
   try {
-    // Ensure headers are properly set
     const headers = {
       ...options.headers,
     };
     
-    // Only set Content-Type if not FormData
     if (!(options.body instanceof FormData)) {
       headers['Content-Type'] = 'application/json';
     }
@@ -72,10 +64,9 @@ const apiFetch = async (endpoint, options = {}) => {
   return data;
 };
 
-// Cached version of fetchCategories
 export const fetchCategories = async (forceRefresh = false) => {
   const now = Date.now();
-  const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+  const CACHE_TTL = 5 * 60 * 1000;
 
   if (!forceRefresh && categoriesCache.data && (now - categoriesCache.timestamp) < CACHE_TTL) {
     return categoriesCache.data;
@@ -97,6 +88,45 @@ export const fetchCategories = async (forceRefresh = false) => {
   })();
 
   return await categoriesCache.promise;
+};
+
+// ========== Auth APIs ==========
+export const register = async (userData) => {
+  return apiFetch('/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(userData),
+  });
+};
+
+export const login = async (email, password) => {
+  return apiFetch('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
+};
+
+export const logout = async () => {
+  return apiFetch('/auth/logout', {
+    method: 'POST',
+  });
+};
+
+export const getMe = async () => {
+  return apiFetch('/auth/me');
+};
+
+// ========== User Avatar APIs ==========
+export const uploadUserAvatar = async (formData) => {
+  return apiFetch('/users/avatar', {
+    method: 'POST',
+    body: formData,
+  });
+};
+
+export const removeUserAvatar = async () => {
+  return apiFetch('/users/avatar', {
+    method: 'DELETE',
+  });
 };
 
 // ========== User APIs ==========
@@ -270,7 +300,6 @@ export const fetchAdminServices = async () => {
   return apiFetch('/admin/services');
 };
 
-// Commission settings
 export const fetchCommission = async () => {
   return apiFetch('/admin/settings/commission');
 };
@@ -344,7 +373,6 @@ export const uploadProviderKYCDocuments = async (formData) => {
   return apiFetch('/providers/upload-kyc', {
     method: 'POST',
     body: formData,
-    // Don't set Content-Type for FormData, browser will set it with boundary
   });
 };
 
@@ -356,7 +384,7 @@ export const fetchProviderNotifications = async () => {
   return apiFetch('/providers/notifications');
 };
 
-export const mar9yMnTm4NSzvG9rrwjM2ec8xZgh1cafXH8 = async (notificationId) => {
+export const marahJ91ZuNL8Y2px8iYciYeHN8sfSh5eXH8 = async (notificationId) => {
   return apiFetch(`/providers/notifications/${notificationId}/read`, {
     method: 'PATCH',
   });
@@ -405,7 +433,7 @@ export const withdrawFromWallet = async (amount) => {
   });
 };
 
-// ========== Withdrawal APIs (Provider & Admin) ==========
+// ========== Withdrawal APIs ==========
 export const requestWithdrawal = async (amount, accountDetails) => {
   return apiFetch('/providers/withdrawals/request', {
     method: 'POST',
@@ -443,7 +471,7 @@ export const rejectWithdrawal = async (withdrawalId, adminNote) => {
   });
 };
 
-// ========== Booking APIs (customer & provider) ==========
+// ========== Booking APIs ==========
 export const createBooking = async (bookingData) => {
   return apiFetch('/bookings', {
     method: 'POST',
@@ -500,7 +528,7 @@ export const completeBooking = async (bookingId, otp) => {
   });
 };
 
-// ========== Public Service/Category APIs ==========
+// ========== Public APIs ==========
 export const fetchCategoryBySlug = async (slug) => {
   return apiFetch(`/services/categories/${slug}`);
 };
@@ -532,4 +560,55 @@ export const searchServices = async (query) => {
     return { success: true, services: filtered };
   }
   return { success: false, services: [] };
+};
+
+// ========== Reviews API ==========
+export const createReview = async (reviewData) => {
+  return apiFetch('/reviews', {
+    method: 'POST',
+    body: JSON.stringify(reviewData),
+  });
+};
+
+// ========== Provider Earnings & Ratings APIs ==========
+
+/**
+ * Get list of providers with earnings, bookings, and rating summary
+ * @param {number} page - Page number
+ * @param {number} limit - Items per page
+ * @param {string} search - Search term (name, email, business name)
+ * @returns {Promise}
+ */
+export const fetchProviderEarningsList = async (page = 1, limit = 20, search = '') => {
+  let url = `/admin/provider-earnings?page=${page}&limit=${limit}`;
+  if (search) url += `&search=${encodeURIComponent(search)}`;
+  return apiFetch(url);
+};
+
+/**
+ * Get detailed earnings & rating breakdown for a specific provider
+ * @param {string} providerId - Provider ID (ServiceProvider _id or user id)
+ * @returns {Promise}
+ */
+export const fetchProviderEarningsDetails = async (providerId) => {
+  return apiFetch(`/admin/provider-earnings/${providerId}`);
+};
+
+/**
+ * Get ratings & reviews for a specific provider
+ * @param {string} providerId - Provider ID
+ * @param {number} page - Page number
+ * @param {number} limit - Items per page
+ * @returns {Promise}
+ */
+export const fetchProviderReviews = async (providerId, page = 1, limit = 10) => {
+  return apiFetch(`/reviews/provider/${providerId}?page=${page}&limit=${limit}`);
+};
+
+// Alias for backward compatibility (to fix existing import errors)
+export const fetchAdminProviders = fetchProviderEarningsList;
+
+// ========== Provider Status API ==========
+export const fetchProviderStatusList = async () => {
+  return apiFetch('/admin/providers/status');
 };

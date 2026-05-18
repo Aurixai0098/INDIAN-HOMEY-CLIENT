@@ -35,17 +35,16 @@ import AdminBookings from "./pages/admin/AdminBookings";
 import AdminWithdrawals from "./pages/admin/AdminWithdrawals";
 import AdminKycVerification from "./pages/admin/AdminKycVerification";
 import ProviderKYCVerification from "./pages/provider/ProviderKYCVerification";
+import AdminEarningRating from "./pages/admin/AdminEarningRating";
+import AdminProviderStatus from "./pages/admin/AdminProviderStatus";  // ✅ NEW
 
 // Main App Content Component
 const AppContent = () => {
   const location = useLocation();
   const { showAuth } = useAuth();
   
-  // Check if current route is admin or provider panel
   const isAdminRoute = location.pathname.startsWith('/admin');
   const isProviderRoute = location.pathname.startsWith('/provider');
-  
-  // Hide navbar and footer on admin and provider routes
   const hideNavFooter = isAdminRoute || isProviderRoute;
   
   return (
@@ -79,7 +78,9 @@ const AppContent = () => {
         <Route path="/admin" element={<PrivateRoute><AdminLayout /></PrivateRoute>}>
           <Route index element={<AdminDashboard />} />
           <Route path="users" element={<AdminUsers />} />
+          <Route path="provider-earnings" element={<AdminEarningRating />} />
           <Route path="providers" element={<AdminProviders />} />
+          <Route path="provider-status" element={<AdminProviderStatus />} />  {/* ✅ NEW */}
           <Route path="kyc-verification-providers" element={<AdminKycVerification/>} />
           <Route path="categories" element={<AdminCategories />} />
           <Route path="services" element={<AdminServices />} />

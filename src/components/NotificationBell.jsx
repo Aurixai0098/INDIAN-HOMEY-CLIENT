@@ -4,7 +4,7 @@ import {
   fetchNotifications, 
   markNotificationRead, 
   fetchProviderNotifications, 
-  mar9yMnTm4NSzvG9rrwjM2ec8xZgh1cafXH8,
+  marahJ91ZuNL8Y2px8iYciYeHN8sfSh5eXH8,   // ✅ Correct name
   markAllNotificationsRead,
   markAllProviderNotificationsRead
 } from '../services/api';
@@ -79,7 +79,7 @@ const NotificationBell = () => {
     e?.stopPropagation();
     try {
       if (user?.role === 'provider') {
-        await mar9yMnTm4NSzvG9rrwjM2ec8xZgh1cafXH8(id);
+        await marahJ91ZuNL8Y2px8iYciYeHN8sfSh5eXH8(id);   // ✅ Correct name
       } else {
         await markNotificationRead(id);
       }
@@ -350,19 +350,7 @@ const NotificationBell = () => {
             )}
           </div>
 
-          {/* Footer */}
-          {notifications.length > 0 && (
-            <div className="border-t border-slate-100 px-4 py-2.5 bg-slate-50/50">
-              <button 
-                onClick={() => {
-                  window.location.href = '/notifications';
-                }}
-                className="w-full text-center text-xs font-medium text-slate-500 hover:text-slate-700 py-1.5 rounded-lg hover:bg-slate-100 transition-colors"
-              >
-                View all notifications
-              </button>
-            </div>
-          )}
+        
         </div>
       )}
     </div>

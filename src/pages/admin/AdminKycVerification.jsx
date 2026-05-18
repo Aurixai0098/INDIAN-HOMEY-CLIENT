@@ -12,6 +12,38 @@ import {
 } from 'lucide-react';
 import { fetchAdminVerifications, verifyProvider, updateAdminUserStatus } from '../../services/api';
 
+// ─── Avatar Component with Image Support ────────────────────────────
+const UserAvatar = ({ user, size = 'md' }) => {
+  const avatarUrl = user?.avatar?.url;
+  const name = user?.fullName || user?.firstName || user?.businessName || '?';
+  const colors = [
+    'from-blue-400 to-blue-600', 'from-emerald-400 to-emerald-600',
+    'from-purple-400 to-purple-600', 'from-rose-400 to-rose-600',
+    'from-amber-400 to-amber-600', 'from-cyan-400 to-cyan-600',
+    'from-indigo-400 to-indigo-600', 'from-pink-400 to-pink-600'
+  ];
+  const colorIndex = name.length % colors.length;
+  const gradient = colors[colorIndex];
+  const sizeClasses = {
+    sm: 'w-8 h-8 text-xs', md: 'w-10 h-10 text-sm',
+    lg: 'w-16 h-16 text-xl', xl: 'w-24 h-24 text-3xl'
+  };
+  if (avatarUrl) {
+    return (
+      <img
+        src={avatarUrl}
+        alt={name}
+        className={`${sizeClasses[size]} rounded-full object-cover ring-2 ring-white shadow-md`}
+      />
+    );
+  }
+  return (
+    <div className={`${sizeClasses[size]} rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center text-white font-bold shadow-lg`}>
+      {name[0]?.toUpperCase() || '?'}
+    </div>
+  );
+};
+
 // Helper: format date
 const formatDate = (date) => {
   if (!date) return 'N/A';
@@ -458,9 +490,7 @@ const AdminKycVerification = () => {
                   <tr key={provider._id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
-                          {provider.businessName?.[0]?.toUpperCase() || provider.user?.firstName?.[0]?.toUpperCase() || '?'}
-                        </div>
+                        <UserAvatar user={provider.user} size="md" />
                         <div>
                           <p className="font-semibold text-gray-800">{provider.businessName || 'Individual Provider'}</p>
                           <p className="text-xs text-gray-500">{provider.user?.firstName} {provider.user?.lastName}</p>
@@ -603,9 +633,7 @@ const AdminKycVerification = () => {
             {/* Provider Info */}
             <div className="p-6 border-b border-gray-100">
               <div className="flex items-start gap-4">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold">
-                  {selectedProvider.businessName?.[0]?.toUpperCase() || selectedProvider.user?.firstName?.[0]?.toUpperCase() || '?'}
-                </div>
+                <UserAvatar user={selectedProvider.user} size="xl" />
                 <div className="flex-1">
                   <h3 className="text-xl font-bold text-gray-800">{selectedProvider.businessName || 'Individual Provider'}</h3>
                   <p className="text-gray-500">{selectedProvider.user?.firstName} {selectedProvider.user?.lastName}</p>

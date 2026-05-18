@@ -4,48 +4,6 @@ import { Link } from 'react-router-dom';
 import { fetchCategories, fetchFeaturedServices, fetchPopularServices } from '../services/api';
 import InfiniteReviewsMarquee from '../components/SliderImages';
 
-const sliderImages = [
-  "https://www.urbancompany.com/img?bucket=urbanclap-prod&quality=90&format=auto/w_1232,dpr_2,fl_progressive:steep,q_auto:low,f_auto,c_limit/images/supply/customer-app-supply/1778178479978-7aada8.jpeg",
-  "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=1200&h=400&fit=crop",
-  "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?q=80&w=1200&h=400&fit=crop",
-  "https://images.unsplash.com/photo-1533090161767-e6ffed986c88?q=80&w=1200&h=400&fit=crop"
-];
-
-const reviews = [
-  {
-    id: 1,
-    name: "Rajat Jangra",
-    date: "24/04/2026",
-    rating: 5,
-    comment: "Excellent service! The plumber arrived on time and fixed the leakage perfectly. Highly recommended for home services.",
-    image: "https://ui-avatars.com/api/?name=Rajat+Jangra&background=10b981&color=fff"
-  },
-  {
-    id: 2,
-    name: "Rahul Rao",
-    date: "20/03/2026",
-    rating: 5,
-    comment: "AC servicing was very professional. They cleaned everything and checked for gas leaks too. Very satisfied.",
-    image: "https://ui-avatars.com/api/?name=Rahul+Rao&background=3b82f6&color=fff"
-  },
-  {
-    id: 3,
-    name: "Amit Kumar",
-    date: "15/02/2026",
-    rating: 4,
-    comment: "The cleaning team did a great job with the deep cleaning of my kitchen. It looks brand new now.",
-    image: "https://ui-avatars.com/api/?name=Amit+Kumar&background=f59e0b&color=fff"
-  },
-  {
-    id: 4,
-    name: "Sandeep Saini",
-    date: "10/01/2026",
-    rating: 5,
-    comment: "Best platform for local experts. I booked an electrician for wiring work and he was very skilled.",
-    image: "https://ui-avatars.com/api/?name=Sandeep+Saini&background=ef4444&color=fff"
-  }
-];
-
 // Clickable Service Card
 const ServiceCard = ({ service }) => (
   <Link to={`/service/${service.slug}`} className="group cursor-pointer tap-feedback block">
@@ -64,36 +22,46 @@ const ServiceCard = ({ service }) => (
 
 export default function Home() {
   const categoryScrollRef = useRef(null);
-  const reviewScrollRef = useRef(null);
-  const [currentSlide, setCurrentSlide] = useState(0);
   const [categories, setCategories] = useState([]);
   const [featuredServices, setFeaturedServices] = useState([]);
   const [popularServices, setPopularServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [navbarHeight, setNavbarHeight] = useState(80);
+  const [windowHeight, setWindowHeight] = useState(window.innerHeight);
 
-  // Check screen size for responsive background
+  // Check screen size and get navbar height
   useEffect(() => {
     const checkScreenSize = () => {
       setIsMobile(window.innerWidth < 768);
+      setWindowHeight(window.innerHeight);
+    };
+
+    // Get navbar height dynamically
+    const getNavbarHeight = () => {
+      const navbar = document.querySelector('nav');
+      if (navbar) {
+        setNavbarHeight(navbar.offsetHeight);
+      }
     };
 
     checkScreenSize();
     window.addEventListener('resize', checkScreenSize);
+    window.addEventListener('resize', getNavbarHeight);
+    
+    // Small delay to ensure navbar is rendered
+    setTimeout(getNavbarHeight, 100);
+    getNavbarHeight();
 
-    return () => window.removeEventListener('resize', checkScreenSize);
+    return () => {
+      window.removeEventListener('resize', checkScreenSize);
+      window.removeEventListener('resize', getNavbarHeight);
+    };
   }, []);
 
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, []);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev === sliderImages.length - 1 ? 0 : prev + 1));
-    }, 5000);
-    return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -124,18 +92,8 @@ export default function Home() {
 
   const scrollCategory = (direction) => {
     if (categoryScrollRef.current) {
-      const scrollAmount = window.innerWidth < 640 ? 220 : 350;
+      const scrollAmount = window.innerWidth < 640 ? 280 : 400;
       categoryScrollRef.current.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
-        behavior: 'smooth',
-      });
-    }
-  };
-
-  const scrollReview = (direction) => {
-    if (reviewScrollRef.current) {
-      const scrollAmount = window.innerWidth < 640 ? 280 : 380;
-      reviewScrollRef.current.scrollBy({
         left: direction === 'left' ? -scrollAmount : scrollAmount,
         behavior: 'smooth',
       });
@@ -157,124 +115,130 @@ export default function Home() {
     );
   }
 
+  // Calculate hero height based on screen size
+  const heroMinHeight = isMobile ? 'calc(100vh - 60px)' : 'calc(100vh - 80px)';
+
   return (
     <div className="min-h-screen bg-white font-sans overflow-x-hidden">
-      {/* Hero Section with Responsive Background */}
+      {/* Hero Section - Fixed overlap issue using calc() */}
       <section
-        className="relative pt-8 pb-20 md:pt-32 md:pb-32 px-5 sm:px-6 overflow-hidden bg-cover bg-center bg-no-repeat"
+        className="relative w-full overflow-hidden bg-cover bg-center bg-no-repeat flex items-center"
         style={{
           backgroundImage: `url('${isMobile ? mobileBgImage : desktopBgImage}')`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          minHeight: isMobile ? '70vh' : 'auto'
+          minHeight: heroMinHeight,
+          height: 'auto'
         }}
       >
         {/* Dark overlay for better text readability */}
-        <div className="absolute inset-0  z-0"></div>
+        <div className="absolute inset-0 bg-black/20 z-0"></div>
 
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center relative z-10 gap-8">
-          <div className="w-full flex     justify-center  items-end mt-24  text-white space-y-5 md:space-y-6 text-center md:text-left">
-            <div>
-              <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold leading-tight">
-                {/* Expert Professional */}
-                <br className="hidden sm:block" />
-                {/* Home Services, */}
-                <br />
-                {/* Book Online */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10 w-full py-12 md:py-16">
+          <div className="flex flex-col items-center text-center">
+            {/* Logo/Brand Name */}
+            <div className="mb-6">
+              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white drop-shadow-lg tracking-tight">
+                INDIAN HOMEY
               </h1>
-              <p className="text-base md:text-lg opacity-90 max-w-md mx-auto md:mx-0">
-                {/* Service On Wheel helps you live smarter, giving you time to focus on what's most important. */}
-              </p>
             </div>
-           
+            
+            <div className="max-w-3xl mx-auto">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white drop-shadow-lg mb-4">
+                Expert Professional
+                <br />
+                Home Services,
+                <br />
+                Book Online
+              </h2>
+              <p className="text-base md:text-lg text-white/90 max-w-2xl mx-auto mt-4 drop-shadow">
+                Service On Wheel helps you live smarter, giving you time to focus on what's most important.
+              </p>
+              <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
+                <Link 
+                  to="/services" 
+                  className="inline-flex items-center justify-center px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-full transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                >
+                  Book Now
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 ml-2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                  </svg>
+                </Link>
+                <Link 
+                  to="/providers" 
+                  className="inline-flex items-center justify-center px-8 py-3 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white font-semibold rounded-full transition-all border border-white/30"
+                >
+                  Find Professionals
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Image Slider - Uncommented and working */}
-      {/* <section className="relative -mt-20 sm:-mt-32 md:-mt-0 lg:-mt-72 px-4 sm:px-6 z-20">
-        <div className="max-w-6xl mx-auto relative group">
-          <div className="overflow-hidden rounded-xl md:rounded-2xl shadow-xl aspect-video md:aspect-[21/9]">
-            <div className="flex transition-transform duration-700 ease-in-out h-full" style={{ transform: `translateX(-${currentSlide * 100}%)` }}>
-              {sliderImages.map((img, idx) => (
-                <img key={idx} src={img} alt={`Slide ${idx}`} className="w-full h-full object-cover shrink-0" loading="lazy" />
-              ))}
-            </div>
-          </div>
-          <button
-            onClick={() => setCurrentSlide(prev => (prev === 0 ? sliderImages.length - 1 : prev - 1))}
-            className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-10 sm:h-10 bg-white/80 backdrop-blur-sm rounded-full shadow-md flex items-center justify-center text-gray-700 hover:bg-white transition-all opacity-70 group-hover:opacity-100 tap-feedback"
-          >
-            ❮
-          </button>
-          <button
-            onClick={() => setCurrentSlide(prev => (prev === sliderImages.length - 1 ? 0 : prev + 1))}
-            className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-10 sm:h-10 bg-white/80 backdrop-blur-sm rounded-full shadow-md flex items-center justify-center text-gray-700 hover:bg-white transition-all opacity-70 group-hover:opacity-100 tap-feedback"
-          >
-            ❯
-          </button>
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
-            {sliderImages.map((_, idx) => (
-              <button
-                key={idx}
-                onClick={() => setCurrentSlide(idx)}
-                className={`transition-all w-2 h-2 rounded-full ${currentSlide === idx ? 'bg-white w-4' : 'bg-white/50'}`}
-              />
-            ))}
-          </div>
-        </div>
-      </section> */}
-
-      {/* Categories Slider (Dynamic from API) */}
-      <section className="relative mt-6 sm:mt-4 px-4 sm:px-6 pb-10 md:pb-12">
-        <div className="max-w-6xl mx-auto">
-          <div className="bg-white p-3 sm:p-4 rounded-xl shadow-md border border-gray-100">
-            <div className="flex items-center gap-2 sm:gap-4">
-              <button onClick={() => scrollCategory('left')} className="shrink-0 w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center bg-white rounded-full shadow-md border border-gray-100 text-slate-600 hover:bg-emerald-50 active:scale-95 transition-all tap-feedback">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-                </svg>
-              </button>
-              <div ref={categoryScrollRef} className="flex flex-1 items-start gap-4 sm:gap-6 md:gap-10 overflow-x-auto no-scrollbar horizontal-scroll py-3">
-                {categoriesLoading ? (
-                  // Skeleton loaders
-                  Array(6).fill(0).map((_, i) => (
-                    <div key={i} className="flex flex-col items-center min-w-[80px] sm:min-w-[100px] md:min-w-[120px]">
-                      <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-200 rounded-2xl animate-pulse"></div>
-                      <div className="w-12 h-3 bg-gray-200 rounded mt-2 animate-pulse"></div>
+      {/* Categories Slider - Clean design without borders */}
+      <section className="py-8 md:py-12 px-4 sm:px-6 bg-white border-b border-gray-100">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <button 
+              onClick={() => scrollCategory('left')} 
+              className="shrink-0 w-10 h-10 flex items-center justify-center bg-gray-100 rounded-full text-slate-600 hover:bg-gray-200 active:scale-95 transition-all tap-feedback"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+              </svg>
+            </button>
+            
+            <div ref={categoryScrollRef} className="flex flex-1 items-center gap-6 md:gap-8 overflow-x-auto no-scrollbar horizontal-scroll py-4">
+              {categoriesLoading ? (
+                Array(8).fill(0).map((_, i) => (
+                  <div key={i} className="flex flex-col items-center min-w-[90px] sm:min-w-[110px]">
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gray-100 rounded-2xl animate-pulse"></div>
+                    <div className="w-14 h-3 bg-gray-100 rounded mt-3 animate-pulse"></div>
+                  </div>
+                ))
+              ) : (
+                categories.map((cat) => (
+                  <Link 
+                    to={`/category/${cat.slug}`} 
+                    key={cat._id} 
+                    className="flex flex-col items-center min-w-[90px] sm:min-w-[110px] group cursor-pointer tap-feedback transition-all duration-300 hover:transform hover:-translate-y-1"
+                  >
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gray-50 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:bg-emerald-50">
+                      {cat.icon?.url ? (
+                        <img src={cat.icon.url} alt={cat.name} className="w-12 h-12 object-contain" />
+                      ) : (
+                        <span className="text-3xl sm:text-4xl text-gray-400">{cat.name.charAt(0)}</span>
+                      )}
                     </div>
-                  ))
-                ) : (
-                  categories.map((cat) => (
-                    <Link to={`/category/${cat.slug}`} key={cat._id} className="flex flex-col items-center min-w-[80px] sm:min-w-[100px] md:min-w-[120px] group cursor-pointer tap-feedback">
-                      <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-50 rounded-2xl flex items-center justify-center text-3xl sm:text-4xl mb-2 sm:mb-4 group-hover:bg-white group-hover:shadow-lg transition-all duration-300">
-                        {cat.icon?.url ? <img src={cat.icon.url} alt={cat.name} className="w-10 h-10 object-contain" /> : cat.name.charAt(0)}
-                      </div>
-                      <span className="text-xs sm:text-sm font-medium text-slate-600 text-center group-hover:text-emerald-600 transition-colors whitespace-nowrap">
-                        {cat.name}
-                      </span>
-                    </Link>
-                  ))
-                )}
-              </div>
-              <button onClick={() => scrollCategory('right')} className="shrink-0 w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center bg-white rounded-full shadow-md border border-gray-100 text-slate-600 hover:bg-emerald-50 active:scale-95 transition-all tap-feedback">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                </svg>
-              </button>
+                    <span className="text-sm sm:text-base font-medium text-gray-700 text-center mt-3 group-hover:text-emerald-600 transition-colors whitespace-nowrap">
+                      {cat.name}
+                    </span>
+                  </Link>
+                ))
+              )}
             </div>
+            
+            <button 
+              onClick={() => scrollCategory('right')} 
+              className="shrink-0 w-10 h-10 flex items-center justify-center bg-gray-100 rounded-full text-slate-600 hover:bg-gray-200 active:scale-95 transition-all tap-feedback"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+              </svg>
+            </button>
           </div>
         </div>
       </section>
 
       {/* Featured Services Section */}
       {featuredServices.length > 0 && (
-        <section className="py-12 md:py-20 px-5 sm:px-6 bg-slate-50">
-          <div className="max-w-6xl mx-auto">
+        <section className="py-12 md:py-16 px-4 sm:px-6 bg-slate-50">
+          <div className="max-w-7xl mx-auto">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 md:mb-12 gap-4">
               <div>
                 <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-2">Featured Services</h2>
-                <p className="text-slate-500 italic text-sm md:text-base">Most popular services chosen by our customers</p>
+                <p className="text-slate-500 text-sm md:text-base">Most popular services chosen by our customers</p>
               </div>
               <Link to="/services" className="flex items-center gap-2 text-slate-800 font-semibold hover:text-emerald-600 transition-all group whitespace-nowrap text-sm md:text-base">
                 View All Services
@@ -283,8 +247,8 @@ export default function Home() {
                 </svg>
               </Link>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-5 md:gap-6">
-              {featuredServices.map(service => (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5 md:gap-6">
+              {featuredServices.slice(0, 8).map(service => (
                 <ServiceCard key={service._id} service={service} />
               ))}
             </div>
@@ -294,16 +258,16 @@ export default function Home() {
 
       {/* Popular Services Section */}
       {popularServices.length > 0 && (
-        <section className="py-12 md:py-20 px-5 sm:px-6 bg-white">
-          <div className="max-w-6xl mx-auto">
+        <section className="py-12 md:py-16 px-4 sm:px-6 bg-white">
+          <div className="max-w-7xl mx-auto">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 md:mb-12 gap-4">
               <div>
                 <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-2">Popular Services</h2>
-                <p className="text-slate-500 italic text-sm md:text-base">Trending now – booked by thousands</p>
+                <p className="text-slate-500 text-sm md:text-base">Trending now – booked by thousands</p>
               </div>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-5 md:gap-6">
-              {popularServices.map(service => (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5 md:gap-6">
+              {popularServices.slice(0, 8).map(service => (
                 <ServiceCard key={service._id} service={service} />
               ))}
             </div>
@@ -312,39 +276,36 @@ export default function Home() {
       )}
 
       {/* How It Works section */}
-      <section className="py-14 md:py-20 px-5 sm:px-6 bg-white">
-        <div className="max-w-6xl mx-auto">
-          <div className="mb-10 md:mb-16 text-center md:text-left">
+      <section className="py-14 md:py-20 px-4 sm:px-6 bg-slate-50">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-10 md:mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-2">How it works</h2>
             <p className="text-slate-500">3 simple steps to Ghar Seva freedom</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 items-start relative">
-            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left">
-              <div className="w-28 h-28 sm:w-32 sm:h-32 flex-shrink-0 bg-white rounded-2xl shadow-lg p-3 flex items-center justify-center border border-gray-50">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 items-start">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-28 h-28 sm:w-32 sm:h-32 flex-shrink-0 bg-white rounded-2xl shadow-md p-3 flex items-center justify-center mb-4">
                 <img src="https://img.icons8.com/color/96/appointment-reminders--v1.png" alt="Step 1" className="w-16 sm:w-20" />
               </div>
-              <div>
-                <span className="text-emerald-600 font-bold text-sm block mb-1">Step 1</span>
-                <h4 className="text-lg sm:text-xl font-bold text-slate-800">Book Online or Phone</h4>
-              </div>
+              <span className="text-emerald-600 font-bold text-sm block mb-2">Step 1</span>
+              <h4 className="text-lg sm:text-xl font-bold text-slate-800">Book Online or Phone</h4>
+              <p className="text-slate-500 text-sm mt-2">Choose your service and schedule at your convenience</p>
             </div>
-            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left">
-              <div className="w-28 h-28 sm:w-32 sm:h-32 flex-shrink-0 bg-white rounded-2xl shadow-lg p-3 flex items-center justify-center border border-gray-50">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-28 h-28 sm:w-32 sm:h-32 flex-shrink-0 bg-white rounded-2xl shadow-md p-3 flex items-center justify-center mb-4">
                 <img src="https://img.icons8.com/color/96/smartphone--v1.png" alt="Step 2" className="w-16 sm:w-20" />
               </div>
-              <div>
-                <span className="text-emerald-600 font-bold text-sm block mb-1">Step 2</span>
-                <h4 className="text-lg sm:text-xl font-bold text-slate-800">Get Booking Details Via SMS</h4>
-              </div>
+              <span className="text-emerald-600 font-bold text-sm block mb-2">Step 2</span>
+              <h4 className="text-lg sm:text-xl font-bold text-slate-800">Get Booking Details Via SMS</h4>
+              <p className="text-slate-500 text-sm mt-2">Receive confirmation and professional details</p>
             </div>
-            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left">
-              <div className="w-28 h-28 sm:w-32 sm:h-32 flex-shrink-0 bg-white rounded-2xl shadow-lg p-3 flex items-center justify-center border border-gray-50">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-28 h-28 sm:w-32 sm:h-32 flex-shrink-0 bg-white rounded-2xl shadow-md p-3 flex items-center justify-center mb-4">
                 <img src="https://img.icons8.com/color/96/money-transfer.png" alt="Step 3" className="w-16 sm:w-20" />
               </div>
-              <div>
-                <span className="text-emerald-600 font-bold text-sm block mb-1">Step 3</span>
-                <h4 className="text-lg sm:text-xl font-bold text-slate-800">Pay After Work is Done</h4>
-              </div>
+              <span className="text-emerald-600 font-bold text-sm block mb-2">Step 3</span>
+              <h4 className="text-lg sm:text-xl font-bold text-slate-800">Pay After Work is Done</h4>
+              <p className="text-slate-500 text-sm mt-2">Secure payment only after service completion</p>
             </div>
           </div>
         </div>
@@ -352,9 +313,6 @@ export default function Home() {
 
       {/* Customer Reviews */}
       <InfiniteReviewsMarquee />
-
-
-
 
       <style>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -367,31 +325,3 @@ export default function Home() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

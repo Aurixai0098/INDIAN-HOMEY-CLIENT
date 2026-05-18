@@ -27,6 +27,38 @@ import {
   Verified
 } from 'lucide-react';
 
+// ─── Avatar Component with Image Support ────────────────────────────
+const UserAvatar = ({ user, size = 'md' }) => {
+  const avatarUrl = user?.avatar?.url;
+  const name = user?.fullName || user?.firstName || '?';
+  const colors = [
+    'from-blue-400 to-blue-600', 'from-emerald-400 to-emerald-600',
+    'from-purple-400 to-purple-600', 'from-rose-400 to-rose-600',
+    'from-amber-400 to-amber-600', 'from-cyan-400 to-cyan-600',
+    'from-indigo-400 to-indigo-600', 'from-pink-400 to-pink-600'
+  ];
+  const colorIndex = name.length % colors.length;
+  const gradient = colors[colorIndex];
+  const sizeClasses = {
+    sm: 'w-8 h-8 text-xs', md: 'w-10 h-10 text-sm',
+    lg: 'w-16 h-16 text-xl', xl: 'w-24 h-24 text-3xl'
+  };
+  if (avatarUrl) {
+    return (
+      <img
+        src={avatarUrl}
+        alt={name}
+        className={`${sizeClasses[size]} rounded-full object-cover ring-2 ring-white shadow-md`}
+      />
+    );
+  }
+  return (
+    <div className={`${sizeClasses[size]} rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center text-white font-bold shadow-lg`}>
+      {name[0]?.toUpperCase() || '?'}
+    </div>
+  );
+};
+
 // ─── Shimmer Skeleton Components ────────────────────────────────────
 const TableSkeleton = () => (
   <div className="animate-pulse">
@@ -62,29 +94,6 @@ const StatCard = ({ icon: Icon, label, value, color, subtext }) => (
     </div>
   </div>
 );
-
-// ─── Avatar Generator ───────────────────────────────────────────────
-const UserAvatar = ({ name, size = 'md' }) => {
-  const colors = [
-    'from-blue-400 to-blue-600',
-    'from-emerald-400 to-emerald-600',
-    'from-purple-400 to-purple-600',
-    'from-rose-400 to-rose-600',
-    'from-amber-400 to-amber-600',
-    'from-cyan-400 to-cyan-600',
-    'from-indigo-400 to-indigo-600',
-    'from-pink-400 to-pink-600',
-  ];
-  const colorIndex = name?.length % colors.length || 0;
-  const gradient = colors[colorIndex];
-  const sizeClasses = { sm: 'w-8 h-8 text-xs', md: 'w-10 h-10 text-sm', lg: 'w-16 h-16 text-xl', xl: 'w-24 h-24 text-3xl' };
-
-  return (
-    <div className={`${sizeClasses[size]} rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center text-white font-bold shadow-lg`}>
-      {name?.[0]?.toUpperCase() || '?'}
-    </div>
-  );
-};
 
 const AdminProviders = () => {
   const [providers, setProviders] = useState([]);
@@ -310,14 +319,14 @@ const AdminProviders = () => {
                 <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Joined</th>
                 <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
-              \) </tr>
+              </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {paginatedProviders.map((provider) => (
                 <tr key={provider._id} className="group hover:bg-slate-50/80 transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <UserAvatar name={provider.fullName} />
+                      <UserAvatar user={provider} size="md" />
                       <div>
                         <p className="font-semibold text-slate-800">{provider.fullName}</p>
                         <p className="text-xs text-slate-500">ID: {provider._id?.slice(-8) || 'N/A'}</p>
@@ -337,14 +346,14 @@ const AdminProviders = () => {
                         </div>
                       )}
                     </div>
-                   </td>
+                  </td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold
                       ${provider.isVerified ? 'bg-purple-100 text-purple-700' : 'bg-amber-100 text-amber-700'}`}>
                       <Verified className="w-3 h-3" />
                       {provider.isVerified ? 'Verified' : 'Pending'}
                     </span>
-                   </td>
+                  </td>
                   <td className="px-6 py-4">
                     <button
                       onClick={() => updateStatus(provider._id, provider.status === 'active' ? 'suspended' : 'active')}
@@ -357,13 +366,13 @@ const AdminProviders = () => {
                     <span className={`ml-2 text-xs font-medium ${provider.status === 'active' ? 'text-emerald-600' : 'text-slate-500'}`}>
                       {provider.status}
                     </span>
-                   </td>
+                  </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2 text-sm text-slate-500">
                       <Calendar className="w-3.5 h-3.5" />
                       {new Date(provider.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </div>
-                   </td>
+                  </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-end gap-2">
                       <button
@@ -403,8 +412,8 @@ const AdminProviders = () => {
                         )}
                       </div>
                     </div>
-                   </td>
-                 </tr>
+                  </td>
+                </tr>
               ))}
               {paginatedProviders.length === 0 && !loading && (
                 <tr>
@@ -414,11 +423,11 @@ const AdminProviders = () => {
                     </div>
                     <p className="text-slate-500 font-medium">No providers found</p>
                     <p className="text-slate-400 text-sm mt-1">Try adjusting your search or filters</p>
-                   </td>
-                 </tr>
+                  </td>
+                </tr>
               )}
             </tbody>
-           </table>
+          </table>
         </div>
 
         {/* Pagination */}
@@ -485,7 +494,7 @@ const AdminProviders = () => {
               </button>
 
               <div className="relative flex flex-col items-center text-center">
-                <UserAvatar name={selectedProvider.fullName} size="xl" />
+                <UserAvatar user={selectedProvider} size="xl" />
                 <h2 className="text-2xl font-bold mt-4">{selectedProvider.fullName}</h2>
                 <p className="text-slate-400 text-sm mt-1">{selectedProvider.email}</p>
                 <div className="flex items-center gap-2 mt-3">

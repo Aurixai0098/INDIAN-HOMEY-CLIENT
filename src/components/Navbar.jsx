@@ -50,6 +50,12 @@ const Navbar = () => {
   const [isMobileView, setIsMobileView] = useState(window.innerWidth < 1024);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // Helper: get initials for avatar fallback
+  const getInitials = (name) => {
+    if (!name) return 'U';
+    return name.substring(0, 2).toUpperCase();
+  };
+
   // Fetch categories on mount
   useEffect(() => {
     const loadCategories = async () => {
@@ -312,11 +318,6 @@ const Navbar = () => {
     setTimeout(() => setIsLogoRotating(false), 600);
   };
 
-  const getInitials = (name) => {
-    if (!name) return 'U';
-    return name.substring(0, 2).toUpperCase();
-  };
-
   return (
     <>
       <nav className="bg-white text-gray-800 border-b border-gray-200 font-sans sticky top-0 z-[1000] shadow-sm">
@@ -418,7 +419,7 @@ const Navbar = () => {
                 </button>
               </div>
 
-              {/* Right Icons */}
+              {/* Right Icons - Desktop with Avatar */}
               <div className="flex items-center gap-3 shrink-0">
                 <Link to="/cart" className="relative p-2 text-gray-600 hover:text-blue-600 bg-white hover:bg-gray-50 rounded-full transition-colors border border-gray-200 shadow-sm">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -434,7 +435,13 @@ const Navbar = () => {
                 {user ? (
                   <div className="relative group">
                     <button className="flex items-center gap-2 bg-white hover:bg-gray-50 border border-gray-200 px-2 py-1.5 rounded-full transition-colors shadow-sm">
-                      <div className="w-7 h-7 bg-blue-100 text-blue-700 font-bold rounded-full flex items-center justify-center text-xs">{getInitials(user.name || user.email)}</div>
+                      <div className="w-7 h-7 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                        {user.avatar?.url ? (
+                          <img src={user.avatar.url} alt={user.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-xs font-bold text-white">{getInitials(user.name || user.email)}</span>
+                        )}
+                      </div>
                       <span className="text-sm font-medium text-gray-700 max-w-[80px] truncate">{user.name || user.email?.split('@')[0]}</span>
                       <svg className="w-4 h-4 text-gray-400 pr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                     </button>
@@ -470,7 +477,7 @@ const Navbar = () => {
           {/* ==================== MOBILE VIEW ==================== */}
           {isMobileView && (
             <div className="flex flex-col gap-3">
-              {/* Top Row - Logo, Search Icon, Location, Cart, Hamburger */}
+              {/* Top Row - Logo and Icons */}
               <div className="flex items-center justify-between gap-2">
                 {/* Logo */}
                 <Link to="/" className="flex shrink-0 items-center gap-2 no-underline" onClick={handleLogoRotate}>
@@ -549,17 +556,17 @@ const Navbar = () => {
                       onChange={(e) => setSearchQuery(e.target.value)}
                       onFocus={() => searchQuery.trim() && searchResults.length > 0 && setShowSearchDropdown(true)}
                       placeholder="Search for services..."
-                      className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-full text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      className="w-full pl-10 pr-12 py-2.5 bg-gray-50 border border-gray-200 rounded-full text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                       autoFocus
                     />
                     {isSearching && (
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <div className="absolute right-12 top-1/2 -translate-y-1/2">
                         <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                       </div>
                     )}
                     <button
                       onClick={() => setMobileSearchOpen(false)}
-                      className="absolute right-12 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -654,6 +661,7 @@ const Navbar = () => {
             </div>
 
             <div className="p-5 space-y-4">
+              {/* Current Location Button */}
               <button
                 onClick={getCurrentLocation}
                 disabled={isLocating}
@@ -684,6 +692,7 @@ const Navbar = () => {
                 </div>
               </div>
 
+              {/* Search Address */}
               <div className="flex flex-col gap-2">
                 <input
                   type="text"
@@ -702,6 +711,7 @@ const Navbar = () => {
                 </button>
               </div>
 
+              {/* Map */}
               {showMap && (
                 <div className="space-y-2">
                   <div ref={mapContainerRef} className="h-[250px] w-full rounded-xl bg-gray-100 overflow-hidden border border-gray-200"></div>
@@ -721,6 +731,7 @@ const Navbar = () => {
                 </div>
               </div>
 
+              {/* Manual City Input */}
               <input
                 type="text"
                 value={customLocation}
@@ -758,13 +769,18 @@ const Navbar = () => {
       <div
         className={`fixed top-0 right-0 bottom-0 w-80 bg-white shadow-2xl z-[1100] transform transition-all duration-300 ease-out flex flex-col ${mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
+        {/* Menu Header with Avatar */}
         <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-5 text-white">
           <div className="flex justify-between items-start mb-4">
             <div className="flex items-center gap-3">
               {user ? (
                 <>
-                  <div className="w-12 h-12 bg-white/20 backdrop-blur rounded-full flex items-center justify-center text-lg font-bold border-2 border-white/30">
-                    {getInitials(user.name || user.email)}
+                  <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-white/20 to-white/10 flex items-center justify-center border-2 border-white/30">
+                    {user.avatar?.url ? (
+                      <img src={user.avatar.url} alt={user.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-lg font-bold text-white">{getInitials(user.name || user.email)}</span>
+                    )}
                   </div>
                   <div>
                     <h3 className="font-semibold text-white">{user.name || 'User'}</h3>
@@ -796,6 +812,7 @@ const Navbar = () => {
           </div>
         </div>
 
+        {/* Menu Items */}
         <div className="flex-1 overflow-y-auto py-4">
           <div className="px-4 mb-4">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">Main Menu</p>

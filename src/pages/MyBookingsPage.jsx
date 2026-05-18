@@ -1,10 +1,10 @@
- 
+// src/pages/MyBookingsPage.jsx
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { fetchMyBookings, createOrder, verifyPayment } from '../services/api';
+import { fetchMyBookings, createOrder, verifyPayment, createReview } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
-// Modern Lucide Icons (install: npm install lucide-react)
+// Modern Lucide Icons
 import {
   CalendarDays,
   Clock,
@@ -28,7 +28,8 @@ import {
   ArrowRight,
   Home,
   ShieldCheck,
-  Timer
+  Timer,
+  X
 } from 'lucide-react';
 
 // ─── Helper ─────────────────────────────────────────────────────────
@@ -108,8 +109,6 @@ const PaymentBadge = ({ payment }) => {
 const TimelineStep = ({ step, currentStep, icon: Icon, label, isLast }) => {
   const isCompleted = step < currentStep;
   const isCurrent = step === currentStep;
-  const isPending = step > currentStep;
-
   return (
     <div className="flex items-center flex-1">
       <div className="flex flex-col items-center relative">
@@ -132,8 +131,98 @@ const TimelineStep = ({ step, currentStep, icon: Icon, label, isLast }) => {
   );
 };
 
+// ─── Review Modal Component ─────────────────────────────────────
+const ReviewModal = ({ booking, onClose, onSuccess }) => {
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState('');
+  const [title, setTitle] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!comment.trim()) {
+      setError('Please write a review comment');
+      return;
+    }
+    setSubmitting(true);
+    setError('');
+    try {
+      await createReview({
+        booking: booking._id,
+        rating: { overall: rating },
+        title: title || `Rating ${rating} stars`,
+        comment
+      });
+      onSuccess();
+      onClose();
+    } catch (err) {
+      setError(err.message || 'Failed to submit review');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center p-4 border-b">
+          <h2 className="text-xl font-bold">Rate Your Experience</h2>
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded"><X size={20} /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Rating</label>
+            <div className="flex gap-2">
+              {[1,2,3,4,5].map(star => (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => setRating(star)}
+                  className="focus:outline-none"
+                >
+                  <Star className={`w-8 h-8 ${star <= rating ? 'text-amber-400 fill-amber-400' : 'text-gray-300'}`} />
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Review Title (optional)</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g., Great service!"
+              className="w-full border rounded-lg px-4 py-2"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Your Review *</label>
+            <textarea
+              rows={4}
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder="Tell us about your experience with the service provider..."
+              className="w-full border rounded-lg px-4 py-2 resize-none"
+              required
+            />
+          </div>
+          {error && <p className="text-red-500 text-sm">{error}</p>}
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={onClose} className="flex-1 px-4 py-2 bg-gray-100 rounded-lg">Cancel</button>
+            <button type="submit" disabled={submitting} className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg disabled:opacity-50 flex items-center justify-center gap-2">
+              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              {submitting ? 'Submitting...' : 'Submit Review'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 // ─── Booking Card ───────────────────────────────────────────────────
-const BookingCard = ({ booking, onPayNow, payingBookingId }) => {
+const BookingCard = ({ booking, onPayNow, payingBookingId, onWriteReview }) => {
   const [expanded, setExpanded] = useState(false);
   const config = statusConfig[booking.status] || statusConfig.pending;
   const StatusIcon = config.icon;
@@ -251,7 +340,7 @@ const BookingCard = ({ booking, onPayNow, payingBookingId }) => {
           <div className="bg-slate-50 rounded-xl p-4 space-y-2 animate-fadeIn">
             <div className="flex justify-between text-sm">
               <span className="text-slate-500">Base Price</span>
-              <span className="font-medium text-slate-700">{formatPrice(booking.pricing?.basePrice)}</span>
+              <span className="font-medium text-slate-700">{formatPrice(booking.pricing?.subtotal)}</span>
             </div>
             {booking.pricing?.additionalCharges > 0 && (
               <div className="flex justify-between text-sm">
@@ -274,15 +363,15 @@ const BookingCard = ({ booking, onPayNow, payingBookingId }) => {
 
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-3 pt-2">
-          {/* Write Review */}
+          {/* Write Review button (manual) */}
           {booking.status === 'completed' && !booking.hasReviewed && (
-            <Link
-              to={`/review/${booking._id}`}
+            <button
+              onClick={() => onWriteReview(booking)}
               className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-sm font-semibold hover:bg-amber-100 transition-colors"
             >
               <Star className="w-4 h-4" />
               Write a Review
-            </Link>
+            </button>
           )}
 
           {/* Pay Now */}
@@ -337,6 +426,8 @@ const MyBookingsPage = () => {
   const [payingBookingId, setPayingBookingId] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [selectedBookingForReview, setSelectedBookingForReview] = useState(null);
   const pollingRef = useRef(null);
 
   // Show success message if coming from checkout
@@ -420,7 +511,10 @@ const MyBookingsPage = () => {
             });
             if (verifyRes.success) {
               setSuccessMessage('✅ Payment successful! Your booking is now confirmed.');
-              loadBookings(true);
+              await loadBookings(true);
+              // Show review modal after successful payment
+              setSelectedBookingForReview(booking);
+              setShowReviewModal(true);
             } else {
               setError('❌ Payment verification failed. Please contact support.');
             }
@@ -457,6 +551,16 @@ const MyBookingsPage = () => {
       setError(err.message || 'Failed to initiate payment. Please try again.');
       setPayingBookingId(null);
     }
+  };
+
+  const handleWriteReview = (booking) => {
+    setSelectedBookingForReview(booking);
+    setShowReviewModal(true);
+  };
+
+  const handleReviewSuccess = () => {
+    // Refresh bookings to update hasReviewed flag
+    loadBookings(true);
   };
 
   // Filter bookings
@@ -597,6 +701,7 @@ const MyBookingsPage = () => {
                 booking={booking}
                 onPayNow={handlePayNow}
                 payingBookingId={payingBookingId}
+                onWriteReview={handleWriteReview}
               />
             ))}
           </div>
@@ -613,9 +718,17 @@ const MyBookingsPage = () => {
           </div>
         </div>
       )}
+
+      {/* Review Modal */}
+      {showReviewModal && selectedBookingForReview && (
+        <ReviewModal
+          booking={selectedBookingForReview}
+          onClose={() => setShowReviewModal(false)}
+          onSuccess={handleReviewSuccess}
+        />
+      )}
     </div>
   );
 };
 
 export default MyBookingsPage;
- 

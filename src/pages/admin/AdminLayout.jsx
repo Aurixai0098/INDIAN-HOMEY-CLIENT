@@ -1,6 +1,6 @@
-import { Outlet, NavLink, useLocation } from 'react-router-dom';
+import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 // Modern Lucide Icons
 import {
@@ -33,15 +33,19 @@ import {
   Cpu,
   Globe,
   ChevronDown,
-  ChevronRight as ChevronRightIcon
+  ChevronRight as ChevronRightIcon,
+  Home
 } from 'lucide-react';
 
 const AdminLayout = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
   // Section toggle state for collapsible menus
   const [openSections, setOpenSections] = useState({
     provider: true,
@@ -62,6 +66,17 @@ const AdminLayout = () => {
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   if (user?.role !== 'admin') {
@@ -90,7 +105,7 @@ const AdminLayout = () => {
         onClick={() => setMobileMenuOpen(false)}
         className={`group flex items-center gap-3 px-3 py-3 rounded-xl transition-all hover:text-black duration-200 relative overflow-hidden
           ${active
-            ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg  shadow-blue-500/25'
+            ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/25'
             : 'text-slate-400 hover:text-black hover:bg-white/5'
           }
           ${!sidebarOpen && 'justify-center'}
@@ -156,6 +171,17 @@ const AdminLayout = () => {
     </NavLink>
   );
 
+  // Handle logout
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
+  };
+
+  // Handle go to website
+  const goToWebsite = () => {
+    navigate('/');
+  };
+
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-slate-50">
       {/* Main Layout Container - Fixed height, no scroll */}
@@ -171,7 +197,7 @@ const AdminLayout = () => {
 
         {/* Sidebar - Fixed, no scroll on entire sidebar, but nav area scrolls */}
         <aside
-          className={`fixed lg:relative inset-y-0 left-0 z-50  text-white transition-all duration-300 ease-in-out flex flex-col
+          className={`fixed lg:relative inset-y-0 left-0 z-50 text-white transition-all duration-300 ease-in-out flex flex-col
             ${sidebarOpen ? 'w-72' : 'w-20'} 
             ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
             shadow-2xl h-full`}
@@ -183,17 +209,16 @@ const AdminLayout = () => {
               <img 
                 src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778781548/a7ea1860-5474-4e8d-800b-72c68b9f6b71-removebg-preview_cpmi08.png"
                 alt="Company Logo"
-                className="w-10 h-10 rounded-xl object-cover "
+                className="w-10 h-10 rounded-xl object-cover"
               />
               {sidebarOpen && (
-                <div className="flex  ">
+                <div className="flex">
                   {/* Company Name Image */}
                   <img 
                     src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778657661/ChatGPT_Image_May_13__2026__12_33_54_AM-removebg-preview_w7uxh5.png"
                     alt="GharSeva"
-                    className="h-20 w-auto  object-contain"
+                    className="h-20 w-auto object-contain"
                   />
-                  
                 </div>
               )}
             </div>
@@ -214,7 +239,6 @@ const AdminLayout = () => {
             <CollapsibleSection section="provider" icon={Users} title="Provider Management">
               <SubNavItem to="/admin/providers" label="All Providers" />
               <SubNavItem to="/admin/kyc-verification-providers" label="KYC Verification" />
-              <SubNavItem to="/admin/skills-verification" label="Skills Verification" />
               <SubNavItem to="/admin/provider-earnings" label="Earnings & Ratings" />
               <SubNavItem to="/admin/provider-status" label="Online/Offline Status" />
             </CollapsibleSection>
@@ -301,37 +325,12 @@ const AdminLayout = () => {
               <SubNavItem to="/admin/upi-management" label="UPI ID Management" />
             </CollapsibleSection>
           </nav>
-
-          {/* User Profile - Fixed at bottom (Removed Collapse Button) */}
-          <div className="flex-shrink-0 p-3 border-t border-white/10">
-            {/* User Mini Profile */}
-            <div className={`flex items-center gap-3 p-2 rounded-xl bg-white/5 ${!sidebarOpen && 'justify-center'}`}>
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-bold text-sm shadow-lg">
-                {user?.name?.[0]?.toUpperCase() || 'A'}
-              </div>
-              {sidebarOpen && (
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">{user?.name || 'Admin'}</p>
-                  <p className="text-xs text-slate-400 truncate">{user?.email || 'admin@system.com'}</p>
-                </div>
-              )}
-            </div>
-
-            {/* Logout */}
-            <button
-              onClick={logout}
-              className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors text-sm font-medium mt-2 ${!sidebarOpen && 'justify-center'}`}
-            >
-              <LogOut className="w-4 h-4" />
-              {sidebarOpen && <span>Sign Out</span>}
-            </button>
-          </div>
         </aside>
 
         {/* Right Side - Header + Content */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           
-          {/* Top Header - Fixed */}
+          {/* Top Header - Fixed with Avatar Dropdown */}
           <header className="h-16 flex-shrink-0 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-8">
             <div className="flex items-center gap-4">
               <button
@@ -356,14 +355,78 @@ const AdminLayout = () => {
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
               </button>
               <div className="w-px h-8 bg-slate-200 mx-1" />
-              <div className="flex items-center gap-3">
-                <div className="text-right hidden sm:block">
-                  <p className="text-sm font-semibold text-slate-800">{user?.name || 'Admin'}</p>
-                  <p className="text-xs text-slate-500 uppercase">Operation Center</p>
-                </div>
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-md">
-                  {user?.name?.[0]?.toUpperCase() || 'A'}
-                </div>
+              
+              {/* Avatar Dropdown */}
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                  className="flex items-center gap-3 focus:outline-none"
+                >
+                  <div className="text-right hidden sm:block">
+                    <p className="text-sm font-semibold text-slate-800">{user?.name || 'Admin'}</p>
+                    <p className="text-xs text-slate-500 uppercase">Operation Center</p>
+                  </div>
+                  {user?.avatar?.url ? (
+                    <img
+                      src={user.avatar.url}
+                      alt="Admin Avatar"
+                      className="w-9 h-9 rounded-full object-cover ring-2 ring-white shadow-md cursor-pointer"
+                    />
+                  ) : (
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-md cursor-pointer">
+                      {user?.name?.[0]?.toUpperCase() || 'A'}
+                    </div>
+                  )}
+                  <ChevronDown className="w-4 h-4 text-slate-500" />
+                </button>
+
+                {/* Dropdown Menu */}
+                {dropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-100 py-2 z-50 animate-fadeIn">
+                    {/* User Info */}
+                    <div className="px-4 py-3 border-b border-slate-100">
+                      <div className="flex items-center gap-3">
+                        {user?.avatar?.url ? (
+                          <img
+                            src={user.avatar.url}
+                            alt="Avatar"
+                            className="w-10 h-10 rounded-full object-cover ring-2 ring-blue-500"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+                            {user?.name?.[0]?.toUpperCase() || 'A'}
+                          </div>
+                        )}
+                        <div>
+                          <p className="font-semibold text-slate-800">{user?.name || 'Admin'}</p>
+                          <p className="text-xs text-slate-500">{user?.email || 'admin@system.com'}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Menu Items */}
+                    <button
+                      onClick={() => {
+                        setDropdownOpen(false);
+                        goToWebsite();
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                    >
+                      <Home className="w-4 h-4" />
+                      Go to Website
+                    </button>
+                    <button
+                      onClick={() => {
+                        setDropdownOpen(false);
+                        handleLogout();
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Sign Out
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </header>
@@ -375,8 +438,8 @@ const AdminLayout = () => {
         </div>
       </div>
 
-      {/* Global Styles for Custom Scrollbar */}
-      <style jsx>{`
+      {/* Global Styles for Custom Scrollbar – FIXED: removed 'jsx' attribute */}
+      <style>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 4px;
           height: 4px;
@@ -397,6 +460,13 @@ const AdminLayout = () => {
         .custom-scrollbar {
           scrollbar-width: thin;
           scrollbar-color: rgba(100, 116, 139, 0.3) transparent;
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.2s ease-out;
         }
       `}</style>
     </div>
