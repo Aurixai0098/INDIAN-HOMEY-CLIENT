@@ -11,7 +11,6 @@ import {
   User,
   Settings,
   LogOut,
-  Bell,
   Mail,
   Search,
   Menu,
@@ -20,16 +19,21 @@ import {
   Home,
   Briefcase,
   Star,
+  Power,
+  PowerOff
 } from 'lucide-react';
+import { updateProviderProfile, updateHeartbeat } from '../../services/api';
+import ProviderNotificationBell from '../../components/ProviderNotificationBell'; // ✅ Import the component
 
 const ProviderLayout = () => {
-  const { user, logout } = useAuth();
+  const { user, setUser, logout } = useAuth();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [isAvailable, setIsAvailable] = useState(user?.isAvailable ?? true);
+  const [heartbeatInterval, setHeartbeatInterval] = useState(null);
   const userMenuRef = useRef(null);
 
-  // Close sidebar when clicking outside on mobile
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 1024) setSidebarOpen(false);
@@ -38,7 +42,6 @@ const ProviderLayout = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Close user menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
@@ -49,6 +52,36 @@ const ProviderLayout = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (user?.role === 'provider' && isAvailable) {
+      const interval = setInterval(async () => {
+        try {
+          await updateHeartbeat();
+        } catch (err) {
+          console.error('Heartbeat failed', err);
+        }
+      }, 30000);
+      setHeartbeatInterval(interval);
+      return () => clearInterval(interval);
+    } else if (heartbeatInterval) {
+      clearInterval(heartbeatInterval);
+      setHeartbeatInterval(null);
+    }
+  }, [user, isAvailable]);
+
+  const toggleAvailability = async () => {
+    const newStatus = !isAvailable;
+    try {
+      await updateProviderProfile({ isAvailable: newStatus });
+      setIsAvailable(newStatus);
+      if (setUser) {
+        setUser(prev => ({ ...prev, isAvailable: newStatus }));
+      }
+    } catch (err) {
+      alert('Failed to update availability');
+    }
+  };
+
   const navItems = [
     { to: '/provider', label: 'Dashboard', icon: LayoutDashboard, end: true },
     { to: '/provider/bookings', label: 'Bookings', icon: Calendar },
@@ -58,7 +91,6 @@ const ProviderLayout = () => {
     { to: '/provider/profile', label: 'Profile', icon: User },
   ];
 
-  // Helper to get readable page title from path
   const getPageTitle = () => {
     const path = location.pathname;
     if (path === '/provider') return 'Dashboard';
@@ -72,7 +104,6 @@ const ProviderLayout = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity duration-300"
@@ -86,7 +117,6 @@ const ProviderLayout = () => {
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        {/* Sidebar Header */}
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
@@ -105,7 +135,6 @@ const ProviderLayout = () => {
           </button>
         </div>
 
-        {/* Profile Section */}
         <div className="p-5 border-b border-gray-100">
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -132,38 +161,34 @@ const ProviderLayout = () => {
             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-medium rounded-full">
               <Star className="w-3 h-3" /> Verified
             </span>
-            <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">Pro</span>
+          
           </div>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 overflow-y-auto py-4 px-3">
           <div className="space-y-1">
             {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                onClick={() => setSidebarOpen(false)}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 group ${
-                    isActive
-                      ? 'bg-emerald-50 text-emerald-700 shadow-sm'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                  }`
-                }
-              >
-                <item.icon
-                  className={`w-5 h-5 transition-colors ${
-                    ({ isActive }) =>
-                      isActive ? 'text-emerald-600' : 'text-gray-400 group-hover:text-emerald-500'
-                  }`}
-                />
-                <span className="font-medium text-sm">{item.label}</span>
-                {item.label === 'Bookings' && (
-                  <span className="ml-auto text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-semibold">
-                    5
-                  </span>
+              <NavLink key={item.to} to={item.to} end={item.end} onClick={() => setSidebarOpen(false)}>
+                {({ isActive }) => (
+                  <div
+                    className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 group cursor-pointer ${
+                      isActive
+                        ? 'bg-emerald-50 text-emerald-700 shadow-sm'
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    }`}
+                  >
+                    <item.icon
+                      className={`w-5 h-5 transition-colors ${
+                        isActive ? 'text-emerald-600' : 'text-gray-400 group-hover:text-emerald-500'
+                      }`}
+                    />
+                    <span className="font-medium text-sm">{item.label}</span>
+                    {item.label === 'Bookings' && (
+                      <span className="ml-auto text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-semibold">
+                        5
+                      </span>
+                    )}
+                  </div>
                 )}
               </NavLink>
             ))}
@@ -173,13 +198,7 @@ const ProviderLayout = () => {
             <p className="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
               Settings
             </p>
-            <NavLink
-              to="/provider/settings"
-              className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200 group"
-            >
-              <Settings className="w-5 h-5 text-gray-400 group-hover:text-emerald-500" />
-              <span className="font-medium text-sm">Settings</span>
-            </NavLink>
+          
             <button
               onClick={logout}
               className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-gray-600 hover:bg-red-50 hover:text-red-600 transition-all duration-200 group"
@@ -190,7 +209,6 @@ const ProviderLayout = () => {
           </div>
         </nav>
 
-        {/* Sidebar Footer */}
         <div className="p-4 border-t border-gray-100">
           <div className="flex items-center gap-2 px-2">
             <div className="relative">
@@ -202,13 +220,10 @@ const ProviderLayout = () => {
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className="lg:ml-72 min-h-screen">
-        {/* Top Bar */}
         <header className="sticky top-0 z-30 bg-white/70 backdrop-blur-lg border-b border-gray-200/50 px-4 sm:px-6 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {/* Hamburger button (mobile) */}
               <button
                 onClick={() => setSidebarOpen(true)}
                 className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
@@ -226,31 +241,25 @@ const ProviderLayout = () => {
             </div>
 
             <div className="flex items-center gap-2 sm:gap-3">
-              {/* Search bar (desktop) */}
-              <div className="hidden md:flex items-center bg-gray-100 rounded-xl px-4 py-2 gap-2 w-64">
-                <Search className="w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search anything..."
-                  className="bg-transparent border-none outline-none text-sm text-gray-700 placeholder-gray-400 w-full"
-                />
-              </div>
-
-              {/* Notifications */}
-              <button className="relative p-2 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 transition-colors shadow-sm">
-                <Bell className="w-5 h-5 text-gray-600" />
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-white text-xs flex items-center justify-center font-bold border-2 border-white">
-                  3
-                </span>
+              {/* Online/Offline Toggle Button */}
+              <button
+                onClick={toggleAvailability}
+                className={`p-2 rounded-xl border transition-colors shadow-sm ${
+                  isAvailable 
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100' 
+                    : 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100'
+                }`}
+                title={isAvailable ? 'Go Offline' : 'Go Online'}
+              >
+                {isAvailable ? <Power className="w-5 h-5" /> : <PowerOff className="w-5 h-5" />}
               </button>
 
-              {/* Messages */}
-              <button className="relative p-2 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 transition-colors shadow-sm">
-                <Mail className="w-5 h-5 text-gray-600" />
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full text-white text-xs flex items-center justify-center font-bold border-2 border-white">
-                  7
-                </span>
-              </button>
+         
+
+              {/* ✅ Replace static bell with notification component */}
+              <ProviderNotificationBell />
+
+            
 
               {/* User dropdown */}
               <div className="relative" ref={userMenuRef}>
@@ -308,40 +317,21 @@ const ProviderLayout = () => {
             </div>
           </div>
 
-          {/* Mobile search bar (collapsible) - optional, shown below top bar on small screens */}
-          <div className="md:hidden mt-3">
-            <div className="flex items-center bg-gray-100 rounded-xl px-4 py-2 gap-2 w-full">
-              <Search className="w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search..."
-                className="bg-transparent border-none outline-none text-sm text-gray-700 placeholder-gray-400 w-full"
-              />
-            </div>
-          </div>
+          {/* Mobile search bar */}
+        
         </header>
 
-        {/* Page Content */}
         <div className="p-4 sm:p-6">
           <Outlet />
         </div>
       </main>
 
-      {/* Additional Tailwind animations (if not already in global CSS) */}
-      <style jsx>{`
+      <style>{`
         @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(-8px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(-8px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-        .animate-in {
-          animation: fadeIn 0.2s ease-out;
-        }
+        .animate-in { animation: fadeIn 0.2s ease-out; }
       `}</style>
     </div>
   );

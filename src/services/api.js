@@ -336,6 +336,42 @@ export const updateCommission = async (commissionPercentage) => {
   });
 };
 
+// ========== Admin User Wallet APIs ==========
+export const fetchUserWallets = async (page = 1, limit = 20, search = '') => {
+  let url = `/admin/user-wallets?page=${page}&limit=${limit}`;
+  if (search) url += `&search=${encodeURIComponent(search)}`;
+  return apiFetch(url);
+};
+
+export const fetchUserWalletDetails = async (userId) => {
+  return apiFetch(`/admin/user-wallets/${userId}`);
+};
+
+export const addWalletFunds = async (userId, amount, note = '') => {
+  return apiFetch(`/admin/user-wallets/${userId}/funds`, {
+    method: 'POST',
+    body: JSON.stringify({ amount, note }),
+  });
+};
+
+export const addWalletCashback = async (userId, amount, note = '') => {
+  return apiFetch(`/admin/user-wallets/${userId}/cashback`, {
+    method: 'POST',
+    body: JSON.stringify({ amount, note }),
+  });
+};
+
+export const processWalletRefund = async (userId, amount, note = '') => {
+  return apiFetch(`/admin/user-wallets/${userId}/refund`, {
+    method: 'POST',
+    body: JSON.stringify({ amount, note }),
+  });
+};
+
+export const fetchUserTransactions = async (userId, page = 1, limit = 10) => {
+  return apiFetch(`/admin/user-wallets/${userId}/transactions?page=${page}&limit=${limit}`);
+};
+
 // ========== Provider APIs ==========
 export const registerProvider = async (providerData) => {
   return apiFetch('/providers/register', {
@@ -409,11 +445,22 @@ export const fetchProviderNotifications = async () => {
   return apiFetch('/providers/notifications');
 };
 
+// ✅ Heartbeat API – updates provider's lastActive timestamp
+export const updateHeartbeat = async () => {
+  return apiFetch('/providers/heartbeat', {
+    method: 'POST',
+  });
+};
+
+// ✅ Clean export for marking provider notification as read (single, no duplicate)
 export const mar9yMnTm4NSzvG9rrwjM2ec8xZgh1cafXH8 = async (notificationId) => {
   return apiFetch(`/providers/notifications/${notificationId}/read`, {
     method: 'PATCH',
   });
 };
+
+// Alias for backward compatibility
+export const marahJ91ZuNL8Y2px8iYciYeHN8sfSh5eXH8 = mar9yMnTm4NSzvG9rrwjM2ec8xZgh1cafXH8;
 
 export const markAllProviderNotificationsRead = async () => {
   return apiFetch('/providers/notifications/read-all', {
@@ -471,8 +518,10 @@ export const requestWithdrawal = async (amount, accountDetails) => {
   });
 };
 
-export const fetchMyWithdrawals = async (page = 1, limit = 10) => {
-  return apiFetch(`/providers/withdrawals/my?page=${page}&limit=${limit}`);
+export const fetchMyWithdrawals = async (page = 1, limit = 10, status = '') => {
+  let url = `/providers/withdrawals/my?page=${page}&limit=${limit}`;
+  if (status) url += `&status=${status}`;
+  return apiFetch(url);
 };
 
 export const fetchAllWithdrawals = async (status = '', page = 1, limit = 20) => {
@@ -631,5 +680,300 @@ export const updateCommissionSettings = async (data) => {
   return apiFetch('/admin/settings/commission', {
     method: 'PUT',
     body: JSON.stringify(data),
+  });
+};
+
+// ========== Enhanced Withdrawal APIs ==========
+export const updateWithdrawalStatus = async (withdrawalId, status, reason = '', transactionId = '') => {
+  return apiFetch(`/admin/withdrawals/${withdrawalId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status, reason, transactionId }),
+  });
+};
+
+export const getAllProviderWallets = async () => {
+  return apiFetch('/admin/provider-wallets');
+};
+
+export const fetchProviderWithdrawals = async (providerId, page = 1, limit = 50) => {
+  return apiFetch(`/admin/providers/${providerId}/withdrawals?page=${page}&limit=${limit}`);
+};
+
+// ========== COMPLAINTS & RESCHEDULE APIs (Admin) ==========
+export const fetchComplaints = async (page = 1, limit = 20, status = '', type = '') => {
+  let url = `/admin/complaints?page=${page}&limit=${limit}`;
+  if (status) url += `&status=${status}`;
+  if (type) url += `&type=${type}`;
+  return apiFetch(url);
+};
+
+export const fetchComplaintDetails = async (complaintId) => {
+  return apiFetch(`/admin/complaints/${complaintId}`);
+};
+
+export const updateComplaintStatus = async (complaintId, status, adminNote = '') => {
+  return apiFetch(`/admin/complaints/${complaintId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status, adminNote }),
+  });
+};
+
+export const deleteComplaint = async (complaintId) => {
+  return apiFetch(`/admin/complaints/${complaintId}`, {
+    method: 'DELETE',
+  });
+};
+
+export const fetchUserComplaintHistory = async (userId) => {
+  return apiFetch(`/admin/users/${userId}/complaints`);
+};
+
+export const fetchProviderComplaintHistory = async (providerId) => {
+  return apiFetch(`/admin/providers/${providerId}/complaints`);
+};
+
+export const fetchProviderDetailsById = async (providerId) => {
+  return apiFetch(`/admin/providers/${providerId}`);
+};
+
+export const updateProviderStatus = async (providerId, status) => {
+  return apiFetch(`/admin/providers/${providerId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+};
+
+export const sendNotificationToProvider = async (providerId, message) => {
+  return apiFetch(`/admin/providers/${providerId}/notify`, {
+    method: 'POST',
+    body: JSON.stringify({ message }),
+  });
+};
+
+// Reschedule requests
+export const fetchRescheduleRequests = async (page = 1, limit = 20, status = 'pending') => {
+  return apiFetch(`/admin/reschedule-requests?page=${page}&limit=${limit}&status=${status}`);
+};
+
+export const approveRescheduleRequest = async (requestId, newDate, newTime) => {
+  return apiFetch(`/admin/reschedule-requests/${requestId}/approve`, {
+    method: 'PATCH',
+    body: JSON.stringify({ newDate, newTime }),
+  });
+};
+
+export const rejectRescheduleRequest = async (requestId, reason) => {
+  return apiFetch(`/admin/reschedule-requests/${requestId}/reject`, {
+    method: 'PATCH',
+    body: JSON.stringify({ reason }),
+  });
+};
+
+// ========== COUPONS & OFFERS (Admin) ==========
+export const fetchCoupons = async () => {
+  return apiFetch('/admin/coupons');
+};
+
+export const createCoupon = async (couponData) => {
+  return apiFetch('/admin/coupons', {
+    method: 'POST',
+    body: JSON.stringify(couponData),
+  });
+};
+
+export const updateCoupon = async (couponId, couponData) => {
+  return apiFetch(`/admin/coupons/${couponId}`, {
+    method: 'PUT',
+    body: JSON.stringify(couponData),
+  });
+};
+
+export const deleteCoupon = async (couponId) => {
+  return apiFetch(`/admin/coupons/${couponId}`, {
+    method: 'DELETE',
+  });
+};
+
+// ========== BANNER MANAGEMENT (Admin) ==========
+export const fetchBanners = async () => {
+  return apiFetch('/admin/banners');
+};
+
+export const createBanner = async (formData) => {
+  return apiFetch('/admin/banners', {
+    method: 'POST',
+    body: formData,
+  });
+};
+
+export const updateBanner = async (bannerId, formData) => {
+  return apiFetch(`/admin/banners/${bannerId}`, {
+    method: 'PUT',
+    body: formData,
+  });
+};
+
+export const deleteBanner = async (bannerId) => {
+  return apiFetch(`/admin/banners/${bannerId}`, {
+    method: 'DELETE',
+  });
+};
+
+export const toggleBannerStatus = async (bannerId, isActive) => {
+  return apiFetch(`/admin/banners/${bannerId}/toggle`, {
+    method: 'PATCH',
+    body: JSON.stringify({ isActive }),
+  });
+};
+
+export const reorderBanners = async (bannerIds) => {
+  return apiFetch('/admin/banners/reorder', {
+    method: 'POST',
+    body: JSON.stringify({ bannerIds }),
+  });
+};
+
+// ========== EMAIL CAMPAIGNS (Admin) ==========
+export const fetchProviderEmails = async (search = '') => {
+  let url = '/admin/emails/providers';
+  if (search) url += `?search=${encodeURIComponent(search)}`;
+  return apiFetch(url);
+};
+
+export const fetchUserEmails = async (search = '') => {
+  let url = '/admin/emails/users';
+  if (search) url += `?search=${encodeURIComponent(search)}`;
+  return apiFetch(url);
+};
+
+export const sendEmailCampaign = async (campaignData) => {
+  return apiFetch('/admin/email-campaigns', {
+    method: 'POST',
+    body: JSON.stringify(campaignData),
+  });
+};
+
+export const fetchCampaignHistory = async (page = 1, limit = 20) => {
+  return apiFetch(`/admin/email-campaigns?page=${page}&limit=${limit}`);
+};
+
+// ========== ROLES & PERMISSIONS (Admin) ==========
+export const fetchRoles = async () => {
+  return apiFetch('/admin/roles');
+};
+
+export const createRole = async (roleData) => {
+  return apiFetch('/admin/roles', {
+    method: 'POST',
+    body: JSON.stringify(roleData),
+  });
+};
+
+export const updateRole = async (roleId, roleData) => {
+  return apiFetch(`/admin/roles/${roleId}`, {
+    method: 'PUT',
+    body: JSON.stringify(roleData),
+  });
+};
+
+export const deleteRole = async (roleId) => {
+  return apiFetch(`/admin/roles/${roleId}`, {
+    method: 'DELETE',
+  });
+};
+
+export const fetchAdminUsersList = async (page = 1, limit = 20) => {
+  return apiFetch(`/admin/admin-users?page=${page}&limit=${limit}`);
+};
+
+export const createAdminUser = async (userData) => {
+  return apiFetch('/admin/admin-users', {
+    method: 'POST',
+    body: JSON.stringify(userData),
+  });
+};
+
+export const updateAdminUser = async (userId, userData) => {
+  return apiFetch(`/admin/admin-users/${userId}`, {
+    method: 'PUT',
+    body: JSON.stringify(userData),
+  });
+};
+
+export const deleteAdminUser = async (userId) => {
+  return apiFetch(`/admin/admin-users/${userId}`, {
+    method: 'DELETE',
+  });
+};
+
+export const fetchPermissions = async () => {
+  return apiFetch('/admin/permissions');
+};
+
+export const updateRolePermissions = async (roleId, permissions) => {
+  return apiFetch(`/admin/roles/${roleId}/permissions`, {
+    method: 'PUT',
+    body: JSON.stringify({ permissions }),
+  });
+};
+
+// ========== BANK ACCOUNTS (Admin) ==========
+export const fetchBankAccounts = async () => {
+  return apiFetch('/admin/bank-accounts');
+};
+
+export const createBankAccount = async (accountData) => {
+  return apiFetch('/admin/bank-accounts', {
+    method: 'POST',
+    body: JSON.stringify(accountData),
+  });
+};
+
+export const updateBankAccount = async (accountId, accountData) => {
+  return apiFetch(`/admin/bank-accounts/${accountId}`, {
+    method: 'PUT',
+    body: JSON.stringify(accountData),
+  });
+};
+
+export const deleteBankAccount = async (accountId) => {
+  return apiFetch(`/admin/bank-accounts/${accountId}`, {
+    method: 'DELETE',
+  });
+};
+
+export const setPrimaryBankAccount = async (accountId) => {
+  return apiFetch(`/admin/bank-accounts/${accountId}/primary`, {
+    method: 'PATCH',
+  });
+};
+
+// ========== APP SETTINGS (Admin) ==========
+export const fetchAppSettings = async () => {
+  return apiFetch('/admin/settings/app');
+};
+
+export const updateAppSettings = async (settings) => {
+  return apiFetch('/admin/settings/app', {
+    method: 'PUT',
+    body: JSON.stringify(settings),
+  });
+};
+
+export const toggleMaintenanceMode = async (isEnabled, message = '') => {
+  return apiFetch('/admin/settings/maintenance', {
+    method: 'POST',
+    body: JSON.stringify({ isEnabled, message }),
+  });
+};
+
+export const checkForAppUpdate = async () => {
+  return apiFetch('/admin/updates/check');
+};
+
+export const publishAppUpdate = async (version, message, forceUpdate, downloadUrl) => {
+  return apiFetch('/admin/updates/publish', {
+    method: 'POST',
+    body: JSON.stringify({ version, message, forceUpdate, downloadUrl }),
   });
 };

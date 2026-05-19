@@ -37,7 +37,21 @@ import AdminKycVerification from "./pages/admin/AdminKycVerification";
 import ProviderKYCVerification from "./pages/provider/ProviderKYCVerification";
 import AdminEarningRating from "./pages/admin/AdminEarningRating";
 import AdminProviderStatus from "./pages/admin/AdminProviderStatus";
-import AdminCommission from "./pages/admin/AdminCommission";  // ✅ NEW
+import AdminCommission from "./pages/admin/AdminCommission";
+
+// Additional admin pages (for sidebar links)
+import AdminUserWallet from "./pages/admin/AdminUserWallet";
+import AdminComplaints from "./pages/admin/AdminComplaints";
+import AdminEmailCampaigns from "./pages/admin/AdminEmailCampaigns";
+import AdminBannerManagement from "./pages/admin/AdminBannerManagement";
+import AdminRolesPermissions from "./pages/admin/AdminRolesPermissions";
+import AdminBankAccounts from "./pages/admin/AdminBankAccounts";
+import AdminAppSettings from "./pages/admin/AdminAppSettings";
+import AdminRevenue from "./pages/admin/AdminRevenue";
+import AdminCancelledBookings from "./pages/admin/AdminCancelledBookings";
+import AdminRescheduleRequests from "./pages/admin/AdminRescheduleRequests";
+import AdminCouponsOffers from "./pages/admin/AdminCouponsOffers";
+import ProviderBookingDetail from "./pages/provider/ProviderBookingDetail";
 
 // Main App Content Component
 const AppContent = () => {
@@ -65,18 +79,20 @@ const AppContent = () => {
         <Route path="/my-bookings" element={<PrivateRoute><MyBookingsPage /></PrivateRoute>} />
         <Route path="/register-provider" element={<PrivateRoute><RegisterProvider /></PrivateRoute>} />
 
-        {/* Provider Panel Routes - No Navbar/Footer */}
+        {/* Provider Panel Routes */}
         <Route path="/provider" element={<PrivateRoute><ProviderLayout /></PrivateRoute>}>
           <Route index element={<ProviderDashboard />} />
           <Route path="bookings" element={<ProviderBookings />} />
+          <Route path="bookings/:id" element={<ProviderBookingDetail/>} /> 
           <Route path="kyc" element={<ProviderKYCVerification/>} />
           <Route path="services" element={<ProviderServices />} />
           <Route path="profile" element={<ProviderProfile />} />
           <Route path="wallet" element={<ProviderWallet />} />
         </Route>
 
-        {/* Admin Routes - No Navbar/Footer */}
+        {/* Admin Routes */}
         <Route path="/admin" element={<PrivateRoute><AdminLayout /></PrivateRoute>}>
+          {/* Core existing routes */}
           <Route index element={<AdminDashboard />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="provider-earnings" element={<AdminEarningRating />} />
@@ -87,7 +103,79 @@ const AppContent = () => {
           <Route path="services" element={<AdminServices />} />
           <Route path="bookings" element={<AdminBookings />} />
           <Route path="withdrawals" element={<AdminWithdrawals />} />
-          <Route path="commission-system" element={<AdminCommission />} />  {/* ✅ NEW */}
+          <Route path="commission-system" element={<AdminCommission />} />
+
+          {/* User Management sub-pages */}
+          <Route path="user-wallet" element={<AdminUserWallet />} />
+          <Route path="complaints" element={<AdminComplaints />} />
+          {/* Reuse existing pages for detail/bookings */}
+          <Route path="user-details" element={<AdminUsers />} />
+          <Route path="user-bookings" element={<AdminBookings />} />
+
+          {/* Booking Management sub-pages */}
+          <Route path="new-bookings" element={<AdminBookings />} />
+          <Route path="assigned-bookings" element={<AdminBookings />} />
+          <Route path="ongoing-bookings" element={<AdminBookings />} />
+          <Route path="completed-bookings" element={<AdminBookings />} />
+          <Route path="cancelled-bookings" element={<AdminCancelledBookings />} />
+          <Route path="reschedule-requests" element={<AdminRescheduleRequests />} />
+
+          {/* Payments & Earnings sub-pages */}
+          <Route path="total-revenue" element={<AdminRevenue />} />
+          <Route path="wallet-system" element={<AdminUserWallet />} />
+          <Route path="coupons-offers" element={<AdminCouponsOffers />} />
+          {/* Placeholders for missing advanced pages */}
+          <Route path="provider-payouts" element={<div className="p-8 text-center">Provider Payouts Coming Soon</div>} />
+          <Route path="pending-settlements" element={<div className="p-8 text-center">Pending Settlements Coming Soon</div>} />
+
+          {/* Live Tracking */}
+          <Route path="live-tracking" element={<div className="p-8 text-center">Live Tracking Coming Soon</div>} />
+
+          {/* Service Management sub-pages (reuse main services page) */}
+          <Route path="services/plumbing" element={<AdminServices />} />
+          <Route path="services/ac-repair" element={<AdminServices />} />
+          <Route path="services/electrician" element={<AdminServices />} />
+          <Route path="services/laundry" element={<AdminServices />} />
+          <Route path="services/cleaning" element={<AdminServices />} />
+          <Route path="services/painting" element={<AdminServices />} />
+          <Route path="services/carpenter" element={<AdminServices />} />
+          <Route path="services/ro-service" element={<AdminServices />} />
+          <Route path="services/pest-control" element={<AdminServices />} />
+
+          {/* Review & Rating */}
+          <Route path="reviews" element={<div className="p-8 text-center">Reviews Management Coming Soon</div>} />
+
+          {/* Marketing Panel sub-pages */}
+          <Route path="push-notifications" element={<div className="p-8 text-center">Push Notifications Coming Soon</div>} />
+          <Route path="sms-alerts" element={<div className="p-8 text-center">SMS Alerts Coming Soon</div>} />
+          <Route path="email-campaigns" element={<AdminEmailCampaigns />} />
+          <Route path="banner-management" element={<AdminBannerManagement />} />
+
+          {/* Individual menu items */}
+          <Route path="qr-code" element={<div className="p-8 text-center">QR Code Generation Coming Soon</div>} />
+          <Route path="provider-wallet" element={<AdminWithdrawals />} />
+          <Route path="super-wallet" element={<div className="p-8 text-center">Super Admin Wallet Coming Soon</div>} />
+          <Route path="invoices" element={<div className="p-8 text-center">Invoice & Billing Coming Soon</div>} />
+          <Route path="commission-management" element={<AdminCommission />} />
+          <Route path="escrow" element={<div className="p-8 text-center">Escrow Payment System Coming Soon</div>} />
+          <Route path="fraud-security" element={<div className="p-8 text-center">Fraud & Security Coming Soon</div>} />
+          <Route path="support" element={<div className="p-8 text-center">Customer Support Coming Soon</div>} />
+          <Route path="live-operations" element={<div className="p-8 text-center">Live Operations Coming Soon</div>} />
+          <Route path="automation" element={<div className="p-8 text-center">Automation & Reminders Coming Soon</div>} />
+          <Route path="ai-systems" element={<div className="p-8 text-center">AI Smart Systems Coming Soon</div>} />
+          <Route path="multi-city" element={<div className="p-8 text-center">Multi City System Coming Soon</div>} />
+
+          {/* Settings sub-pages */}
+          <Route path="app-settings" element={<AdminAppSettings />} />
+          <Route path="taxes-gst" element={<div className="p-8 text-center">Taxes / GST Coming Soon</div>} />
+          <Route path="commission-percent" element={<AdminCommission />} />
+          <Route path="payment-gateway" element={<div className="p-8 text-center">Payment Gateway Settings Coming Soon</div>} />
+          <Route path="roles-permissions" element={<AdminRolesPermissions />} />
+
+          {/* Company Bank Accounts sub-pages */}
+          <Route path="bank-accounts" element={<AdminBankAccounts />} />
+          <Route path="primary-account" element={<AdminBankAccounts />} />
+          <Route path="upi-management" element={<AdminBankAccounts />} />
         </Route>
       </Routes>
       

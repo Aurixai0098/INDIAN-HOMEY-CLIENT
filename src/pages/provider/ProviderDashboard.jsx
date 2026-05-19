@@ -3,10 +3,11 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Calendar, CheckCircle, DollarSign, Star, Clock, TrendingUp, 
-  Briefcase, Users, ArrowRight, MoreHorizontal, Eye, Loader2,
-  MessageCircle, ThumbsUp, Award, Zap
+  Briefcase, Users, ArrowRight, Eye, Loader2,
+  MessageCircle, ThumbsUp, Award, Zap, Wallet, IndianRupee,
+  Shield, User, Briefcase as BriefcaseIcon
 } from 'lucide-react';
-import { fetchProviderStats, fetchMyBookings, fetchProviderEarningsDetails } from '../../services/api';
+import { fetchProviderStats, fetchMyBookings, fetchProviderProfile, fetchWallet } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
 // Mini chart component for earnings trend
@@ -27,12 +28,33 @@ const EarningsTrend = ({ data }) => {
   );
 };
 
+// Star Rating Display Component
+const StarRating = ({ rating, size = 'md', showNumber = true }) => {
+  const fullStars = Math.floor(rating);
+  const hasHalfStar = rating % 1 >= 0.5;
+  const sizeClass = size === 'sm' ? 'w-3 h-3' : size === 'lg' ? 'w-5 h-5' : 'w-4 h-4';
+  return (
+    <div className="flex items-center gap-1">
+      <div className="flex">
+        {[...Array(5)].map((_, i) => (
+          <span key={i} className={`${sizeClass} ${i < fullStars ? 'text-amber-400' : (i === fullStars && hasHalfStar ? 'text-amber-400' : 'text-gray-300')}`}>
+            ★
+          </span>
+        ))}
+      </div>
+      {showNumber && <span className="text-sm font-medium text-gray-700 ml-1">{rating.toFixed(1)}</span>}
+    </div>
+  );
+};
+
 const ProviderDashboard = () => {
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [recentBookings, setRecentBookings] = useState([]);
   const [earningsTrend, setEarningsTrend] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [walletData, setWalletData] = useState(null);
 
   useEffect(() => {
     loadDashboard();
@@ -40,17 +62,17 @@ const ProviderDashboard = () => {
 
   const loadDashboard = async () => {
     try {
-      const [statsRes, bookingsRes] = await Promise.all([
+      const [statsRes, bookingsRes, profileRes, walletRes] = await Promise.all([
         fetchProviderStats(),
         fetchMyBookings(1, 5),
+        fetchProviderProfile(),
+        fetchWallet()
       ]);
       if (statsRes.success) {
         setStats(statsRes.data);
-        // If earningsSummary exists, use it for trend; otherwise mock
         if (statsRes.data.earningsSummary && statsRes.data.earningsSummary.length > 0) {
           setEarningsTrend(statsRes.data.earningsSummary.slice(0, 6).reverse());
         } else {
-          // Mock data for demonstration
           setEarningsTrend([
             { month: 'Jan', earnings: 1200 },
             { month: 'Feb', earnings: 1800 },
@@ -62,6 +84,8 @@ const ProviderDashboard = () => {
         }
       }
       if (bookingsRes.success) setRecentBookings(bookingsRes.data.bookings || []);
+      if (profileRes.success) setProfile(profileRes.data.provider);
+      if (walletRes.success) setWalletData(walletRes.data.wallet);
     } catch (err) {
       console.error('Dashboard load error:', err);
     } finally {
@@ -82,9 +106,17 @@ const ProviderDashboard = () => {
   const rating = stats?.rating || {};
   const completedBookings = statsData.completedBookings || 0;
   const totalBookings = statsData.totalBookings || 0;
-  const totalEarnings = statsData.totalEarnings || 0;
+  const totalEarningsGross = statsData.totalEarnings || 0;
   const avgRating = rating.average || 0;
   const reviewCount = rating.count || 0;
+  const experienceYears = profile?.experience?.years || 0;
+  const businessName = profile?.businessName || user?.businessName || `${user?.firstName} ${user?.lastName}`;
+  const avatarUrl = profile?.user?.avatar?.url || user?.avatar?.url;
+  const isAvailable = profile?.isAvailable || false;
+  const isVerified = profile?.verificationStatus === 'verified';
+  const walletBalance = walletData?.balance || 0;
+  const walletTotalEarnings = walletData?.totalEarnings || 0;
+  const walletTotalWithdrawn = walletData?.totalWithdrawals || 0;
 
   // Booking status badge component
   const StatusBadge = ({ status }) => {
@@ -105,15 +137,61 @@ const ProviderDashboard = () => {
 
   return (
     <div className="max-w-7xl mx-auto">
-      {/* Welcome Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
-        <p className="text-gray-500 mt-1">
-          Welcome back, {user?.businessName || user?.firstName}! Here's what's happening with your business.
-        </p>
+      {/* Unified Profile + Wallet Card */}
+      <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl shadow-lg p-6 mb-8 text-white">
+        <div className="flex flex-col md:flex-row md:items-center gap-6">
+          {/* Avatar + Name + Rating + Badges */}
+          <div className="flex items-center gap-4 md:min-w-[260px]">
+            <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center shadow-lg">
+              <img
+                src={avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(businessName)}&background=ffffff&color=10b981&size=80`}
+                alt="Avatar"
+                className="w-20 h-20 rounded-full object-cover"
+              />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold">{businessName}</h2>
+              <div className="flex items-center gap-2 mt-1">
+                <StarRating rating={avgRating} size="sm" showNumber={true} />
+                <span className="text-sm opacity-90">({reviewCount} reviews)</span>
+              </div>
+              <div className="flex flex-wrap gap-2 mt-2">
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${isAvailable ? 'bg-emerald-500 text-white' : 'bg-gray-500 text-white'}`}>
+                  {isAvailable ? 'Available' : 'Unavailable'}
+                </span>
+                {isVerified && (
+                  <span className="px-2 py-0.5 rounded-full text-xs bg-white/20 backdrop-blur-sm flex items-center gap-1">
+                    <Shield className="w-3 h-3" /> Verified
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Stats Row: Completed Jobs, Total Earnings, Years Exp, Wallet Balance */}
+          <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+            <div>
+              <p className="text-2xl font-bold">{completedBookings}</p>
+              <p className="text-xs opacity-90">Completed Jobs</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold">₹{walletTotalEarnings.toLocaleString()}</p>
+              <p className="text-xs opacity-90">Total Earnings</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{experienceYears}+</p>
+              <p className="text-xs opacity-90">Years Exp.</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold">₹{walletBalance.toLocaleString()}</p>
+              <p className="text-xs opacity-90">Wallet Balance</p>
+              <p className="text-[10px] opacity-70 mt-0.5">Withdrawn: ₹{walletTotalWithdrawn.toLocaleString()}</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Stats Grid */}
+      {/* Stats Grid (Total Bookings, Completed Jobs, Total Earnings (Gross), Rating) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-3">
@@ -145,8 +223,8 @@ const ProviderDashboard = () => {
               <DollarSign className="w-5 h-5 text-amber-600" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-gray-800">₹{totalEarnings.toLocaleString()}</p>
-          <p className="text-sm text-gray-500">Total Earnings</p>
+          <p className="text-2xl font-bold text-gray-800">₹{totalEarningsGross.toLocaleString()}</p>
+          <p className="text-sm text-gray-500">Total Earnings (Gross)</p>
         </div>
 
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
@@ -165,7 +243,6 @@ const ProviderDashboard = () => {
 
       {/* Quick Actions + Earnings Overview Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {/* Quick Actions */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
           <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
             <Zap className="w-4 h-4 text-emerald-500" />
@@ -173,37 +250,24 @@ const ProviderDashboard = () => {
           </h3>
           <div className="space-y-3">
             <Link to="/provider/bookings" className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors group">
-              <div className="flex items-center gap-3">
-                <Calendar className="w-4 h-4 text-emerald-600" />
-                <span className="text-sm font-medium text-gray-700">View All Bookings</span>
-              </div>
+              <div className="flex items-center gap-3"><Calendar className="w-4 h-4 text-emerald-600" /><span className="text-sm font-medium text-gray-700">View All Bookings</span></div>
               <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-emerald-500 transition-colors" />
             </Link>
             <Link to="/provider/services" className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors group">
-              <div className="flex items-center gap-3">
-                <Briefcase className="w-4 h-4 text-blue-600" />
-                <span className="text-sm font-medium text-gray-700">Manage Services</span>
-              </div>
+              <div className="flex items-center gap-3"><Briefcase className="w-4 h-4 text-blue-600" /><span className="text-sm font-medium text-gray-700">Manage Services</span></div>
               <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-emerald-500 transition-colors" />
             </Link>
             <Link to="/provider/wallet" className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors group">
-              <div className="flex items-center gap-3">
-                <DollarSign className="w-4 h-4 text-amber-600" />
-                <span className="text-sm font-medium text-gray-700">Withdraw Earnings</span>
-              </div>
+              <div className="flex items-center gap-3"><Wallet className="w-4 h-4 text-amber-600" /><span className="text-sm font-medium text-gray-700">Withdraw Earnings</span></div>
               <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-emerald-500 transition-colors" />
             </Link>
             <Link to="/provider/profile" className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors group">
-              <div className="flex items-center gap-3">
-                <Users className="w-4 h-4 text-purple-600" />
-                <span className="text-sm font-medium text-gray-700">Update Profile</span>
-              </div>
+              <div className="flex items-center gap-3"><Users className="w-4 h-4 text-purple-600" /><span className="text-sm font-medium text-gray-700">Update Profile</span></div>
               <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-emerald-500 transition-colors" />
             </Link>
           </div>
         </div>
 
-        {/* Earnings Trend Chart */}
         <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-gray-800 flex items-center gap-2">
