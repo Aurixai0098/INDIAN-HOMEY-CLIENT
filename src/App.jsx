@@ -36,7 +36,8 @@ import AdminWithdrawals from "./pages/admin/AdminWithdrawals";
 import AdminKycVerification from "./pages/admin/AdminKycVerification";
 import ProviderKYCVerification from "./pages/provider/ProviderKYCVerification";
 import AdminEarningRating from "./pages/admin/AdminEarningRating";
-import AdminProviderStatus from "./pages/admin/AdminProviderStatus";  // ✅ NEW
+import AdminProviderStatus from "./pages/admin/AdminProviderStatus";
+import AdminCommission from "./pages/admin/AdminCommission";  // ✅ NEW
 
 // Main App Content Component
 const AppContent = () => {
@@ -80,12 +81,13 @@ const AppContent = () => {
           <Route path="users" element={<AdminUsers />} />
           <Route path="provider-earnings" element={<AdminEarningRating />} />
           <Route path="providers" element={<AdminProviders />} />
-          <Route path="provider-status" element={<AdminProviderStatus />} />  {/* ✅ NEW */}
+          <Route path="provider-status" element={<AdminProviderStatus />} />
           <Route path="kyc-verification-providers" element={<AdminKycVerification/>} />
           <Route path="categories" element={<AdminCategories />} />
           <Route path="services" element={<AdminServices />} />
           <Route path="bookings" element={<AdminBookings />} />
           <Route path="withdrawals" element={<AdminWithdrawals />} />
+          <Route path="commission-system" element={<AdminCommission />} />  {/* ✅ NEW */}
         </Route>
       </Routes>
       

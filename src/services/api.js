@@ -621,3 +621,15 @@ export const fetchAdminProviders = fetchProviderEarningsList;
 export const fetchProviderStatusList = async () => {
   return apiFetch('/admin/providers/status');
 };
+
+// ========== COMMISSION SETTINGS (ADMIN) ==========
+export const getCommissionSettings = async () => {
+  return apiFetch('/admin/settings/commission');
+};
+
+export const updateCommissionSettings = async (data) => {
+  return apiFetch('/admin/settings/commission', {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+};
