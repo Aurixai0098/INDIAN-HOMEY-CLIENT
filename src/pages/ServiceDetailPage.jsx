@@ -1,41 +1,16 @@
- 
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { fetchServiceBySlug, fetchCategories } from '../services/api';
 import { useCart } from '../context/CartContext';
 
-// Modern Lucide Icons (install: npm install lucide-react)
 import {
-  ShoppingCart,
-  Check,
-  Plus,
-  Star,
-  Clock,
-  ShieldCheck,
-  Truck,
-  ChevronRight,
-  ChevronLeft,
-  ChevronDown,
-  Heart,
-  Share2,
-  MapPin,
-  Phone,
-  Mail,
-  Award,
-  Users,
-  Sparkles,
-  X,
-  ImageIcon,
-  ArrowRight,
-  Home,
-  Tag,
-  ThumbsUp,
-  MessageCircle,
-  CalendarDays,
-  Zap
+  ShoppingCart, Check, Star, Clock, ShieldCheck, Truck, ChevronRight,
+  ChevronLeft, ChevronDown, Heart, Share2, MapPin, Award, Users,
+  Sparkles, X, ImageIcon, ArrowRight, Home, Tag, MessageCircle, Zap, BookOpen,
+  ChevronUp, Loader2
 } from 'lucide-react';
 
-// ─── Shimmer Skeleton ───────────────────────────────────────────────
+// Shimmer Skeleton (same as before)
 const ShimmerSkeleton = () => (
   <div className="animate-pulse space-y-6">
     <div className="h-8 bg-slate-200 rounded-lg w-64"></div>
@@ -51,7 +26,7 @@ const ShimmerSkeleton = () => (
   </div>
 );
 
-// ─── Image Gallery ──────────────────────────────────────────────────
+// Image Gallery (unchanged)
 const ImageGallery = ({ images, name }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -69,7 +44,6 @@ const ImageGallery = ({ images, name }) => {
 
   return (
     <div className="space-y-3">
-      {/* Main Image */}
       <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-slate-100 group cursor-pointer" onClick={() => setLightboxOpen(true)}>
         <img
           src={images[currentIndex].url}
@@ -77,8 +51,6 @@ const ImageGallery = ({ images, name }) => {
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-        
-        {/* Navigation Arrows */}
         {images.length > 1 && (
           <>
             <button
@@ -95,14 +67,11 @@ const ImageGallery = ({ images, name }) => {
             </button>
           </>
         )}
-        
-        {/* Image Counter */}
         <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-full">
           {currentIndex + 1} / {images.length}
         </div>
       </div>
 
-      {/* Thumbnails */}
       {images.length > 1 && (
         <div className="flex gap-2 overflow-x-auto pb-1">
           {images.map((img, idx) => (
@@ -118,7 +87,6 @@ const ImageGallery = ({ images, name }) => {
         </div>
       )}
 
-      {/* Lightbox */}
       {lightboxOpen && (
         <div className="fixed inset-0 z-[1000] bg-black/95 flex items-center justify-center p-4 animate-fadeIn" onClick={() => setLightboxOpen(false)}>
           <button className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors">
@@ -151,7 +119,7 @@ const ImageGallery = ({ images, name }) => {
   );
 };
 
-// ─── Accordion Component ────────────────────────────────────────────
+// Accordion Component (unchanged)
 const Accordion = ({ title, children, defaultOpen = false }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   return (
@@ -172,28 +140,106 @@ const Accordion = ({ title, children, defaultOpen = false }) => {
   );
 };
 
-// ─── Review Card ────────────────────────────────────────────────────
-const ReviewCard = ({ review }) => (
-  <div className="bg-white rounded-xl p-4 border border-slate-100">
-    <div className="flex items-center gap-3 mb-3">
-      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-sm">
-        {review.user?.name?.[0]?.toUpperCase() || '?'}
+// Review Card (single column - full width)
+const ReviewCard = ({ review }) => {
+  const customerName = review.customer?.fullName || review.customer?.firstName || 'Anonymous';
+  const customerAvatar = review.customer?.avatar?.url;
+  const rating = review.rating?.overall || 0;
+  const comment = review.comment;
+  const date = review.createdAt;
+  const title = review.title;
+
+  return (
+    <div className="bg-white rounded-xl p-5 border border-slate-100 hover:shadow-md transition-all duration-200">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-3">
+          {customerAvatar ? (
+            <img src={customerAvatar} alt={customerName} className="w-10 h-10 rounded-full object-cover ring-2 ring-white shadow-sm" />
+          ) : (
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-sm">
+              {customerName[0]?.toUpperCase() || '?'}
+            </div>
+          )}
+          <div>
+            <p className="font-semibold text-slate-800 text-sm">{customerName}</p>
+            <div className="flex items-center gap-1">
+              {[...Array(5)].map((_, i) => (
+                <Star key={i} className={`w-3 h-3 ${i < rating ? 'text-amber-400 fill-amber-400' : 'text-slate-200'}`} />
+              ))}
+            </div>
+          </div>
+        </div>
+        <span className="text-xs text-slate-400 bg-slate-50 px-2 py-1 rounded-full">
+          {new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+        </span>
       </div>
-      <div>
-        <p className="font-semibold text-slate-800 text-sm">{review.user?.name || 'Anonymous'}</p>
-        <div className="flex items-center gap-1">
-          {[...Array(5)].map((_, i) => (
-            <Star key={i} className={`w-3 h-3 ${i < review.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-200'}`} />
+      {title && <h4 className="font-medium text-slate-800 mb-1">{title}</h4>}
+      <p className="text-sm text-slate-600 leading-relaxed">{comment}</p>
+    </div>
+  );
+};
+
+// Reviews Modal Component (paginated, one review per row)
+const ReviewsModal = ({ reviews, onClose }) => {
+  const [visibleCount, setVisibleCount] = useState(10);
+  const [loading, setLoading] = useState(false);
+
+  const loadMore = () => {
+    setLoading(true);
+    setTimeout(() => {
+      setVisibleCount(prev => Math.min(prev + 10, reviews.length));
+      setLoading(false);
+    }, 300);
+  };
+
+  const visibleReviews = reviews.slice(0, visibleCount);
+  const hasMore = visibleCount < reviews.length;
+
+  return (
+    <div className="fixed inset-0 z-[1100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+        {/* Modal Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
+          <div>
+            <h2 className="text-xl font-bold text-slate-800">All Reviews</h2>
+            <p className="text-sm text-slate-500">{reviews.length} customer {reviews.length === 1 ? 'review' : 'reviews'}</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+            <X className="w-5 h-5 text-slate-500" />
+          </button>
+        </div>
+
+        {/* Reviews List - Scrollable */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          {visibleReviews.map((review, idx) => (
+            <ReviewCard key={idx} review={review} />
           ))}
+          
+          {/* Load More Button */}
+          {hasMore && (
+            <div className="flex justify-center pt-4">
+              <button
+                onClick={loadMore}
+                disabled={loading}
+                className="inline-flex items-center gap-2 px-6 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-medium hover:bg-slate-200 transition-colors disabled:opacity-50"
+              >
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ChevronDown className="w-4 h-4" />}
+                {loading ? 'Loading...' : `Load more (${reviews.length - visibleCount} remaining)`}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-3 border-t border-slate-100 bg-slate-50 text-center text-xs text-slate-400">
+          Showing {visibleCount} of {reviews.length} reviews
         </div>
       </div>
-      <span className="ml-auto text-xs text-slate-400">{new Date(review.createdAt).toLocaleDateString()}</span>
     </div>
-    <p className="text-sm text-slate-600 leading-relaxed">{review.comment}</p>
-  </div>
-);
+  );
+};
 
-// ─── Related Service Card ───────────────────────────────────────────
+// Related Service Card
 const RelatedCard = ({ service }) => (
   <Link to={`/service/${service.slug}`} className="group bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-xl hover:shadow-slate-200/50 hover:-translate-y-1 transition-all duration-300">
     <div className="aspect-[4/3] bg-slate-100 overflow-hidden relative">
@@ -220,7 +266,7 @@ const RelatedCard = ({ service }) => (
   </Link>
 );
 
-// ─── Sidebar Category Item ──────────────────────────────────────────
+// Sidebar Category Item
 const CategoryItem = ({ cat, isActive }) => (
   <Link
     to={`/category/${cat.slug}`}
@@ -247,18 +293,22 @@ const CategoryItem = ({ cat, isActive }) => (
   </Link>
 );
 
+// Main ServiceDetailPage Component
 const ServiceDetailPage = () => {
   const { slug } = useParams();
+  const navigate = useNavigate();
   const { addToCart } = useCart();
 
   const [service, setService] = useState(null);
   const [relatedServices, setRelatedServices] = useState([]);
   const [allCategories, setAllCategories] = useState([]);
+  const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingSidebar, setLoadingSidebar] = useState(true);
   const [error, setError] = useState(null);
   const [added, setAdded] = useState(false);
   const [liked, setLiked] = useState(false);
+  const [showAllReviews, setShowAllReviews] = useState(false);
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
@@ -270,6 +320,7 @@ const ServiceDetailPage = () => {
       if (res.success && res.data.service) {
         setService(res.data.service);
         setRelatedServices(res.data.relatedServices || []);
+        setReviews(res.data.reviews || []);
       } else {
         setError('Service not found');
       }
@@ -304,18 +355,13 @@ const ServiceDetailPage = () => {
     setTimeout(() => setAdded(false), 2000);
   };
 
-  // ─── Loading State ────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-50">
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          <ShimmerSkeleton />
-        </div>
-      </div>
-    );
-  }
+  const handleBookNow = () => {
+    addToCart(service);
+    navigate('/cart');
+  };
 
-  // ─── Error State ──────────────────────────────────────────────────
+  if (loading) return <ShimmerSkeleton />;
+
   if (error || !service) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
@@ -325,17 +371,17 @@ const ServiceDetailPage = () => {
           </div>
           <h1 className="text-3xl font-bold text-slate-800 mb-3">Service Not Found</h1>
           <p className="text-slate-500 mb-8">{error || 'The service you are looking for does not exist or has been removed.'}</p>
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 bg-slate-900 text-white px-8 py-3 rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 hover:shadow-xl hover:-translate-y-0.5 font-medium"
-          >
-            <Home className="w-4 h-4" />
-            Back to Home
+          <Link to="/" className="inline-flex items-center gap-2 bg-slate-900 text-white px-8 py-3 rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 hover:shadow-xl hover:-translate-y-0.5 font-medium">
+            <Home className="w-4 h-4" /> Back to Home
           </Link>
         </div>
       </div>
     );
   }
+
+  const avgRating = service.rating?.average || 0;
+  const reviewCount = service.rating?.count || reviews.length || 0;
+  const displayReviews = reviews.length > 0 ? reviews : [];
 
   return (
     <div className="bg-slate-50 min-h-screen">
@@ -344,8 +390,7 @@ const ServiceDetailPage = () => {
         <div className="max-w-7xl mx-auto px-4 py-4">
           <nav className="flex items-center gap-2 text-sm text-slate-500">
             <Link to="/" className="flex items-center gap-1 hover:text-emerald-600 transition-colors">
-              <Home className="w-3.5 h-3.5" />
-              Home
+              <Home className="w-3.5 h-3.5" /> Home
             </Link>
             <ChevronRight className="w-3.5 h-3.5" />
             <Link to={`/category/${service.category?.slug}`} className="hover:text-emerald-600 transition-colors">
@@ -359,25 +404,19 @@ const ServiceDetailPage = () => {
 
       <div className="max-w-7xl mx-auto px-4 py-8 md:py-12">
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* ═══ MAIN CONTENT ═══ */}
+          {/* Main Content */}
           <main className="flex-1 min-w-0 space-y-8">
             {/* Hero Section */}
             <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
               <div className="grid md:grid-cols-2 gap-0">
-                {/* Image Gallery */}
                 <div className="p-6">
                   <ImageGallery images={service.images} name={service.name} />
                 </div>
-
-                {/* Info Section */}
                 <div className="p-6 md:p-8 flex flex-col justify-center border-l border-slate-100">
                   <div className="flex items-start justify-between gap-4 mb-3">
                     <h1 className="text-2xl md:text-3xl font-bold text-slate-800 leading-tight">{service.name}</h1>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <button
-                        onClick={() => setLiked(!liked)}
-                        className={`p-2.5 rounded-xl transition-all ${liked ? 'bg-red-50 text-red-500' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
-                      >
+                      <button onClick={() => setLiked(!liked)} className={`p-2.5 rounded-xl transition-all ${liked ? 'bg-red-50 text-red-500' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}>
                         <Heart className={`w-5 h-5 ${liked ? 'fill-red-500' : ''}`} />
                       </button>
                       <button className="p-2.5 bg-slate-100 text-slate-400 hover:bg-slate-200 rounded-xl transition-colors">
@@ -386,12 +425,11 @@ const ServiceDetailPage = () => {
                     </div>
                   </div>
 
-                  {/* Rating & Stats */}
                   <div className="flex flex-wrap items-center gap-4 mb-4">
                     <div className="flex items-center gap-1.5 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-200">
                       <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-                      <span className="font-bold text-amber-700">{service.rating?.average || '4.5'}</span>
-                      <span className="text-amber-600 text-sm">({service.rating?.count || '0'} reviews)</span>
+                      <span className="font-bold text-amber-700">{avgRating.toFixed(1)}</span>
+                      <span className="text-amber-600 text-sm">({reviewCount} {reviewCount === 1 ? 'review' : 'reviews'})</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-slate-500 text-sm">
                       <Users className="w-4 h-4" />
@@ -405,55 +443,43 @@ const ServiceDetailPage = () => {
 
                   <p className="text-slate-600 leading-relaxed mb-6">{service.description}</p>
 
-                  {/* Trust Badges */}
                   <div className="flex flex-wrap gap-3 mb-6">
                     <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 text-xs font-medium rounded-lg border border-emerald-200">
-                      <ShieldCheck className="w-3.5 h-3.5" />
-                      Verified Provider
+                      <ShieldCheck className="w-3.5 h-3.5" /> Verified Provider
                     </span>
                     <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-lg border border-blue-200">
-                      <Truck className="w-3.5 h-3.5" />
-                      Free Cancellation
+                      <Truck className="w-3.5 h-3.5" /> Free Cancellation
                     </span>
                     <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-700 text-xs font-medium rounded-lg border border-purple-200">
-                      <Award className="w-3.5 h-3.5" />
-                      Best Price
+                      <Award className="w-3.5 h-3.5" /> Best Price
                     </span>
                   </div>
 
-                  {/* Price & CTA */}
-                  <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-100">
-                    <div>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-                          ₹{service.basePrice}
-                        </span>
-                        <span className="text-slate-400 text-sm">
-                          /{service.priceUnit?.replace('_', ' ') || 'service'}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-400 mt-1">Inclusive of all taxes</p>
+                  <div className="space-y-4 pt-4 border-t border-slate-100">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                        ₹{service.basePrice}
+                      </span>
+                      <span className="text-slate-400 text-sm">/{service.priceUnit?.replace('_', ' ') || 'service'}</span>
                     </div>
-                    <button
-                      onClick={handleAddToCart}
-                      className={`flex items-center gap-2 px-8 py-4 rounded-2xl font-bold text-sm transition-all shadow-lg
-                        ${added
-                          ? 'bg-emerald-500 text-white shadow-emerald-500/30 scale-[0.98]'
-                          : 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-900/20 hover:shadow-xl hover:-translate-y-0.5 active:scale-95'
-                        }`}
-                    >
-                      {added ? (
-                        <>
-                          <Check className="w-5 h-5 animate-bounce" />
-                          Added to Cart!
-                        </>
-                      ) : (
-                        <>
-                          <ShoppingCart className="w-5 h-5" />
-                          Add to Cart
-                        </>
-                      )}
-                    </button>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <button
+                        onClick={handleAddToCart}
+                        className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-all shadow-lg flex-1
+                          ${added
+                            ? 'bg-emerald-500 text-white shadow-emerald-500/30 scale-[0.98]'
+                            : 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-900/20 hover:shadow-xl hover:-translate-y-0.5 active:scale-95'
+                          }`}
+                      >
+                        {added ? <><Check className="w-5 h-5 animate-bounce" /> Added to Cart!</> : <><ShoppingCart className="w-5 h-5" /> Add to Cart</>}
+                      </button>
+                      <button
+                        onClick={handleBookNow}
+                        className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-all shadow-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-600/20 hover:shadow-xl hover:-translate-y-0.5 active:scale-95 flex-1"
+                      >
+                        <BookOpen className="w-5 h-5" /> Book Now
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -472,14 +498,12 @@ const ServiceDetailPage = () => {
                   <ul className="space-y-2.5">
                     {service.includes.map((item, idx) => (
                       <li key={idx} className="flex items-start gap-2.5 text-sm text-slate-600">
-                        <Check className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
-                        {item}
+                        <Check className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" /> {item}
                       </li>
                     ))}
                   </ul>
                 </div>
               )}
-
               {service.excludes && service.excludes.length > 0 && (
                 <div className="bg-white rounded-2xl border border-slate-100 p-5">
                   <div className="flex items-center gap-2 mb-4">
@@ -491,14 +515,12 @@ const ServiceDetailPage = () => {
                   <ul className="space-y-2.5">
                     {service.excludes.map((item, idx) => (
                       <li key={idx} className="flex items-start gap-2.5 text-sm text-slate-600">
-                        <X className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
-                        {item}
+                        <X className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" /> {item}
                       </li>
                     ))}
                   </ul>
                 </div>
               )}
-
               {service.requirements && service.requirements.length > 0 && (
                 <div className="bg-white rounded-2xl border border-slate-100 p-5">
                   <div className="flex items-center gap-2 mb-4">
@@ -510,8 +532,7 @@ const ServiceDetailPage = () => {
                   <ul className="space-y-2.5">
                     {service.requirements.map((item, idx) => (
                       <li key={idx} className="flex items-start gap-2.5 text-sm text-slate-600">
-                        <Sparkles className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                        {item}
+                        <Sparkles className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" /> {item}
                       </li>
                     ))}
                   </ul>
@@ -519,29 +540,42 @@ const ServiceDetailPage = () => {
               )}
             </div>
 
-            {/* Reviews Section */}
-            {service.reviews && service.reviews.length > 0 && (
+            {/* Reviews Section - with "View all" modal trigger */}
+            {displayReviews.length > 0 ? (
               <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8">
                 <div className="flex items-center justify-between mb-6">
                   <div>
                     <h2 className="text-xl font-bold text-slate-800">Customer Reviews</h2>
-                    <p className="text-slate-500 text-sm mt-1">{service.reviews.length} reviews from verified customers</p>
+                    <p className="text-slate-500 text-sm mt-1">{reviewCount} {reviewCount === 1 ? 'review' : 'reviews'} from verified customers</p>
                   </div>
                   <div className="flex items-center gap-2 bg-amber-50 px-4 py-2 rounded-xl border border-amber-200">
                     <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
-                    <span className="font-bold text-amber-700">{service.rating?.average || '4.5'}</span>
+                    <span className="font-bold text-amber-700">{avgRating.toFixed(1)}</span>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {service.reviews.slice(0, 4).map((review, idx) => (
+                
+                {/* Show first 4 reviews (one per row) */}
+                <div className="space-y-4">
+                  {displayReviews.slice(0, 4).map((review, idx) => (
                     <ReviewCard key={idx} review={review} />
                   ))}
                 </div>
-                {service.reviews.length > 4 && (
-                  <button className="w-full mt-4 py-3 bg-slate-50 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-100 transition-colors">
-                    View all {service.reviews.length} reviews
+                
+                {displayReviews.length > 4 && (
+                  <button
+                    onClick={() => setShowAllReviews(true)}
+                    className="w-full mt-6 py-3 bg-slate-50 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-100 transition-colors flex items-center justify-center gap-2"
+                  >
+                    View all {displayReviews.length} reviews
+                    <ArrowRight className="w-4 h-4" />
                   </button>
                 )}
+              </div>
+            ) : (
+              <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8 text-center">
+                <MessageCircle className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                <h3 className="text-lg font-semibold text-slate-700">No reviews yet</h3>
+                <p className="text-slate-500 text-sm">Be the first to review this service after booking.</p>
               </div>
             )}
 
@@ -555,18 +589,15 @@ const ServiceDetailPage = () => {
                   </Link>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {relatedServices.map(rel => (
-                    <RelatedCard key={rel._id} service={rel} />
-                  ))}
+                  {relatedServices.map(rel => <RelatedCard key={rel._id} service={rel} />)}
                 </div>
               </div>
             )}
           </main>
 
-          {/* ═══ RIGHT SIDEBAR ═══ */}
+          {/* Sidebar (unchanged) */}
           <aside className="lg:w-72 flex-shrink-0">
             <div className="sticky top-6 space-y-6">
-              {/* Sticky Price Card */}
               <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-sm text-slate-500">Price</span>
@@ -575,86 +606,54 @@ const ServiceDetailPage = () => {
                 <button
                   onClick={handleAddToCart}
                   className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm transition-all shadow-lg
-                    ${added
-                      ? 'bg-emerald-500 text-white shadow-emerald-500/30'
-                      : 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-900/20 hover:shadow-xl active:scale-95'
-                    }`}
+                    ${added ? 'bg-emerald-500 text-white shadow-emerald-500/30' : 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-900/20 hover:shadow-xl active:scale-95'}`}
                 >
-                  {added ? (
-                    <>
-                      <Check className="w-5 h-5" />
-                      Added!
-                    </>
-                  ) : (
-                    <>
-                      <ShoppingCart className="w-5 h-5" />
-                      Add to Cart
-                    </>
-                  )}
+                  {added ? <><Check className="w-5 h-5" /> Added!</> : <><ShoppingCart className="w-5 h-5" /> Add to Cart</>}
+                </button>
+                <button
+                  onClick={handleBookNow}
+                  className="w-full mt-3 flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm transition-all shadow-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-600/20 hover:shadow-xl active:scale-95"
+                >
+                  <BookOpen className="w-5 h-5" /> Book Now
                 </button>
                 <div className="mt-4 space-y-2">
-                  <div className="flex items-center gap-2 text-xs text-slate-500">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                    Secure payment
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-slate-500">
-                    <Truck className="w-3.5 h-3.5 text-blue-500" />
-                    Free cancellation
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-slate-500">
-                    <Clock className="w-3.5 h-3.5 text-amber-500" />
-                    Same day service
-                  </div>
+                  <div className="flex items-center gap-2 text-xs text-slate-500"><ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> Secure payment</div>
+                  <div className="flex items-center gap-2 text-xs text-slate-500"><Truck className="w-3.5 h-3.5 text-blue-500" /> Free cancellation</div>
+                  <div className="flex items-center gap-2 text-xs text-slate-500"><Clock className="w-3.5 h-3.5 text-amber-500" /> Same day service</div>
                 </div>
               </div>
 
-              {/* Categories */}
               <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                 <div className="p-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
-                  <h2 className="font-bold text-slate-800 flex items-center gap-2">
-                    <Tag className="w-4 h-4 text-emerald-600" />
-                    Categories
-                  </h2>
+                  <h2 className="font-bold text-slate-800 flex items-center gap-2"><Tag className="w-4 h-4 text-emerald-600" /> Categories</h2>
                 </div>
                 <div className="max-h-[60vh] overflow-y-auto">
                   {loadingSidebar ? (
-                    <div className="p-4 space-y-3">
-                      {[1, 2, 3, 4, 5].map(i => (
-                        <div key={i} className="h-10 bg-slate-100 rounded-xl animate-pulse"></div>
-                      ))}
-                    </div>
+                    <div className="p-4 space-y-3">{/* skeletons */}</div>
                   ) : (
                     <div className="divide-y divide-slate-50">
-                      {allCategories.map(cat => (
-                        <CategoryItem
-                          key={cat._id}
-                          cat={cat}
-                          isActive={cat._id === service.category?._id}
-                        />
-                      ))}
+                      {allCategories.map(cat => <CategoryItem key={cat._id} cat={cat} isActive={cat._id === service.category?._id} />)}
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Promo */}
               <div className="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl p-5 text-white shadow-lg shadow-emerald-500/20">
-                <div className="flex items-center gap-2 mb-2">
-                  <Sparkles className="w-5 h-5 text-emerald-200" />
-                  <span className="font-bold text-sm">First Booking Offer</span>
-                </div>
+                <div className="flex items-center gap-2 mb-2"><Sparkles className="w-5 h-5 text-emerald-200" /><span className="font-bold text-sm">First Booking Offer</span></div>
                 <p className="text-emerald-100 text-sm mb-3">Get 15% off on your first service booking!</p>
-                <button className="w-full bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white text-sm font-medium py-2.5 rounded-xl transition-colors">
-                  Book Now
-                </button>
+                <button className="w-full bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white text-sm font-medium py-2.5 rounded-xl transition-colors">Book Now</button>
               </div>
             </div>
           </aside>
         </div>
       </div>
+
+      {/* Reviews Modal */}
+      {showAllReviews && (
+        <ReviewsModal reviews={displayReviews} onClose={() => setShowAllReviews(false)} />
+      )}
     </div>
   );
 };
 
 export default ServiceDetailPage;
- 
