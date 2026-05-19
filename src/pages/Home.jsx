@@ -3,6 +3,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchCategories, fetchFeaturedServices, fetchPopularServices } from '../services/api';
 import InfiniteReviewsMarquee from '../components/SliderImages';
+import InfiniteProvidersMarquee from '../components/InfiniteProvidersMarquee';   // ✅ NEW
 
 // Clickable Service Card
 const ServiceCard = ({ service }) => (
@@ -310,6 +311,9 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* ✅ NEW: Infinite Providers Section */}
+      <InfiniteProvidersMarquee />
 
       {/* Customer Reviews */}
       <InfiniteReviewsMarquee />

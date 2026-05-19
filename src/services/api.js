@@ -221,7 +221,6 @@ export const updateAdminUserStatus = async (userId, status) => {
   });
 };
 
-// ✅ NEW: Update user by admin (firstName, lastName, phone)
 export const updateUserByAdmin = async (userId, userData) => {
   return apiFetch(`/admin/users/${userId}`, {
     method: 'PUT',
@@ -229,12 +228,10 @@ export const updateUserByAdmin = async (userId, userData) => {
   });
 };
 
-// ✅ NEW: Get user stats (wallet, spending, bookings)
 export const getUserStats = async (userId) => {
   return apiFetch(`/admin/users/${userId}/stats`);
 };
 
-// ✅ NEW: Send push notification
 export const sendPushNotification = async (targetType, targetId, message) => {
   return apiFetch('/admin/notifications/push', {
     method: 'POST',
@@ -242,7 +239,6 @@ export const sendPushNotification = async (targetType, targetId, message) => {
   });
 };
 
-// ✅ NEW: Send SMS alert
 export const sendSmsAlert = async (targetType, targetId, message) => {
   return apiFetch('/admin/notifications/sms', {
     method: 'POST',
@@ -413,7 +409,6 @@ export const fetchProviderNotifications = async () => {
   return apiFetch('/providers/notifications');
 };
 
-// ✅ Fixed function name
 export const mar9yMnTm4NSzvG9rrwjM2ec8xZgh1cafXH8 = async (notificationId) => {
   return apiFetch(`/providers/notifications/${notificationId}/read`, {
     method: 'PATCH',
@@ -435,6 +430,11 @@ export const searchProviders = async (latitude, longitude, radius = 10, serviceC
   if (pincode) url += `&pincode=${pincode}`;
   if (city) url += `&city=${encodeURIComponent(city)}`;
   return apiFetch(url);
+};
+
+// ✅ NEW: Fetch featured providers for homepage
+export const fetchFeaturedProviders = async (limit = 20) => {
+  return apiFetch(`/providers/featured?limit=${limit}`);
 };
 
 // ========== Payment APIs ==========
