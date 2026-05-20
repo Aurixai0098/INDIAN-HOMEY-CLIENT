@@ -1,13 +1,13 @@
 // src/components/booking/ChatBox.jsx
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Send, X, Wifi, WifiOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSocket } from '../../context/SocketContext';
-import { fetchBookingById, fetchChatHistory } from '../../services/api';
+import { fetchChatHistory } from '../../services/api';
 
 const ChatBox = ({ bookingId, providerName, customerName, onClose }) => {
   const { user } = useAuth();
-  const { socket } = useSocket();
+  const { socket, isConnected } = useSocket();
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
@@ -15,32 +15,83 @@ const ChatBox = ({ bookingId, providerName, customerName, onClose }) => {
   const messagesEndRef = useRef(null);
   const isProvider = user?.role === 'provider';
 
+  // Audio unlock
+  useEffect(() => {
+    const unlock = () => {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (AudioContext) {
+        const ctx = new AudioContext();
+        if (ctx.state === 'suspended') ctx.resume();
+      }
+    };
+    document.addEventListener('click', unlock, { once: true });
+    return () => document.removeEventListener('click', unlock);
+  }, []);
+
   // Load chat history
   useEffect(() => {
-    const loadMessages = async () => {
+    const load = async () => {
       try {
         const res = await fetchChatHistory(bookingId);
-        if (res.success) setMessages(res.data.messages || []);
+        if (res.success) {
+          setMessages(res.data.messages || []);
+        }
       } catch (err) {
-        console.error(err);
+        console.error('Chat history error:', err);
       } finally {
         setLoading(false);
       }
     };
-    loadMessages();
+    load();
   }, [bookingId]);
 
-  // Socket listeners
+  // ✅ Socket listeners – with reconnection support
   useEffect(() => {
     if (!socket) return;
+
     const handleNewMessage = (data) => {
       if (data.bookingId === bookingId) {
-        setMessages(prev => [...prev, data]);
+        addMessage(data);
       }
     };
+
+    const handleMessageSent = (chat) => {
+      const bookingIdFromChat = chat.booking?._id?.toString() || chat.booking?.toString();
+      if (bookingIdFromChat === bookingId) {
+        // Replace any temporary message with the confirmed one
+        setMessages(prev =>
+          prev.map(msg =>
+            msg._tempId && msg.message === chat.message ? { ...chat, _tempId: undefined } : msg
+          )
+        );
+        // Also add if not already present
+        addMessage(chat);
+      }
+    };
+
     socket.on('new-message', handleNewMessage);
-    return () => socket.off('new-message', handleNewMessage);
+    socket.on('message-sent', handleMessageSent);
+
+    return () => {
+      socket.off('new-message', handleNewMessage);
+      socket.off('message-sent', handleMessageSent);
+    };
   }, [socket, bookingId]);
+
+  // Helper to avoid duplicates (including temp messages)
+  const addMessage = (msg) => {
+    setMessages(prev => {
+      if (msg._id && prev.some(m => m._id === msg._id)) return prev;
+      // If a temp message with same content exists, replace it
+      const tempIndex = prev.findIndex(m => m._tempId && m.message === msg.message);
+      if (tempIndex !== -1) {
+        const updated = [...prev];
+        updated[tempIndex] = { ...msg, _tempId: undefined };
+        return updated;
+      }
+      return [...prev, msg];
+    });
+  };
 
   // Auto-scroll
   useEffect(() => {
@@ -49,13 +100,25 @@ const ChatBox = ({ bookingId, providerName, customerName, onClose }) => {
 
   const sendMessage = () => {
     if (!newMessage.trim()) return;
-    if (!socket) {
+    if (!socket || !isConnected) {
       alert('Socket not connected. Please refresh the page.');
       return;
     }
+
+    // ✅ Optimistic update – तुरंत दिखाओ
+    const tempId = 'temp_' + Date.now();
+    const tempMessage = {
+      _tempId: tempId,
+      message: newMessage.trim(),
+      senderRole: user.role,
+      createdAt: new Date().toISOString(),
+      bookingId,
+    };
+    setMessages(prev => [...prev, tempMessage]);
+
     socket.emit('send-message', {
       bookingId,
-      message: newMessage,
+      message: newMessage.trim(),
       senderId: user._id,
       senderRole: user.role,
     });
@@ -87,10 +150,13 @@ const ChatBox = ({ bookingId, providerName, customerName, onClose }) => {
             <div className="text-center text-gray-400">No messages yet. Start the conversation!</div>
           ) : (
             messages.map((msg, idx) => (
-              <div key={idx} className={`flex ${msg.senderRole === user.role ? 'justify-end' : 'justify-start'}`}>
+              <div key={msg._id || msg._tempId || idx} className={`flex ${msg.senderRole === user.role ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[75%] p-2 rounded-lg ${msg.senderRole === user.role ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-800'}`}>
                   <p className="text-sm break-words">{msg.message}</p>
-                  <p className="text-xs opacity-70 mt-1">{new Date(msg.createdAt).toLocaleTimeString()}</p>
+                  <p className="text-xs opacity-70 mt-1">
+                    {new Date(msg.createdAt).toLocaleTimeString()}
+                    {msg._tempId ? ' (sending...)' : ''}
+                  </p>
                 </div>
               </div>
             ))
