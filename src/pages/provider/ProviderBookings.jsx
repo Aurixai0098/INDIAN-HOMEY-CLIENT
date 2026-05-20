@@ -1,7 +1,6 @@
 // src/pages/provider/ProviderBookings.jsx
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import axios from 'axios';
 import { 
   Calendar, Clock, User, Package, IndianRupee, 
   CheckCircle, AlertCircle, Eye, RefreshCw, Shield, 
@@ -11,10 +10,33 @@ import {
 import { 
   fetchMyBookings, confirmBooking, startBooking, 
   completeBooking, generateBookingOTP, fetchProviderVerificationStatus,
-  fetchProviderProfile
+  fetchProviderProfile, acceptBooking
 } from '../../services/api';
 import { useSocket } from '../../context/SocketContext';
 import ChatBox from '../../components/booking/ChatBox';
+
+// ✅ ऑडियो सेटअप – पहली क्लिक पर अनलॉक होगा
+let audioCtx = null;
+
+const playNotybell = async () => {
+  try {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+      await audioCtx.resume();
+    }
+    const response = await fetch('/notybell.mp3'); // अपनी फ़ाइल का सही नाम + एक्सटेंशन
+    const arrayBuffer = await response.arrayBuffer();
+    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+    const source = audioCtx.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(audioCtx.destination);
+    source.start(0);
+  } catch (err) {
+    console.warn('Sound play failed:', err);
+  }
+};
 
 const ProviderBookings = () => {
   const { socket } = useSocket();
@@ -31,7 +53,25 @@ const ProviderBookings = () => {
   const [providerData, setProviderData] = useState(null);
   const [chatBooking, setChatBooking] = useState(null);
 
-  // Check query parameter to open chat automatically
+  // ✅ पहली क्लिक पर ऑडियो अनलॉक करें
+  useEffect(() => {
+    const unlockAudio = async () => {
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          await audioCtx.resume();
+        }
+        console.log('🔊 Audio unlocked');
+      } catch (err) {
+        console.warn('Audio unlock failed:', err);
+      }
+    };
+    document.addEventListener('click', unlockAudio, { once: true });
+    return () => document.removeEventListener('click', unlockAudio);
+  }, []);
+
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const openChatId = params.get('openChat');
@@ -100,11 +140,11 @@ const ProviderBookings = () => {
     }
   }, []);
 
-  // Socket listeners for incoming booking requests
   useEffect(() => {
     if (!socket) return;
     socket.on('new-booking-request', (data) => {
       setIncomingRequests(prev => [...prev, data]);
+      playNotybell();  // 🔊 नई बुकिंग आने पर साउंड
     });
     socket.on('booking-taken', (data) => {
       setIncomingRequests(prev => prev.filter(req => req.bookingId !== data.bookingId));
@@ -115,18 +155,14 @@ const ProviderBookings = () => {
     };
   }, [socket]);
 
+  // ✅ बग ठीक – सिर्फ API कॉल, डुप्लीकेट socket emit नहीं
   const handleAccept = async (bookingId) => {
-    // ✅ Optimistically remove the request from the list immediately
     setIncomingRequests(prev => prev.filter(r => r.bookingId !== bookingId));
-    
-    if (!socket) return;
-    socket.emit('accept-booking', { bookingId, providerId: providerData?._id });
     try {
-      await axios.post(`/api/v1/bookings/${bookingId}/accept`, {}, { withCredentials: true });
+      await acceptBooking(bookingId);
       loadBookings(true);
     } catch (err) {
       console.error('Accept error:', err);
-      // If API fails, reload bookings to sync (the request might still be valid)
       loadBookings(true);
     }
   };
@@ -190,44 +226,17 @@ const ProviderBookings = () => {
 
   const getStatusConfig = (status) => {
     const configs = {
-      pending: { 
-        label: 'Pending', 
-        color: 'bg-amber-100 text-amber-700 border-amber-200',
-        icon: AlertCircle,
-        iconColor: 'text-amber-500'
-      },
-      confirmed: { 
-        label: 'Confirmed', 
-        color: 'bg-blue-100 text-blue-700 border-blue-200',
-        icon: CheckCircle,
-        iconColor: 'text-blue-500'
-      },
-      in_progress: { 
-        label: 'In Progress', 
-        color: 'bg-purple-100 text-purple-700 border-purple-200',
-        icon: Clock,
-        iconColor: 'text-purple-500'
-      },
-      completed: { 
-        label: 'Completed', 
-        color: 'bg-green-100 text-green-700 border-green-200',
-        icon: CheckCircle,
-        iconColor: 'text-green-500'
-      },
-      cancelled: { 
-        label: 'Cancelled', 
-        color: 'bg-red-100 text-red-700 border-red-200',
-        icon: AlertTriangle,
-        iconColor: 'text-red-500'
-      }
+      pending: { label: 'Pending', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: AlertCircle },
+      confirmed: { label: 'Confirmed', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: CheckCircle },
+      in_progress: { label: 'In Progress', color: 'bg-purple-100 text-purple-700 border-purple-200', icon: Clock },
+      completed: { label: 'Completed', color: 'bg-green-100 text-green-700 border-green-200', icon: CheckCircle },
+      cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-700 border-red-200', icon: AlertTriangle }
     };
     return configs[status] || configs.pending;
   };
 
   const filteredBookings = bookings.filter(booking => {
-    if (filter === 'active') {
-      return booking.status === 'confirmed' || booking.status === 'in_progress';
-    }
+    if (filter === 'active') return booking.status === 'confirmed' || booking.status === 'in_progress';
     if (filter === 'completed') return booking.status === 'completed';
     if (filter === 'cancelled') return booking.status === 'cancelled';
     return true;
@@ -238,82 +247,44 @@ const ProviderBookings = () => {
     switch (booking.status) {
       case 'pending':
         return (
-          <button
-            onClick={() => handleConfirm(booking._id)}
-            disabled={isLoading}
-            className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-          >
+          <button onClick={() => handleConfirm(booking._id)} disabled={isLoading}
+            className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-50">
             {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
             {isLoading ? 'Confirming...' : 'Confirm Booking'}
           </button>
         );
       case 'confirmed':
         return (
-          <button
-            onClick={() => handleStart(booking._id)}
-            disabled={isLoading}
-            className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all disabled:opacity-50 shadow-sm"
-          >
+          <button onClick={() => handleStart(booking._id)} disabled={isLoading}
+            className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50">
             {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Clock className="w-3.5 h-3.5" />}
             {isLoading ? 'Starting...' : 'Start Service'}
           </button>
         );
       case 'in_progress':
         return (
-          <button
-            onClick={() => handleGenerateOTP(booking._id)}
-            className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-all shadow-sm"
-          >
-            <KeyRound className="w-3.5 h-3.5" />
-            Generate OTP & Complete
+          <button onClick={() => handleGenerateOTP(booking._id)}
+            className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700">
+            <KeyRound className="w-3.5 h-3.5" /> Generate OTP & Complete
           </button>
         );
-      default:
-        return null;
+      default: return null;
     }
   };
 
   if (verificationStatus && verificationStatus.verificationStatus !== 'verified') {
-    const isPending = verificationStatus.verificationStatus === 'pending';
-    const isRejected = verificationStatus.verificationStatus === 'rejected';
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
-        <div className="w-24 h-24 bg-amber-50 rounded-full flex items-center justify-center mb-6">
-          <Shield className="w-12 h-12 text-amber-500" />
-        </div>
+        <div className="w-24 h-24 bg-amber-50 rounded-full flex items-center justify-center mb-6"><Shield className="w-12 h-12 text-amber-500" /></div>
         <h2 className="text-2xl font-bold text-gray-800 mb-2">KYC Verification Required</h2>
-        <p className="text-gray-500 max-w-md mb-6">
-          Please complete your KYC verification to accept and manage bookings. 
-          This is mandatory for all service providers on GharSeva platform.
-        </p>
-        <Link 
-          to="/provider/kyc" 
-          className="inline-flex items-center gap-2 bg-emerald-600 text-white px-6 py-2.5 rounded-xl font-medium hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/30"
-        >
-          <Shield size={18} />
-          Complete KYC Verification
-        </Link>
-        {isPending && (
-          <p className="text-sm text-amber-600 mt-4 flex items-center gap-1">
-            <AlertCircle className="w-4 h-4" /> Your documents are pending admin verification.
-          </p>
-        )}
-        {isRejected && (
-          <p className="text-sm text-red-600 mt-4 flex items-center gap-1">
-            <AlertTriangle className="w-4 h-4" /> Your KYC was rejected. Please upload correct documents.
-          </p>
-        )}
+        <p className="text-gray-500 max-w-md mb-6">Please complete your KYC verification to accept and manage bookings.</p>
+        <Link to="/provider/kyc" className="inline-flex items-center gap-2 bg-emerald-600 text-white px-6 py-2.5 rounded-xl font-medium">Complete KYC Verification</Link>
       </div>
     );
   }
 
   if (loading && bookings.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] gap-3">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-        <p className="text-gray-500">Loading bookings...</p>
-      </div>
-    );
+    return <div className="flex justify-center py-16"><Loader2 className="w-8 h-8 animate-spin text-emerald-600" /></div>;
   }
 
   const activeCount = bookings.filter(b => b.status === 'confirmed' || b.status === 'in_progress').length;
@@ -322,63 +293,32 @@ const ProviderBookings = () => {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Manage Bookings</h1>
-          <p className="text-sm text-gray-500 mt-0.5">View and manage all your service bookings</p>
-        </div>
-        <button 
-          onClick={() => loadBookings(true)} 
-          className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors shadow-sm"
-        >
-          <RefreshCw className="w-4 h-4" />
-          Refresh
-        </button>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Manage Bookings</h1>
+        <button onClick={() => loadBookings(true)} className="p-2 bg-white border rounded-xl"><RefreshCw className="w-4 h-4" /></button>
       </div>
 
-      {/* Incoming Requests Banner */}
       {incomingRequests.length > 0 && (
         <div className="mb-6 space-y-3">
-          <div className="flex items-center gap-2 text-amber-600 font-semibold">
-            <Bell className="w-5 h-5" />
-            <span>New Booking Requests ({incomingRequests.length})</span>
-          </div>
+          <div className="flex items-center gap-2 text-amber-600 font-semibold"><Bell className="w-5 h-5" /> New Booking Requests ({incomingRequests.length})</div>
           {incomingRequests.map(req => (
-            <div key={req.bookingId} className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="font-semibold">{req.customerName} wants <span className="text-emerald-600">{req.serviceName}</span></p>
-                <p className="text-sm text-gray-600">Amount: ₹{req.amount} | Date: {new Date(req.scheduledDate).toLocaleDateString()}</p>
-                <p className="text-xs text-gray-500 truncate max-w-md">{req.address?.street}, {req.address?.city}</p>
-              </div>
-              <button
-                onClick={() => handleAccept(req.bookingId)}
-                className="px-5 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition shadow-md"
-              >
-                Accept Booking
-              </button>
+            <div key={req.bookingId} className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex justify-between items-center">
+              <div><p className="font-semibold">{req.customerName} wants <span className="text-emerald-600">{req.serviceName}</span></p><p className="text-sm">Amount: ₹{req.amount} | Date: {new Date(req.scheduledDate).toLocaleDateString()}</p><p className="text-xs truncate">{req.address?.street}, {req.address?.city}</p></div>
+              <button onClick={() => handleAccept(req.bookingId)} className="px-5 py-2 bg-emerald-600 text-white rounded-lg">Accept Booking</button>
             </div>
           ))}
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2 mb-6">
-        {['active', 'all', 'completed', 'cancelled'].map((tab) => {
-          let label = '';
-          let count = 0;
+      <div className="flex gap-2 mb-6">
+        {['active', 'all', 'completed', 'cancelled'].map(tab => {
+          let label = '', count = 0;
           if (tab === 'active') { label = 'Active'; count = activeCount; }
           else if (tab === 'all') { label = 'All'; count = bookings.length; }
           else if (tab === 'completed') { label = 'Completed'; count = completedCount; }
           else if (tab === 'cancelled') { label = 'Cancelled'; count = cancelledCount; }
           return (
-            <button
-              key={tab}
-              onClick={() => setFilter(tab)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                filter === tab 
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/30' 
-                  : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
-              }`}
-            >
+            <button key={tab} onClick={() => setFilter(tab)} className={`px-4 py-2 rounded-xl text-sm font-medium ${filter === tab ? 'bg-emerald-600 text-white' : 'bg-white border'}`}>
               {label} ({count})
             </button>
           );
@@ -387,123 +327,32 @@ const ProviderBookings = () => {
 
       <div className="space-y-4">
         {filteredBookings.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center shadow-sm">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Calendar className="w-8 h-8 text-gray-400" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-700 mb-1">No bookings found</h3>
-            <p className="text-gray-400 text-sm">
-              {filter === 'active' ? 'No active bookings at the moment.' : 
-               filter === 'completed' ? 'No completed bookings yet.' :
-               filter === 'cancelled' ? 'No cancelled bookings.' :
-               'When customers book your services, they will appear here.'}
-            </p>
-          </div>
+          <div className="bg-white rounded-2xl p-12 text-center">No bookings found</div>
         ) : (
-          filteredBookings.map((booking) => {
+          filteredBookings.map(booking => {
             const statusConfig = getStatusConfig(booking.status);
             const StatusIcon = statusConfig.icon;
-            const isPaid = booking.payment?.status === 'paid';
             const isActive = booking.status === 'confirmed' || booking.status === 'in_progress';
             return (
-              <div key={booking._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden">
-                <div className="p-5 border-b border-gray-50">
-                  <div className="flex flex-wrap justify-between items-start gap-3">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-mono text-gray-500 bg-gray-50 px-2 py-0.5 rounded">
-                          {booking.bookingId}
-                        </span>
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${statusConfig.color}`}>
-                          <StatusIcon className="w-3 h-3" />
-                          {statusConfig.label}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
-                        <span className="flex items-center gap-1">
-                          <User className="w-3.5 h-3.5" />
-                          {booking.customer?.fullName || booking.customer?.firstName || 'Customer'}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-3.5 h-3.5" />
-                          {new Date(booking.scheduledDate).toLocaleDateString('en-IN')}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3.5 h-3.5" />
-                          {booking.scheduledTime.start}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="flex items-center gap-1 text-lg font-bold text-gray-800">
-                        <IndianRupee className="w-4 h-4" />
-                        {booking.pricing?.total?.toLocaleString()}
-                      </div>
-                      {isPaid && (
-                        <span className="inline-flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full mt-1">
-                          <CreditCard className="w-3 h-3" />
-                          Payment Received
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-5 bg-gray-50/30">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Services</p>
-                      <div className="flex flex-wrap gap-1">
-                        {booking.items.map((item, idx) => (
-                          <span key={idx} className="text-sm text-gray-700 bg-white px-2 py-0.5 rounded border">
-                            {item.serviceName}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Address</p>
-                      <p className="text-sm text-gray-600 flex items-start gap-1">
-                        <MapPin className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-gray-400" />
-                        {booking.serviceAddress?.street}, {booking.serviceAddress?.city}, {booking.serviceAddress?.pincode}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="px-5 py-3 border-t border-gray-50 flex flex-wrap justify-between items-center gap-3 bg-white">
-                  <div className="flex gap-2">
-                    <Link 
-                      to={`/provider/bookings/${booking._id}`}
-                      className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-emerald-600 transition-colors"
-                    >
-                      <Eye className="w-4 h-4" />
-                      View Details
-                    </Link>
-                    {booking.customer?.phone && (
-                      <a 
-                        href={`https://wa.me/${booking.customer.phone.replace(/\D/g, '')}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-emerald-600 transition-colors"
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                        WhatsApp
-                      </a>
-                    )}
-                    {isActive && (
-                      <button
-                        onClick={() => setChatBooking(booking)}
-                        className="inline-flex items-center gap-1 text-sm text-purple-600 hover:text-purple-700 transition-colors"
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                        Chat
-                      </button>
-                    )}
-                  </div>
+              <div key={booking._id} className="bg-white rounded-2xl border p-5">
+                <div className="flex justify-between items-start">
                   <div>
-                    {getActions(booking)}
+                    <div className="flex items-center gap-2"><span className="text-xs font-mono">{booking.bookingId}</span><span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${statusConfig.color}`}><StatusIcon className="w-3 h-3" /> {statusConfig.label}</span></div>
+                    <div className="flex gap-4 text-sm text-gray-500 mt-1"><User className="w-3.5 h-3.5" /> {booking.customer?.fullName} <Calendar className="w-3.5 h-3.5" /> {new Date(booking.scheduledDate).toLocaleDateString()} <Clock className="w-3.5 h-3.5" /> {booking.scheduledTime.start}</div>
                   </div>
+                  <div className="text-right"><div className="text-lg font-bold">₹{booking.pricing?.total}</div>{booking.payment?.status === 'paid' && <span className="text-xs text-green-600">Paid</span>}</div>
+                </div>
+                <div className="mt-3 grid md:grid-cols-2 gap-3 text-sm bg-gray-50 p-3 rounded-xl">
+                  <div><p className="text-xs text-gray-400">Services</p><div className="flex gap-1">{booking.items.map(item => <span key={item._id} className="px-2 py-0.5 bg-white rounded border">{item.serviceName}</span>)}</div></div>
+                  <div><p className="text-xs text-gray-400">Address</p><p>{booking.serviceAddress?.street}, {booking.serviceAddress?.city}</p></div>
+                </div>
+                <div className="mt-3 flex justify-between items-center">
+                  <div className="flex gap-2">
+                    <Link to={`/provider/bookings/${booking._id}`} className="text-sm text-gray-500 hover:text-emerald-600"><Eye className="w-4 h-4 inline mr-1" /> View Details</Link>
+                    {booking.customer?.phone && <a href={`https://wa.me/${booking.customer.phone.replace(/\D/g, '')}`} target="_blank" className="text-sm text-gray-500 hover:text-emerald-600"><MessageCircle className="w-4 h-4 inline mr-1" /> WhatsApp</a>}
+                    {isActive && <button onClick={() => setChatBooking(booking)} className="text-sm text-purple-600"><MessageCircle className="w-4 h-4 inline mr-1" /> Chat</button>}
+                  </div>
+                  <div>{getActions(booking)}</div>
                 </div>
               </div>
             );
@@ -512,65 +361,16 @@ const ProviderBookings = () => {
       </div>
 
       {otpModal.show && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl animate-in fade-in zoom-in duration-200">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6">
             {otpModal.generating ? (
-              <div className="flex flex-col items-center justify-center py-12">
-                <div className="w-16 h-16 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-                <p className="text-gray-600 font-medium">Generating OTP...</p>
-                <p className="text-sm text-gray-400 mt-1">Please wait</p>
-              </div>
+              <div className="text-center py-8"><Loader2 className="w-8 h-8 animate-spin mx-auto" /><p>Generating OTP...</p></div>
             ) : (
               <>
-                <div className="p-6 border-b border-gray-100">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-xl font-bold text-gray-800">Complete Service</h3>
-                    <button 
-                      onClick={() => setOtpModal({ show: false, bookingId: null, otp: '', generating: false })}
-                      className="p-1 rounded-lg hover:bg-gray-100 transition-colors"
-                    >
-                      <X className="w-5 h-5 text-gray-500" />
-                    </button>
-                  </div>
-                  <p className="text-sm text-gray-500 mt-1">Share this OTP with the customer for verification</p>
-                </div>
-                <div className="p-6">
-                  <div className="text-center mb-6">
-                    <div className="text-4xl font-mono font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent tracking-wider">
-                      {otpModal.otp}
-                    </div>
-                    <p className="text-xs text-gray-400 mt-2">Valid for 30 minutes</p>
-                  </div>
-                  <div className="mb-5">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Enter OTP from customer</label>
-                    <input
-                      type="text"
-                      id="otp-input"
-                      placeholder="Enter 4-digit OTP"
-                      maxLength="4"
-                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-center text-lg font-mono focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
-                    />
-                  </div>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => {
-                        const otpValue = document.getElementById('otp-input').value;
-                        handleComplete(otpModal.bookingId, otpValue);
-                      }}
-                      disabled={completing}
-                      className="flex-1 bg-emerald-600 text-white py-2.5 rounded-xl font-medium hover:bg-emerald-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/30"
-                    >
-                      {completing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                      {completing ? 'Verifying...' : 'Verify & Complete'}
-                    </button>
-                    <button 
-                      onClick={() => setOtpModal({ show: false, bookingId: null, otp: '', generating: false })} 
-                      className="flex-1 border border-gray-200 py-2.5 rounded-xl font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
+                <div className="flex justify-between items-center mb-4"><h3 className="text-xl font-bold">Complete Service</h3><button onClick={() => setOtpModal({ show: false, bookingId: null, otp: '', generating: false })}><X /></button></div>
+                <div className="text-center text-4xl font-mono font-bold text-emerald-600 mb-4">{otpModal.otp}</div>
+                <input type="text" id="otp-input" placeholder="Enter 4-digit OTP" className="w-full border rounded-xl p-2 text-center text-lg mb-4" />
+                <button onClick={() => { const otp = document.getElementById('otp-input').value; handleComplete(otpModal.bookingId, otp); }} disabled={completing} className="w-full bg-emerald-600 text-white py-2 rounded-xl">Verify & Complete</button>
               </>
             )}
           </div>

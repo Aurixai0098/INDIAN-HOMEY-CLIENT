@@ -7,6 +7,28 @@ import { useSocket } from '../context/SocketContext';
 import { fetchAddresses, addAddress, createBooking } from '../services/api';
 import MatchingProgress from '../components/booking/MatchingProgress';
 
+// ✅ वही ऑडियो सेटअप (पब्लिक फोल्डर से notybell.mp3)
+let audioCtx = null;
+const playNotybell = async () => {
+  try {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+      await audioCtx.resume();
+    }
+    const response = await fetch('/notybell.mp3');
+    const arrayBuffer = await response.arrayBuffer();
+    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+    const source = audioCtx.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(audioCtx.destination);
+    source.start(0);
+  } catch (err) {
+    console.warn('Sound failed:', err);
+  }
+};
+
 const formatPrice = (price) => `₹${Number(price).toFixed(2)}`;
 
 const CheckoutPage = () => {
@@ -38,6 +60,22 @@ const CheckoutPage = () => {
   const [currentBookingId, setCurrentBookingId] = useState(null);
   const [matchedProvider, setMatchedProvider] = useState(null);
   const [accepted, setAccepted] = useState(false);
+
+  // ✅ पहली क्लिक पर ऑडियो अनलॉक करें
+  useEffect(() => {
+    const unlock = async () => {
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          await audioCtx.resume();
+        }
+      } catch (err) {}
+    };
+    document.addEventListener('click', unlock, { once: true });
+    return () => document.removeEventListener('click', unlock);
+  }, []);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -128,8 +166,8 @@ const CheckoutPage = () => {
               if (timeoutId) clearTimeout(timeoutId);
               setMatchedProvider(data.provider);
               setMatchingStep(4);
-              // Immediately close the modal if it is open
               setShowMatching(false);
+              playNotybell();  // 🔊 साउंड
               setTimeout(() => {
                 clearCart();
                 navigate('/my-bookings', { state: { bookingCreated: true, message: 'Booking confirmed! Provider will contact you soon.' } });
@@ -138,9 +176,9 @@ const CheckoutPage = () => {
           });
         }
 
-        // Show matching modal only after 3 seconds of no acceptance
+        // 3 सेकंड बाद मैचिंग मोडल दिखाएं अगर accept न हुआ हो
         timeoutId = setTimeout(() => {
-          if (!accepted && !showMatching) {
+          if (!accepted) {
             setShowMatching(true);
             setMatchingStep(1);
             setTimeout(() => setMatchingStep(2), 2000);
@@ -148,7 +186,7 @@ const CheckoutPage = () => {
           }
         }, 3000);
 
-        // Timeout fallback (30 seconds)
+        // 30 सेकंड टाइमआउट
         setTimeout(() => {
           if (!accepted && showMatching) {
             setMatchingError('No provider accepted your request. Please try again.');
@@ -180,7 +218,7 @@ const CheckoutPage = () => {
     <div className="max-w-6xl mx-auto px-4 py-12">
       <h1 className="text-2xl font-bold mb-8">Checkout</h1>
       <div className="grid md:grid-cols-2 gap-8">
-        {/* LEFT COLUMN – order summary, payment method, address, schedule (unchanged) */}
+        {/* LEFT COLUMN – order summary, payment method, address, schedule */}
         <div className="space-y-6">
           {/* Order Summary */}
           <div className="bg-white rounded-xl shadow-sm border p-6">
@@ -214,7 +252,7 @@ const CheckoutPage = () => {
             </div>
           </div>
 
-          {/* Delivery Address (unchanged) */}
+          {/* Delivery Address */}
           <div className="bg-white rounded-xl shadow-sm border p-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="font-bold text-lg">Delivery Address</h2>

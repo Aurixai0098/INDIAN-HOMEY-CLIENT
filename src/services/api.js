@@ -452,15 +452,16 @@ export const updateHeartbeat = async () => {
   });
 };
 
-// ✅ Clean export for marking provider notification as read (single, no duplicate)
+// ✅ Correct: Only one export for each function
 export const mar9yMnTm4NSzvG9rrwjM2ec8xZgh1cafXH8 = async (notificationId) => {
   return apiFetch(`/providers/notifications/${notificationId}/read`, {
     method: 'PATCH',
   });
 };
 
-// Alias for backward compatibility
+// Alias for backward compatibility (single export only)
 export const marahJ91ZuNL8Y2px8iYciYeHN8sfSh5eXH8 = mar9yMnTm4NSzvG9rrwjM2ec8xZgh1cafXH8;
+ 
 
 export const markAllProviderNotificationsRead = async () => {
   return apiFetch('/providers/notifications/read-all', {
@@ -605,6 +606,18 @@ export const completeBooking = async (bookingId, otp) => {
     method: 'PATCH',
     body: JSON.stringify({ completionOTP: otp }),
   });
+};
+
+// ✅ NEW: Accept booking
+export const acceptBooking = async (bookingId) => {
+  return apiFetch(`/bookings/${bookingId}/accept`, {
+    method: 'POST',
+  });
+};
+
+// ✅ NEW: Fetch chat history
+export const fetchChatHistory = async (bookingId) => {
+  return apiFetch(`/chat/${bookingId}`);
 };
 
 // ========== Public APIs ==========

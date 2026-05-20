@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Send, X, Wifi, WifiOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSocket } from '../../context/SocketContext';
-import { fetchBookingById } from '../../services/api';
+import { fetchBookingById, fetchChatHistory } from '../../services/api';
 
 const ChatBox = ({ bookingId, providerName, customerName, onClose }) => {
   const { user } = useAuth();
@@ -17,48 +17,17 @@ const ChatBox = ({ bookingId, providerName, customerName, onClose }) => {
 
   // Load chat history
   useEffect(() => {
-    const fetchMessages = async () => {
+    const loadMessages = async () => {
       try {
-        const res = await fetch(`/api/v1/chat/${bookingId}`);
-        const data = await res.json();
-        if (data.success) setMessages(data.data.messages || []);
+        const res = await fetchChatHistory(bookingId);
+        if (res.success) setMessages(res.data.messages || []);
       } catch (err) {
         console.error(err);
       } finally {
         setLoading(false);
       }
     };
-    fetchMessages();
-  }, [bookingId]);
-
-  // Check provider online status (simple check using lastActive)
-  useEffect(() => {
-    const checkProviderStatus = async () => {
-      try {
-        const bookingRes = await fetchBookingById(bookingId);
-        if (bookingRes.success && bookingRes.data.booking.provider) {
-          const providerId = bookingRes.data.booking.provider._id;
-          // Try to fetch provider status from a dedicated endpoint
-          // If not available, we can check socket connection status
-          // For now, we assume provider is online if socket is connected
-          // but we will also try a fallback endpoint
-          const statusRes = await fetch(`/api/v1/providers/status/${providerId}`).catch(() => null);
-          if (statusRes && statusRes.ok) {
-            const statusData = await statusRes.json();
-            setIsProviderOnline(statusData.data?.isOnline || false);
-          } else {
-            // Fallback: if the socket is connected and the provider is not the current user, assume online
-            // Actually we can't know without backend. Set a default false.
-            setIsProviderOnline(false);
-          }
-        }
-      } catch (err) {
-        console.error('Failed to get provider status', err);
-      }
-    };
-    checkProviderStatus();
-    const interval = setInterval(checkProviderStatus, 30000);
-    return () => clearInterval(interval);
+    loadMessages();
   }, [bookingId]);
 
   // Socket listeners
