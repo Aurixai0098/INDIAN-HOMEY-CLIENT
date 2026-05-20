@@ -3,6 +3,9 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { fetchMyBookings, createOrder, verifyPayment, createReview } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { MapPin, MessageCircle, X } from 'lucide-react';
+import LiveTrackingMap from '../components/booking/LiveTrackingMap';
+import ChatBox from '../components/booking/ChatBox';
 
 // Modern Lucide Icons
 import {
@@ -20,16 +23,13 @@ import {
   Star,
   ChevronRight,
   RefreshCw,
-  MapPin,
   Phone,
-  Mail,
   Receipt,
   Sparkles,
   ArrowRight,
   Home,
   ShieldCheck,
-  Timer,
-  X
+  Filter
 } from 'lucide-react';
 
 // ─── Helper ─────────────────────────────────────────────────────────
@@ -222,7 +222,7 @@ const ReviewModal = ({ booking, onClose, onSuccess }) => {
 };
 
 // ─── Booking Card ───────────────────────────────────────────────────
-const BookingCard = ({ booking, onPayNow, payingBookingId, onWriteReview }) => {
+const BookingCard = ({ booking, onPayNow, payingBookingId, onWriteReview, onTrack, onChat }) => {
   const [expanded, setExpanded] = useState(false);
   const config = statusConfig[booking.status] || statusConfig.pending;
   const StatusIcon = config.icon;
@@ -363,7 +363,7 @@ const BookingCard = ({ booking, onPayNow, payingBookingId, onWriteReview }) => {
 
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-3 pt-2">
-          {/* Write Review button (manual) */}
+          {/* Write Review button */}
           {booking.status === 'completed' && !booking.hasReviewed && (
             <button
               onClick={() => onWriteReview(booking)}
@@ -411,6 +411,24 @@ const BookingCard = ({ booking, onPayNow, payingBookingId, onWriteReview }) => {
             </div>
           )}
         </div>
+
+        {/* Track & Chat Buttons (for confirmed/in_progress) */}
+        {(booking.status === 'confirmed' || booking.status === 'in_progress') && (
+          <div className="flex gap-2 mt-3 pt-2 border-t border-slate-100">
+            <button
+              onClick={() => onTrack(booking)}
+              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-xl text-sm font-medium hover:bg-blue-100 transition-colors"
+            >
+              <MapPin className="w-4 h-4" /> Track Provider
+            </button>
+            <button
+              onClick={() => onChat(booking)}
+              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-purple-50 text-purple-700 rounded-xl text-sm font-medium hover:bg-purple-100 transition-colors"
+            >
+              <MessageCircle className="w-4 h-4" /> Chat
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -429,6 +447,20 @@ const MyBookingsPage = () => {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedBookingForReview, setSelectedBookingForReview] = useState(null);
   const pollingRef = useRef(null);
+
+  // State for modals
+  const [trackingBooking, setTrackingBooking] = useState(null);
+  const [chatBooking, setChatBooking] = useState(null);
+
+  // ✅ Auto-open chat from URL parameter (for notification click)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const openChatId = params.get('openChat');
+    if (openChatId && bookings.length > 0) {
+      const booking = bookings.find(b => b._id === openChatId);
+      if (booking) setChatBooking(booking);
+    }
+  }, [location.search, bookings]);
 
   // Show success message if coming from checkout
   useEffect(() => {
@@ -559,8 +591,15 @@ const MyBookingsPage = () => {
   };
 
   const handleReviewSuccess = () => {
-    // Refresh bookings to update hasReviewed flag
     loadBookings(true);
+  };
+
+  const handleTrack = (booking) => {
+    setTrackingBooking(booking);
+  };
+
+  const handleChat = (booking) => {
+    setChatBooking(booking);
   };
 
   // Filter bookings
@@ -578,7 +617,7 @@ const MyBookingsPage = () => {
     cancelled: bookings.filter(b => b.status === 'cancelled').length,
   };
 
-  // ─── Loading State ────────────────────────────────────────────────
+  // Loading State
   if (loading && bookings.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -702,6 +741,8 @@ const MyBookingsPage = () => {
                 onPayNow={handlePayNow}
                 payingBookingId={payingBookingId}
                 onWriteReview={handleWriteReview}
+                onTrack={handleTrack}
+                onChat={handleChat}
               />
             ))}
           </div>
@@ -725,6 +766,35 @@ const MyBookingsPage = () => {
           booking={selectedBookingForReview}
           onClose={() => setShowReviewModal(false)}
           onSuccess={handleReviewSuccess}
+        />
+      )}
+
+      {/* Tracking Modal */}
+      {trackingBooking && (
+        <div className="fixed inset-0 bg-black/50 z-[1100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-lg">Live Tracking</h3>
+              <button onClick={() => setTrackingBooking(null)} className="p-1 hover:bg-gray-100 rounded">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <LiveTrackingMap
+              initialCenter={[28.6139, 77.2090]}
+              providerLocation={null}
+            />
+            <p className="text-xs text-gray-500 text-center mt-3">Provider's live location will appear once shared.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Chat Modal */}
+      {chatBooking && (
+        <ChatBox
+          bookingId={chatBooking._id}
+          providerName={chatBooking.provider?.businessName}
+          customerName={user?.firstName}
+          onClose={() => setChatBooking(null)}
         />
       )}
     </div>

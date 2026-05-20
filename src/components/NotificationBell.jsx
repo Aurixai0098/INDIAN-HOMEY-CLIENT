@@ -1,60 +1,44 @@
+// src/components/NotificationBell.jsx
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useSocket } from '../context/SocketContext';
+import { useNavigate } from 'react-router-dom';
 import { 
   fetchNotifications, 
   markNotificationRead, 
-  fetchProviderNotifications, 
-  mar9yMnTm4NSzvG9rrwjM2ec8xZgh1cafXH8,   // ✅ Fixed: changed from marahJ91ZuNL8Y2px8iYciYeHN8sfSh5eXH8
-  markAllNotificationsRead,
-  markAllProviderNotificationsRead
+  markAllNotificationsRead
 } from '../services/api';
+import { Bell, CheckCheck, Clock, Loader2, MessageCircle, CalendarCheck, AlertCircle } from 'lucide-react';
+
+// Play a short "ding" sound
+const playNotificationSound = () => {
+  try {
+    const audio = new Audio('https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3');
+    audio.volume = 0.5;
+    audio.play().catch(e => console.log('Audio play failed:', e));
+  } catch (err) {
+    console.log('Audio not supported');
+  }
+};
 
 const NotificationBell = () => {
   const { user } = useAuth();
+  const { socket } = useSocket();
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showDropdown, setShowDropdown] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'unread'
+  const [activeFilter, setActiveFilter] = useState('all');
   const dropdownRef = useRef(null);
   const bellButtonRef = useRef(null);
 
-  // Close dropdown on Escape key
-  useEffect(() => {
-    const handleEscape = (e) => {
-      if (e.key === 'Escape') setShowDropdown(false);
-    };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, []);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (
-        dropdownRef.current && 
-        !dropdownRef.current.contains(e.target) &&
-        bellButtonRef.current &&
-        !bellButtonRef.current.contains(e.target)
-      ) {
-        setShowDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Load notifications
+  // Load initial notifications
   const loadNotifications = useCallback(async () => {
     if (!user) return;
     setIsLoading(true);
     try {
-      let res;
-      if (user.role === 'provider') {
-        res = await fetchProviderNotifications();
-      } else {
-        res = await fetchNotifications(1, 30);
-      }
+      const res = await fetchNotifications(1, 30);
       if (res.success) {
         setNotifications(res.data.notifications || []);
         setUnreadCount(res.data.unreadCount || 0);
@@ -66,283 +50,187 @@ const NotificationBell = () => {
     }
   }, [user]);
 
-  // Polling for new notifications
+  // Polling fallback (every 60s)
   useEffect(() => {
     if (!user) return;
     loadNotifications();
-    const interval = setInterval(loadNotifications, 30000);
+    const interval = setInterval(loadNotifications, 60000);
     return () => clearInterval(interval);
   }, [user, loadNotifications]);
 
-  // Mark single notification as read
+  // Real‑time socket listeners
+  useEffect(() => {
+    if (!socket || !user) return;
+
+    const handleNewMessage = (data) => {
+      if (data.senderRole === 'provider') {
+        playNotificationSound();
+        const newNotif = {
+          _id: `msg_${Date.now()}`,
+          type: 'message',
+          title: 'New Message',
+          message: data.message,
+          isRead: false,
+          createdAt: new Date().toISOString(),
+          reference: { model: 'Booking', id: data.bookingId }
+        };
+        setNotifications(prev => [newNotif, ...prev]);
+        setUnreadCount(prev => prev + 1);
+      }
+    };
+
+    const handleBookingAccepted = (data) => {
+      playNotificationSound();
+      const newNotif = {
+        _id: `booking_${data.bookingId}`,
+        type: 'booking',
+        title: 'Booking Confirmed',
+        message: `Your booking has been accepted by ${data.provider?.businessName || 'a provider'}.`,
+        isRead: false,
+        createdAt: new Date().toISOString(),
+        reference: { model: 'Booking', id: data.bookingId }
+      };
+      setNotifications(prev => [newNotif, ...prev]);
+      setUnreadCount(prev => prev + 1);
+    };
+
+    socket.on('new-message', handleNewMessage);
+    socket.on('booking-accepted', handleBookingAccepted);
+
+    return () => {
+      socket.off('new-message', handleNewMessage);
+      socket.off('booking-accepted', handleBookingAccepted);
+    };
+  }, [socket, user]);
+
   const handleMarkRead = async (id, e) => {
     e?.stopPropagation();
     try {
-      if (user?.role === 'provider') {
-        await mar9yMnTm4NSzvG9rrwjM2ec8xZgh1cafXH8(id);   // ✅ Fixed
-      } else {
-        await markNotificationRead(id);
-      }
-      // Optimistic update
-      setNotifications(prev => 
-        prev.map(n => n._id === id ? { ...n, isRead: true } : n)
-      );
+      await markNotificationRead(id);
+      setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
       setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (err) {
-      console.error('Failed to mark as read:', err);
-      // Revert on error
+      console.error('Failed to mark as read', err);
       loadNotifications();
     }
   };
 
-  // Mark all as read
   const handleMarkAllRead = async () => {
     try {
-      if (user?.role === 'provider') {
-        await markAllProviderNotificationsRead();
-      } else {
-        await markAllNotificationsRead();
-      }
+      await markAllNotificationsRead();
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
       setUnreadCount(0);
     } catch (err) {
-      console.error('Failed to mark all as read:', err);
+      console.error('Failed to mark all as read', err);
     }
   };
 
-  // Get notification icon based on type
-  const getNotificationIcon = (type) => {
-    switch (type) {
-      case 'booking':
-        return (
-          <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
-            <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          </div>
-        );
-      case 'message':
-        return (
-          <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-            </svg>
-          </div>
-        );
-      case 'alert':
-        return (
-          <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-            <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          </div>
-        );
-      case 'success':
-        return (
-          <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-            <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-        );
-      default:
-        return (
-          <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
-            <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-            </svg>
-          </div>
-        );
+  const handleNotificationClick = (notif) => {
+    if (!notif.isRead) handleMarkRead(notif._id);
+    setShowDropdown(false);
+    if (notif.type === 'message' && notif.reference?.id) {
+      navigate(`/my-bookings?openChat=${notif.reference.id}`);
+    } else if (notif.type === 'booking' && notif.reference?.id) {
+      navigate(`/my-bookings?highlight=${notif.reference.id}`);
+    } else {
+      navigate('/my-bookings');
     }
   };
 
-  // Format relative time
   const getRelativeTime = (dateString) => {
     const date = new Date(dateString);
     const now = new Date();
-    const diffInSeconds = Math.floor((now - date) / 1000);
-    
-    if (diffInSeconds < 60) return 'Just now';
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
-    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const diffMins = Math.floor((now - date) / 60000);
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
   };
 
-  // Filtered notifications
+  const getNotificationIcon = (type) => {
+    switch(type) {
+      case 'message':
+        return <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center"><MessageCircle className="w-4 h-4 text-blue-600" /></div>;
+      case 'booking':
+        return <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center"><CalendarCheck className="w-4 h-4 text-emerald-600" /></div>;
+      default:
+        return <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center"><AlertCircle className="w-4 h-4 text-slate-600" /></div>;
+    }
+  };
+
   const filteredNotifications = notifications.filter(n => {
     if (activeFilter === 'unread') return !n.isRead;
     return true;
   });
 
-  if (!user) return null;
+  if (!user || user.role === 'provider') return null;
 
   return (
     <div className="relative" ref={dropdownRef}>
-      {/* Bell Button */}
       <button
         ref={bellButtonRef}
         onClick={() => setShowDropdown(!showDropdown)}
-        className={`
-          relative p-2.5 rounded-xl transition-all duration-200 ease-out
-          ${showDropdown 
-            ? 'bg-blue-50 text-blue-600 ring-2 ring-blue-200' 
-            : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
-          }
-          focus:outline-none focus:ring-2 focus:ring-blue-300
-        `}
+        className={`relative p-2.5 rounded-xl transition-all duration-200 ${
+          showDropdown ? 'bg-blue-50 text-blue-600 ring-2 ring-blue-200' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
+        }`}
         aria-label="Notifications"
-        aria-expanded={showDropdown}
       >
-        <svg 
-          className={`w-5 h-5 transition-transform duration-300 ${showDropdown ? 'scale-110' : ''}`} 
-          fill="none" 
-          stroke="currentColor" 
-          viewBox="0 0 24 24"
-        >
-          <path 
-            strokeLinecap="round" 
-            strokeLinejoin="round" 
-            strokeWidth="2" 
-            d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" 
-          />
-        </svg>
-        
-        {/* Unread Badge */}
+        <Bell className="w-5 h-5" />
         {unreadCount > 0 && (
-          <span 
-            className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm border-2 border-white animate-pulse"
-          >
+          <span className="absolute -top-1 -right-1 flex items-center justify-center w-5 h-5 text-[11px] font-bold text-white bg-red-500 rounded-full ring-2 ring-white shadow-sm animate-pulse">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
       </button>
 
-      {/* Dropdown */}
       {showDropdown && (
-        <div 
-          className="
-            absolute right-0 mt-3 w-[360px] max-w-[calc(100vw-1rem)] 
-            bg-white rounded-2xl shadow-2xl border border-slate-200/80 
-            z-50 overflow-hidden
-            animate-in fade-in slide-in-from-top-2 duration-200
-          "
-          role="dialog"
-          aria-label="Notifications panel"
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+        <div className="absolute right-0 mt-3 w-[380px] max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center justify-between px-5 py-3 border-b bg-gradient-to-r from-slate-50 to-white">
             <div>
-              <h3 className="text-sm font-semibold text-slate-800">Notifications</h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up!'}
-              </p>
+              <h3 className="font-semibold text-slate-800">Notifications</h3>
+              <p className="text-xs text-slate-400">{unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}</p>
             </div>
-            <div className="flex items-center gap-1.5">
-              {unreadCount > 0 && (
-                <button
-                  onClick={handleMarkAllRead}
-                  className="text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-colors"
-                >
-                  Mark all read
-                </button>
-              )}
-            </div>
+            {unreadCount > 0 && (
+              <button onClick={handleMarkAllRead} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
+                <CheckCheck className="w-3.5 h-3.5" /> Mark all read
+              </button>
+            )}
           </div>
 
-          {/* Filter Tabs */}
-          <div className="flex border-b border-slate-100">
-            {['all', 'unread'].map((filter) => (
-              <button
-                key={filter}
-                onClick={() => setActiveFilter(filter)}
-                className={`
-                  flex-1 py-2.5 text-xs font-medium capitalize transition-all duration-200
-                  ${activeFilter === filter 
-                    ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50' 
-                    : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
-                  }
-                `}
-              >
-                {filter}
-                {filter === 'unread' && unreadCount > 0 && (
-                  <span className="ml-1.5 bg-red-100 text-red-600 text-[10px] px-1.5 py-0.5 rounded-full">
-                    {unreadCount}
-                  </span>
-                )}
+          <div className="flex border-b">
+            {['all', 'unread'].map(f => (
+              <button key={f} onClick={() => setActiveFilter(f)} className={`flex-1 py-2.5 text-xs font-medium capitalize transition-all ${activeFilter === f ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50' : 'text-slate-400 hover:text-slate-600'}`}>
+                {f} {f === 'unread' && unreadCount > 0 && <span className="ml-1.5 bg-red-100 text-red-600 text-[10px] px-1.5 py-0.5 rounded-full">{unreadCount}</span>}
               </button>
             ))}
           </div>
 
-          {/* Notifications List */}
-          <div className="max-h-[380px] overflow-y-auto scrollbar-thin">
+          <div className="max-h-[380px] overflow-y-auto custom-scrollbar">
             {isLoading && notifications.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10">
-                <div className="w-8 h-8 border-2 border-slate-200 border-t-blue-500 rounded-full animate-spin" />
-                <p className="text-xs text-slate-400 mt-3">Loading notifications...</p>
-              </div>
+              <div className="flex flex-col items-center justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-blue-500" /><p className="text-xs text-slate-400 mt-2">Loading...</p></div>
             ) : filteredNotifications.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 px-4">
-                <div className="w-14 h-14 bg-slate-50 rounded-full flex items-center justify-center mb-3">
-                  <svg className="w-6 h-6 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                  </svg>
-                </div>
-                <p className="text-sm font-medium text-slate-500">
-                  {activeFilter === 'unread' ? 'No unread notifications' : 'No notifications yet'}
-                </p>
-                <p className="text-xs text-slate-400 mt-1 text-center">
-                  {activeFilter === 'unread' 
-                    ? 'You have read all your notifications' 
-                    : 'When you get notifications, they will appear here'
-                  }
-                </p>
-              </div>
+              <div className="flex flex-col items-center justify-center py-12"><Bell className="w-10 h-10 text-slate-300 mb-2" /><p className="text-sm text-slate-500">No notifications</p></div>
             ) : (
-              filteredNotifications.map((notif, index) => (
+              filteredNotifications.map((notif, idx) => (
                 <div
                   key={notif._id}
-                  onClick={(e) => !notif.isRead && handleMarkRead(notif._id, e)}
-                  className={`
-                    group flex gap-3 p-4 cursor-pointer transition-all duration-200
-                    ${!notif.isRead 
-                      ? 'bg-blue-50/60 hover:bg-blue-100/60' 
-                      : 'hover:bg-slate-50'
-                    }
-                    ${index !== filteredNotifications.length - 1 ? 'border-b border-slate-50' : ''}
-                  `}
+                  onClick={() => handleNotificationClick(notif)}
+                  className={`group flex gap-3 p-4 cursor-pointer transition-all duration-150 ${!notif.isRead ? 'bg-blue-50/60 hover:bg-blue-100/60' : 'hover:bg-slate-50'} ${idx !== filteredNotifications.length - 1 ? 'border-b border-slate-100' : ''}`}
                 >
-                  {/* Icon */}
                   {getNotificationIcon(notif.type)}
-
-                  {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
-                      <p className={`
-                        text-sm leading-snug
-                        ${!notif.isRead ? 'font-semibold text-slate-800' : 'font-medium text-slate-600'}
-                      `}>
-                        {notif.title}
-                      </p>
-                      {!notif.isRead && (
-                        <span className="w-2 h-2 bg-blue-500 rounded-full shrink-0 mt-1.5 animate-pulse" />
-                      )}
+                      <p className={`text-sm ${!notif.isRead ? 'font-semibold text-slate-800' : 'font-medium text-slate-700'}`}>{notif.title}</p>
+                      {!notif.isRead && <span className="w-2 h-2 bg-blue-500 rounded-full mt-1.5 flex-shrink-0"></span>}
                     </div>
-                    <p className="text-xs text-slate-500 mt-1 leading-relaxed line-clamp-2">
-                      {notif.message}
-                    </p>
+                    <p className="text-xs text-slate-500 mt-1 leading-relaxed line-clamp-2">{notif.message}</p>
                     <div className="flex items-center justify-between mt-2">
-                      <span className="text-[11px] text-slate-400 font-medium">
-                        {getRelativeTime(notif.createdAt)}
-                      </span>
-                      {!notif.isRead && (
-                        <button
-                          onClick={(e) => handleMarkRead(notif._id, e)}
-                          className="opacity-0 group-hover:opacity-100 text-[11px] text-blue-600 hover:text-blue-700 font-medium transition-opacity"
-                        >
-                          Mark read
-                        </button>
-                      )}
+                      <span className="text-[11px] text-slate-400 flex items-center gap-1"><Clock className="w-3 h-3" />{getRelativeTime(notif.createdAt)}</span>
+                      {!notif.isRead && <button onClick={(e) => handleMarkRead(notif._id, e)} className="text-[11px] font-medium text-blue-600 hover:text-blue-700 opacity-0 group-hover:opacity-100 transition-opacity">Mark read</button>}
                     </div>
                   </div>
                 </div>
@@ -351,6 +239,14 @@ const NotificationBell = () => {
           </div>
         </div>
       )}
+
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-in { animation: fadeIn 0.2s ease-out; }
+      `}</style>
     </div>
   );
 };

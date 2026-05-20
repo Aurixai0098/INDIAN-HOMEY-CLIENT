@@ -3,63 +3,50 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { fetchAddresses, addAddress, searchProviders, createBooking } from '../services/api';
+import { useSocket } from '../context/SocketContext';
+import { fetchAddresses, addAddress, createBooking } from '../services/api';
+import MatchingProgress from '../components/booking/MatchingProgress';
 
-// ✅ Helper function to format price
-const formatPrice = (price) => {
-    return `₹${Number(price).toFixed(2)}`;
-};
+const formatPrice = (price) => `₹${Number(price).toFixed(2)}`;
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
   const { cartItems, cartTotal, clearCart } = useCart();
   const { user } = useAuth();
+  const socketContext = useSocket();
+  const socket = socketContext?.socket;
 
   const [addresses, setAddresses] = useState([]);
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [showAddAddress, setShowAddAddress] = useState(false);
   const [newAddress, setNewAddress] = useState({
-    label: 'Home',
-    street: '',
-    city: '',
-    state: '',
-    pincode: '',
-    landmark: '',
-    isDefault: false,
+    label: 'Home', street: '', city: '', state: '', pincode: '', landmark: '', isDefault: false,
   });
-
-  const [providers, setProviders] = useState([]);
-  const [selectedProvider, setSelectedProvider] = useState(null);
-  const [loadingProviders, setLoadingProviders] = useState(false);
-  const [searchRadius, setSearchRadius] = useState(10);
 
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTimeStart, setScheduledTimeStart] = useState('10:00');
   const [scheduledTimeEnd, setScheduledTimeEnd] = useState('12:00');
   const [notes, setNotes] = useState('');
-  
-  // Payment method selection
   const [paymentMethod, setPaymentMethod] = useState('online');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const [showMatching, setShowMatching] = useState(false);
+  const [matchingStep, setMatchingStep] = useState(0);
+  const [matchingError, setMatchingError] = useState(null);
+  const [currentBookingId, setCurrentBookingId] = useState(null);
+  const [matchedProvider, setMatchedProvider] = useState(null);
+  const [accepted, setAccepted] = useState(false);
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
   useEffect(() => {
-    if (cartItems.length === 0) {
-      navigate('/cart');
-    }
+    if (cartItems.length === 0) navigate('/cart');
     loadAddresses();
   }, []);
-
-  useEffect(() => {
-    if (selectedAddress) {
-      loadProvidersForAddress(selectedAddress);
-    }
-  }, [selectedAddress, searchRadius]);
 
   const loadAddresses = async () => {
     try {
@@ -70,30 +57,7 @@ const CheckoutPage = () => {
         if (defaultAddr) setSelectedAddress(defaultAddr);
         else if (res.data.addresses?.length > 0) setSelectedAddress(res.data.addresses[0]);
       }
-    } catch (err) {
-      console.error('Failed to load addresses', err);
-    }
-  };
-
-  const loadProvidersForAddress = async (address) => {
-    if (!cartItems.length) return;
-    const firstItem = cartItems[0];
-    setLoadingProviders(true);
-    try {
-      let lat, lng;
-      if (address.coordinates?.latitude && address.coordinates?.longitude) {
-        lat = address.coordinates.latitude;
-        lng = address.coordinates.longitude;
-      }
-      const res = await searchProviders(lat, lng, searchRadius, firstItem.categoryId, address.pincode, address.city);
-      if (res.success) {
-        setProviders(res.data.providers || []);
-      }
-    } catch (err) {
-      console.error('Failed to load providers', err);
-    } finally {
-      setLoadingProviders(false);
-    }
+    } catch (err) { console.error(err); }
   };
 
   const handleAddAddress = async (e) => {
@@ -106,36 +70,19 @@ const CheckoutPage = () => {
         setSelectedAddress(added);
         setShowAddAddress(false);
         setNewAddress({
-          label: 'Home',
-          street: '',
-          city: '',
-          state: '',
-          pincode: '',
-          landmark: '',
-          isDefault: false,
+          label: 'Home', street: '', city: '', state: '', pincode: '', landmark: '', isDefault: false,
         });
       }
-    } catch (err) {
-      alert(err.message);
-    }
+    } catch (err) { alert(err.message); }
   };
 
   const handlePlaceOrder = async () => {
-    if (!selectedAddress) {
-      setError('Please select a delivery address');
-      return;
-    }
-    if (!selectedProvider) {
-      setError('Please select a service provider');
-      return;
-    }
-    if (!scheduledDate) {
-      setError('Please select a date');
-      return;
-    }
+    if (!selectedAddress) { setError('Please select a delivery address'); return; }
+    if (!scheduledDate) { setError('Please select a date'); return; }
 
     setLoading(true);
     setError('');
+    setAccepted(false);
 
     const firstCartItem = cartItems[0];
     if (!firstCartItem.categoryId) {
@@ -151,14 +98,10 @@ const CheckoutPage = () => {
     }));
 
     const bookingData = {
-      provider: selectedProvider._id,
       services: items,
       category: firstCartItem.categoryId,
       scheduledDate,
-      scheduledTime: {
-        start: scheduledTimeStart,
-        end: scheduledTimeEnd,
-      },
+      scheduledTime: { start: scheduledTimeStart, end: scheduledTimeEnd },
       serviceAddress: {
         street: selectedAddress.street,
         city: selectedAddress.city,
@@ -166,24 +109,51 @@ const CheckoutPage = () => {
         pincode: selectedAddress.pincode,
         landmark: selectedAddress.landmark || '',
       },
-      payment: {
-        method: paymentMethod,
-      },
-      notes: notes,
+      payment: { method: paymentMethod },
+      notes,
     };
 
     try {
       const res = await createBooking(bookingData);
       if (res.success) {
-        const booking = res.data.booking;
+        const bookingId = res.data.booking._id;
+        setCurrentBookingId(bookingId);
         
-        if (paymentMethod === 'cod') {
-          clearCart();
-          navigate('/my-bookings', { state: { bookingCreated: true, message: 'Booking confirmed! Pay at time of service.' } });
-        } else {
-          clearCart();
-          navigate(`/my-bookings`, { state: { bookingCreated: true, message: 'Booking created! Please complete payment.' } });
+        let timeoutId = null;
+
+        if (socket) {
+          socket.on('booking-accepted', (data) => {
+            if (data.bookingId === bookingId && !accepted) {
+              setAccepted(true);
+              if (timeoutId) clearTimeout(timeoutId);
+              setMatchedProvider(data.provider);
+              setMatchingStep(4);
+              // Immediately close the modal if it is open
+              setShowMatching(false);
+              setTimeout(() => {
+                clearCart();
+                navigate('/my-bookings', { state: { bookingCreated: true, message: 'Booking confirmed! Provider will contact you soon.' } });
+              }, 500);
+            }
+          });
         }
+
+        // Show matching modal only after 3 seconds of no acceptance
+        timeoutId = setTimeout(() => {
+          if (!accepted && !showMatching) {
+            setShowMatching(true);
+            setMatchingStep(1);
+            setTimeout(() => setMatchingStep(2), 2000);
+            setTimeout(() => setMatchingStep(3), 4000);
+          }
+        }, 3000);
+
+        // Timeout fallback (30 seconds)
+        setTimeout(() => {
+          if (!accepted && showMatching) {
+            setMatchingError('No provider accepted your request. Please try again.');
+          }
+        }, 30000);
       } else {
         setError(res.message || 'Booking failed');
       }
@@ -210,7 +180,7 @@ const CheckoutPage = () => {
     <div className="max-w-6xl mx-auto px-4 py-12">
       <h1 className="text-2xl font-bold mb-8">Checkout</h1>
       <div className="grid md:grid-cols-2 gap-8">
-        {/* Left Column */}
+        {/* LEFT COLUMN – order summary, payment method, address, schedule (unchanged) */}
         <div className="space-y-6">
           {/* Order Summary */}
           <div className="bg-white rounded-xl shadow-sm border p-6">
@@ -229,50 +199,28 @@ const CheckoutPage = () => {
             </div>
           </div>
 
-          {/* Payment Method Selection */}
+          {/* Payment Method */}
           <div className="bg-white rounded-xl shadow-sm border p-6">
             <h2 className="font-bold text-lg mb-4">Payment Method</h2>
             <div className="space-y-3">
               <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                <input 
-                  type="radio" 
-                  name="paymentMethod" 
-                  value="online"
-                  checked={paymentMethod === 'online'}
-                  onChange={() => setPaymentMethod('online')}
-                  className="w-4 h-4"
-                />
-                <div>
-                  <p className="font-medium">Online Payment (Razorpay)</p>
-                  <p className="text-sm text-gray-500">Pay via Credit/Debit Card, UPI, Net Banking</p>
-                </div>
+                <input type="radio" name="paymentMethod" value="online" checked={paymentMethod === 'online'} onChange={() => setPaymentMethod('online')} className="w-4 h-4" />
+                <div><p className="font-medium">Online Payment (Razorpay)</p><p className="text-sm text-gray-500">Pay via Credit/Debit Card, UPI, Net Banking</p></div>
               </label>
               <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                <input 
-                  type="radio" 
-                  name="paymentMethod" 
-                  value="cod"
-                  checked={paymentMethod === 'cod'}
-                  onChange={() => setPaymentMethod('cod')}
-                  className="w-4 h-4"
-                />
-                <div>
-                  <p className="font-medium">Cash on Delivery (COD)</p>
-                  <p className="text-sm text-gray-500">Pay cash to the service provider after service completion</p>
-                </div>
+                <input type="radio" name="paymentMethod" value="cod" checked={paymentMethod === 'cod'} onChange={() => setPaymentMethod('cod')} className="w-4 h-4" />
+                <div><p className="font-medium">Cash on Delivery (COD)</p><p className="text-sm text-gray-500">Pay cash to the service provider after service completion</p></div>
               </label>
             </div>
           </div>
 
-          {/* Delivery Address */}
+          {/* Delivery Address (unchanged) */}
           <div className="bg-white rounded-xl shadow-sm border p-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="font-bold text-lg">Delivery Address</h2>
               <button onClick={() => setShowAddAddress(!showAddAddress)} className="text-emerald-600 text-sm">+ Add New</button>
             </div>
-            {addresses.length === 0 && !showAddAddress && (
-              <p className="text-gray-500 text-sm">No addresses found. Please add one.</p>
-            )}
+            {addresses.length === 0 && !showAddAddress && <p className="text-gray-500 text-sm">No addresses found. Please add one.</p>}
             {!showAddAddress && addresses.length > 0 && (
               <div className="space-y-3">
                 {addresses.map(addr => (
@@ -329,64 +277,50 @@ const CheckoutPage = () => {
           </div>
         </div>
 
-        {/* Right Column - Provider Selection */}
+        {/* RIGHT COLUMN – Payment Summary */}
         <div className="space-y-6">
           <div className="bg-white rounded-xl shadow-sm border p-6 sticky top-24">
-            <h2 className="font-bold text-lg mb-4">Choose Service Provider</h2>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Search Radius</label>
-              <div className="flex items-center gap-2">
-                <input type="range" min="5" max="50" step="5" value={searchRadius} onChange={(e) => setSearchRadius(parseInt(e.target.value))} className="flex-1" />
-                <span className="text-sm font-medium w-16">{searchRadius} km</span>
+            <h2 className="font-bold text-lg mb-4">Payment Summary</h2>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Subtotal</span>
+                <span>{formatPrice(cartTotal)}</span>
               </div>
-              <p className="text-xs text-gray-400 mt-1">Providers within {searchRadius} km of your address</p>
+              <div className="flex justify-between text-sm text-gray-500">
+                <span>GST (18%)</span>
+                <span>{formatPrice(cartTotal * 0.18)}</span>
+              </div>
+              <div className="border-t pt-2 mt-2 flex justify-between font-bold text-lg">
+                <span>Total</span>
+                <span>{formatPrice(cartTotal + cartTotal * 0.18)}</span>
+              </div>
             </div>
-
-            {!selectedAddress ? (
-              <p className="text-gray-500">Please select an address to see available providers.</p>
-            ) : loadingProviders ? (
-              <div className="flex justify-center py-8"><div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin"></div></div>
-            ) : providers.length === 0 ? (
-              <p className="text-gray-500">No providers available for your selected address. Try increasing the radius.</p>
-            ) : (
-              <div className="space-y-4 max-h-96 overflow-y-auto">
-                {providers.map(provider => (
-                  <label key={provider._id} className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition ${selectedProvider?._id === provider._id ? 'border-emerald-500 bg-emerald-50' : ''}`}>
-                    <input type="radio" name="provider" checked={selectedProvider?._id === provider._id} onChange={() => setSelectedProvider(provider)} className="mt-1" />
-                    <div className="flex-1">
-                      <div className="flex justify-between">
-                        <p className="font-semibold">{provider.businessName}</p>
-                        <div className="flex items-center gap-1 text-sm">
-                          <span className="text-amber-500">★</span>
-                          <span>{provider.rating?.average || 0} ({provider.rating?.count || 0})</span>
-                        </div>
-                      </div>
-                      <p className="text-sm text-gray-600">{provider.bio?.substring(0, 80)}</p>
-                      <p className="text-xs text-gray-400 mt-1">{provider.experience?.years} years exp • {provider.serviceArea?.cities?.join(', ')}</p>
-                    </div>
-                  </label>
-                ))}
-              </div>
-            )}
-
-            {error && <p className="text-red-600 text-sm mt-3">{error}</p>}
-
             <button
               onClick={handlePlaceOrder}
-              disabled={loading || !selectedProvider || !selectedAddress}
+              disabled={loading || !selectedAddress}
               className="w-full mt-6 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
-              {loading ? 'Placing Order...' : `Place Order (${paymentMethod === 'online' ? 'Pay Online' : 'Cash on Delivery'})`}
+              {loading ? 'Placing Order...' : 'Place Order (Auto-match Provider)'}
             </button>
-            {paymentMethod === 'cod' && (
-              <p className="text-xs text-gray-400 text-center mt-3">Pay cash to the provider after service completion.</p>
-            )}
-            {paymentMethod === 'online' && (
-              <p className="text-xs text-gray-400 text-center mt-3">You will be redirected to payment after booking.</p>
-            )}
+            <p className="text-xs text-gray-400 text-center mt-3">
+              After placing order, we will find the best provider near you.
+            </p>
           </div>
         </div>
       </div>
+
+      {/* Matching Modal */}
+      {showMatching && (
+        <div className="fixed inset-0 bg-black/50 z-[1100] flex items-center justify-center p-4">
+          <MatchingProgress
+            currentStep={matchingStep}
+            error={matchingError}
+            onCancel={() => {
+              setShowMatching(false);
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 };

@@ -1,33 +1,62 @@
 // src/pages/provider/ProviderBookings.jsx
 import { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import axios from 'axios';
 import { 
   Calendar, Clock, User, Package, IndianRupee, 
   CheckCircle, AlertCircle, Eye, RefreshCw, Shield, 
   AlertTriangle, Loader2, X, KeyRound, CreditCard,
-  ChevronRight, Phone, MessageCircle, MapPin, Search
+  ChevronRight, Phone, MessageCircle, MapPin, Bell
 } from 'lucide-react';
 import { 
   fetchMyBookings, confirmBooking, startBooking, 
-  completeBooking, generateBookingOTP, fetchProviderVerificationStatus 
+  completeBooking, generateBookingOTP, fetchProviderVerificationStatus,
+  fetchProviderProfile
 } from '../../services/api';
+import { useSocket } from '../../context/SocketContext';
+import ChatBox from '../../components/booking/ChatBox';
 
 const ProviderBookings = () => {
+  const { socket } = useSocket();
+  const location = useLocation();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('');
+  const [filter, setFilter] = useState('active');
   const [actionLoading, setActionLoading] = useState(null);
   const [otpModal, setOtpModal] = useState({ show: false, bookingId: null, otp: '', generating: false });
   const [completing, setCompleting] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState(null);
   const pollingRef = useRef(null);
+  const [incomingRequests, setIncomingRequests] = useState([]);
+  const [providerData, setProviderData] = useState(null);
+  const [chatBooking, setChatBooking] = useState(null);
+
+  // Check query parameter to open chat automatically
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const openChatId = params.get('openChat');
+    if (openChatId && bookings.length > 0) {
+      const booking = bookings.find(b => b._id === openChatId);
+      if (booking) setChatBooking(booking);
+    }
+  }, [location.search, bookings]);
 
   useEffect(() => {
     checkVerification();
+    loadProviderData();
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
   }, []);
+
+  const loadProviderData = async () => {
+    try {
+      const res = await fetchProviderProfile();
+      if (res.success) setProviderData(res.data.provider);
+    } catch (err) {
+      console.error('Failed to load provider data', err);
+    }
+  };
 
   const checkVerification = async () => {
     try {
@@ -56,7 +85,7 @@ const ProviderBookings = () => {
   const loadBookings = async (showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
-      const res = await fetchMyBookings(1, 50, filter);
+      const res = await fetchMyBookings(1, 50, '');
       if (res.success) setBookings(res.data.bookings || []);
     } catch (err) {
       console.error(err);
@@ -69,7 +98,38 @@ const ProviderBookings = () => {
     if (verificationStatus?.verificationStatus === 'verified') {
       loadBookings(true);
     }
-  }, [filter]);
+  }, []);
+
+  // Socket listeners for incoming booking requests
+  useEffect(() => {
+    if (!socket) return;
+    socket.on('new-booking-request', (data) => {
+      setIncomingRequests(prev => [...prev, data]);
+    });
+    socket.on('booking-taken', (data) => {
+      setIncomingRequests(prev => prev.filter(req => req.bookingId !== data.bookingId));
+    });
+    return () => {
+      socket.off('new-booking-request');
+      socket.off('booking-taken');
+    };
+  }, [socket]);
+
+  const handleAccept = async (bookingId) => {
+    // ✅ Optimistically remove the request from the list immediately
+    setIncomingRequests(prev => prev.filter(r => r.bookingId !== bookingId));
+    
+    if (!socket) return;
+    socket.emit('accept-booking', { bookingId, providerId: providerData?._id });
+    try {
+      await axios.post(`/api/v1/bookings/${bookingId}/accept`, {}, { withCredentials: true });
+      loadBookings(true);
+    } catch (err) {
+      console.error('Accept error:', err);
+      // If API fails, reload bookings to sync (the request might still be valid)
+      loadBookings(true);
+    }
+  };
 
   const handleConfirm = async (bookingId) => {
     setActionLoading(bookingId);
@@ -164,6 +224,15 @@ const ProviderBookings = () => {
     return configs[status] || configs.pending;
   };
 
+  const filteredBookings = bookings.filter(booking => {
+    if (filter === 'active') {
+      return booking.status === 'confirmed' || booking.status === 'in_progress';
+    }
+    if (filter === 'completed') return booking.status === 'completed';
+    if (filter === 'cancelled') return booking.status === 'cancelled';
+    return true;
+  });
+
   const getActions = (booking) => {
     const isLoading = actionLoading === booking._id;
     switch (booking.status) {
@@ -204,7 +273,6 @@ const ProviderBookings = () => {
     }
   };
 
-  // If not verified, show KYC required message with better UI
   if (verificationStatus && verificationStatus.verificationStatus !== 'verified') {
     const isPending = verificationStatus.verificationStatus === 'pending';
     const isRejected = verificationStatus.verificationStatus === 'rejected';
@@ -248,9 +316,12 @@ const ProviderBookings = () => {
     );
   }
 
+  const activeCount = bookings.filter(b => b.status === 'confirmed' || b.status === 'in_progress').length;
+  const completedCount = bookings.filter(b => b.status === 'completed').length;
+  const cancelledCount = bookings.filter(b => b.status === 'cancelled').length;
+
   return (
     <div className="max-w-6xl mx-auto">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Manage Bookings</h1>
@@ -265,50 +336,77 @@ const ProviderBookings = () => {
         </button>
       </div>
 
-      {/* Filter Tabs */}
+      {/* Incoming Requests Banner */}
+      {incomingRequests.length > 0 && (
+        <div className="mb-6 space-y-3">
+          <div className="flex items-center gap-2 text-amber-600 font-semibold">
+            <Bell className="w-5 h-5" />
+            <span>New Booking Requests ({incomingRequests.length})</span>
+          </div>
+          {incomingRequests.map(req => (
+            <div key={req.bookingId} className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="font-semibold">{req.customerName} wants <span className="text-emerald-600">{req.serviceName}</span></p>
+                <p className="text-sm text-gray-600">Amount: ₹{req.amount} | Date: {new Date(req.scheduledDate).toLocaleDateString()}</p>
+                <p className="text-xs text-gray-500 truncate max-w-md">{req.address?.street}, {req.address?.city}</p>
+              </div>
+              <button
+                onClick={() => handleAccept(req.bookingId)}
+                className="px-5 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition shadow-md"
+              >
+                Accept Booking
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-2 mb-6">
-        {['', 'pending', 'confirmed', 'in_progress', 'completed', 'cancelled'].map(status => {
-          const displayName = status === '' ? 'All' : status.replace('_', ' ').toUpperCase();
-          const isActive = filter === status;
+        {['active', 'all', 'completed', 'cancelled'].map((tab) => {
+          let label = '';
+          let count = 0;
+          if (tab === 'active') { label = 'Active'; count = activeCount; }
+          else if (tab === 'all') { label = 'All'; count = bookings.length; }
+          else if (tab === 'completed') { label = 'Completed'; count = completedCount; }
+          else if (tab === 'cancelled') { label = 'Cancelled'; count = cancelledCount; }
           return (
             <button
-              key={status}
-              onClick={() => setFilter(status)}
+              key={tab}
+              onClick={() => setFilter(tab)}
               className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                isActive 
+                filter === tab 
                   ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/30' 
                   : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
               }`}
             >
-              {displayName}
-              {status !== '' && (
-                <span className={`ml-2 text-xs ${isActive ? 'text-white/80' : 'text-gray-400'}`}>
-                  ({bookings.filter(b => b.status === status).length})
-                </span>
-              )}
+              {label} ({count})
             </button>
           );
         })}
       </div>
 
-      {/* Bookings List */}
       <div className="space-y-4">
-        {bookings.length === 0 ? (
+        {filteredBookings.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center shadow-sm">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Calendar className="w-8 h-8 text-gray-400" />
             </div>
             <h3 className="text-lg font-medium text-gray-700 mb-1">No bookings found</h3>
-            <p className="text-gray-400 text-sm">When customers book your services, they will appear here.</p>
+            <p className="text-gray-400 text-sm">
+              {filter === 'active' ? 'No active bookings at the moment.' : 
+               filter === 'completed' ? 'No completed bookings yet.' :
+               filter === 'cancelled' ? 'No cancelled bookings.' :
+               'When customers book your services, they will appear here.'}
+            </p>
           </div>
         ) : (
-          bookings.map((booking) => {
+          filteredBookings.map((booking) => {
             const statusConfig = getStatusConfig(booking.status);
             const StatusIcon = statusConfig.icon;
             const isPaid = booking.payment?.status === 'paid';
+            const isActive = booking.status === 'confirmed' || booking.status === 'in_progress';
             return (
               <div key={booking._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden">
-                {/* Booking Header */}
                 <div className="p-5 border-b border-gray-50">
                   <div className="flex flex-wrap justify-between items-start gap-3">
                     <div>
@@ -351,7 +449,6 @@ const ProviderBookings = () => {
                   </div>
                 </div>
 
-                {/* Booking Details */}
                 <div className="p-5 bg-gray-50/30">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -374,7 +471,6 @@ const ProviderBookings = () => {
                   </div>
                 </div>
 
-                {/* Actions */}
                 <div className="px-5 py-3 border-t border-gray-50 flex flex-wrap justify-between items-center gap-3 bg-white">
                   <div className="flex gap-2">
                     <Link 
@@ -395,6 +491,15 @@ const ProviderBookings = () => {
                         WhatsApp
                       </a>
                     )}
+                    {isActive && (
+                      <button
+                        onClick={() => setChatBooking(booking)}
+                        className="inline-flex items-center gap-1 text-sm text-purple-600 hover:text-purple-700 transition-colors"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        Chat
+                      </button>
+                    )}
                   </div>
                   <div>
                     {getActions(booking)}
@@ -406,7 +511,6 @@ const ProviderBookings = () => {
         )}
       </div>
 
-      {/* OTP Modal - Redesigned */}
       {otpModal.show && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl animate-in fade-in zoom-in duration-200">
@@ -471,6 +575,15 @@ const ProviderBookings = () => {
             )}
           </div>
         </div>
+      )}
+
+      {chatBooking && (
+        <ChatBox
+          bookingId={chatBooking._id}
+          providerName={providerData?.businessName || 'Provider'}
+          customerName={chatBooking.customer?.fullName || 'Customer'}
+          onClose={() => setChatBooking(null)}
+        />
       )}
     </div>
   );
