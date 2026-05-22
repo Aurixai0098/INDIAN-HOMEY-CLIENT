@@ -1,26 +1,37 @@
+// src/pages/CheckoutPage.jsx – full updated (only relevant parts shown, replace your existing with this)
+
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { useSocket } from '../context/SocketContext';
 import { fetchAddresses, addAddress, createBooking } from '../services/api';
 import NearbyProvidersModal from '../components/booking/NearbyProvidersModal';
-import { MapPin } from 'lucide-react';
+import { MapPin, AlertCircle } from 'lucide-react';
 
-// Helper to geocode address (same as backend)
+// Improved geocode with timeout and fallback
 const geocodeAddress = async (address) => {
-  const query = `${address.street}, ${address.city}, ${address.state}, ${address.pincode}`;
+  if (!address || !address.street || !address.city || !address.pincode) return null;
+  
+  const query = `${address.street}, ${address.city}, ${address.state || ''}, ${address.pincode}`;
   const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
+  
   try {
-    const res = await fetch(url, { headers: { 'User-Agent': 'GharSevaApp/1.0' } });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(url, { 
+      headers: { 'User-Agent': 'GharSevaApp/1.0' },
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
     const data = await res.json();
     if (data && data.length) {
       return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
     }
+    return null;
   } catch (err) {
     console.error('Geocoding error:', err);
+    return null;
   }
-  return null;
 };
 
 const formatPrice = (price) => `₹${Number(price).toFixed(2)}`;
@@ -29,8 +40,6 @@ const CheckoutPage = () => {
   const navigate = useNavigate();
   const { cartItems, cartTotal, clearCart } = useCart();
   const { user } = useAuth();
-  const socketContext = useSocket();
-  const socket = socketContext?.socket;
 
   const [addresses, setAddresses] = useState([]);
   const [selectedAddress, setSelectedAddress] = useState(null);
@@ -47,6 +56,8 @@ const CheckoutPage = () => {
   const [error, setError] = useState('');
   const [showNearbyModal, setShowNearbyModal] = useState(false);
   const [customerCoords, setCustomerCoords] = useState(null);
+  const [geocodingAddress, setGeocodingAddress] = useState(false);
+  const [locationError, setLocationError] = useState('');
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -57,12 +68,20 @@ const CheckoutPage = () => {
     loadAddresses();
   }, []);
 
-  // Geocode selected address to show nearby providers
+  // Geocode selected address
   useEffect(() => {
     if (selectedAddress) {
+      setGeocodingAddress(true);
+      setLocationError('');
       geocodeAddress(selectedAddress).then(coords => {
-        if (coords) setCustomerCoords(coords);
-      });
+        if (coords) {
+          setCustomerCoords(coords);
+        } else {
+          setLocationError('Could not determine location for this address. Nearby providers may not show correctly.');
+        }
+      }).finally(() => setGeocodingAddress(false));
+    } else {
+      setCustomerCoords(null);
     }
   }, [selectedAddress]);
 
@@ -133,7 +152,6 @@ const CheckoutPage = () => {
     try {
       const res = await createBooking(bookingData);
       if (res.success) {
-        // Clear cart and redirect to My Bookings immediately
         clearCart();
         navigate('/my-bookings', { 
           state: { 
@@ -266,7 +284,7 @@ const CheckoutPage = () => {
           </div>
         </div>
 
-        {/* RIGHT COLUMN – Payment Summary */}
+        {/* RIGHT COLUMN */}
         <div className="space-y-6">
           <div className="bg-white rounded-xl shadow-sm border p-6 sticky top-24">
             <h2 className="font-bold text-lg mb-4">Payment Summary</h2>
@@ -284,9 +302,24 @@ const CheckoutPage = () => {
                 <span>{formatPrice(cartTotal + cartTotal * 0.18)}</span>
               </div>
             </div>
+
+            {/* Location status & Nearby button */}
+            {geocodingAddress && (
+              <div className="mt-3 text-sm text-blue-600 flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
+                Locating address...
+              </div>
+            )}
+            {locationError && !geocodingAddress && (
+              <div className="mt-3 text-sm text-amber-600 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4" />
+                {locationError}
+              </div>
+            )}
             <button
               onClick={() => setShowNearbyModal(true)}
-              className="w-full mt-3 bg-blue-100 text-blue-700 py-2 rounded-xl text-sm font-medium hover:bg-blue-200 transition flex items-center justify-center gap-2"
+              disabled={!customerCoords}
+              className="w-full mt-3 bg-blue-100 text-blue-700 py-2 rounded-xl text-sm font-medium hover:bg-blue-200 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <MapPin className="w-4 h-4" /> View Nearby Providers
             </button>
@@ -305,12 +338,12 @@ const CheckoutPage = () => {
       </div>
 
       {/* Nearby Providers Modal */}
-      {showNearbyModal && (
+      {showNearbyModal && customerCoords && (
         <NearbyProvidersModal
           isOpen={showNearbyModal}
           onClose={() => setShowNearbyModal(false)}
-          lat={customerCoords?.lat}
-          lng={customerCoords?.lng}
+          lat={customerCoords.lat}
+          lng={customerCoords.lng}
           serviceCategory={firstCartItem?.categoryId}
         />
       )}

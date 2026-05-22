@@ -1,3 +1,4 @@
+// src/pages/provider/ProviderBookings.jsx
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { 
@@ -10,7 +11,7 @@ import {
 import { 
   fetchMyBookings, confirmBooking, startBooking, 
   completeBooking, generateBookingOTP, fetchProviderVerificationStatus,
-  fetchProviderProfile, updateServiceArea
+  fetchProviderProfile, acceptBooking, updateServiceArea
 } from '../../services/api';
 import { useSocket } from '../../context/SocketContext';
 import { useAuth } from '../../context/AuthContext';
@@ -37,7 +38,7 @@ const ExpirationTimer = ({ expiry, onExpire }) => {
   return <span className="text-xs text-amber-600 font-mono ml-2">Expires in {timeLeft}</span>;
 };
 
-// Audio setup (for sound – already in context, but keep for local if needed)
+// Audio setup (for local sound)
 let audioCtx = null;
 const playNotybell = async () => {
   try {
@@ -66,15 +67,143 @@ const geocodeCity = async (cityName) => {
   return null;
 };
 
-// Service Area Modal (simplified – keep your existing)
+// ======================== Service Area Modal (Proper Form) ========================
 const ServiceAreaModal = ({ isOpen, onClose, currentArea, onUpdate }) => {
+  const [formData, setFormData] = useState({
+    cities: currentArea?.cities || [],
+    pincodes: currentArea?.pincodes || [],
+    radius: currentArea?.radius || 10,
+    coordinates: currentArea?.coordinates || {
+      type: 'Point',
+      coordinates: [0, 0]
+    }
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [cityInput, setCityInput] = useState('');
+  const [pincodeInput, setPincodeInput] = useState('');
+  const [latInput, setLatInput] = useState(formData.coordinates.coordinates[1] || '');
+  const [lngInput, setLngInput] = useState(formData.coordinates.coordinates[0] || '');
+
+  useEffect(() => {
+    if (currentArea) {
+      setFormData({
+        cities: currentArea.cities || [],
+        pincodes: currentArea.pincodes || [],
+        radius: currentArea.radius || 10,
+        coordinates: currentArea.coordinates || { type: 'Point', coordinates: [0, 0] }
+      });
+      setLatInput(currentArea.coordinates?.coordinates[1] || '');
+      setLngInput(currentArea.coordinates?.coordinates[0] || '');
+    }
+  }, [currentArea]);
+
+  const addCity = () => {
+    if (cityInput.trim() && !formData.cities.includes(cityInput.trim())) {
+      setFormData(prev => ({ ...prev, cities: [...prev.cities, cityInput.trim()] }));
+      setCityInput('');
+    }
+  };
+  const removeCity = (city) => {
+    setFormData(prev => ({ ...prev, cities: prev.cities.filter(c => c !== city) }));
+  };
+  const addPincode = () => {
+    if (pincodeInput.trim() && !formData.pincodes.includes(pincodeInput.trim())) {
+      setFormData(prev => ({ ...prev, pincodes: [...prev.pincodes, pincodeInput.trim()] }));
+      setPincodeInput('');
+    }
+  };
+  const removePincode = (pincode) => {
+    setFormData(prev => ({ ...prev, pincodes: prev.pincodes.filter(p => p !== pincode) }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!latInput || !lngInput) {
+      setError('Please set center coordinates (latitude & longitude)');
+      return;
+    }
+    const coordinates = { type: 'Point', coordinates: [parseFloat(lngInput), parseFloat(latInput)] };
+    const payload = {
+      cities: formData.cities,
+      pincodes: formData.pincodes,
+      radius: formData.radius,
+      coordinates
+    };
+    setLoading(true);
+    setError('');
+    try {
+      await onUpdate(payload);
+      onClose();
+    } catch (err) {
+      setError(err.message || 'Failed to update service area');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!isOpen) return null;
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full p-6">
+      <div className="bg-white rounded-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
         <h3 className="text-xl font-bold mb-4">Set Service Area</h3>
-        <p className="text-sm text-gray-500">Implement your service area form here</p>
-        <button onClick={onClose} className="mt-4 px-4 py-2 bg-gray-200 rounded">Close</button>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Cities */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Cities you serve</label>
+            <div className="flex gap-2">
+              <input type="text" value={cityInput} onChange={(e) => setCityInput(e.target.value)} placeholder="e.g., Jaipur" className="flex-1 border rounded-lg px-3 py-2 text-sm" />
+              <button type="button" onClick={addCity} className="px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm">Add</button>
+            </div>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {formData.cities.map(city => (
+                <span key={city} className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 rounded-full text-xs">
+                  {city}
+                  <button type="button" onClick={() => removeCity(city)} className="text-red-500 hover:text-red-700">×</button>
+                </span>
+              ))}
+            </div>
+          </div>
+          {/* Pincodes */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Pincodes you serve</label>
+            <div className="flex gap-2">
+              <input type="text" value={pincodeInput} onChange={(e) => setPincodeInput(e.target.value)} placeholder="e.g., 302001" className="flex-1 border rounded-lg px-3 py-2 text-sm" />
+              <button type="button" onClick={addPincode} className="px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm">Add</button>
+            </div>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {formData.pincodes.map(pin => (
+                <span key={pin} className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 rounded-full text-xs">
+                  {pin}
+                  <button type="button" onClick={() => removePincode(pin)} className="text-red-500 hover:text-red-700">×</button>
+                </span>
+              ))}
+            </div>
+          </div>
+          {/* Radius */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Radius (km) – optional</label>
+            <input type="number" min="1" max="100" value={formData.radius} onChange={(e) => setFormData(prev => ({ ...prev, radius: parseInt(e.target.value) }))} className="w-full border rounded-lg px-3 py-2 text-sm" />
+            <p className="text-xs text-gray-500 mt-1">If set, providers within this radius will be matched.</p>
+          </div>
+          {/* Coordinates */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Service Area Center (Latitude, Longitude)</label>
+            <div className="flex gap-2">
+              <input type="number" step="any" placeholder="Latitude" value={latInput} onChange={(e) => setLatInput(e.target.value)} className="flex-1 border rounded-lg px-3 py-2 text-sm" />
+              <input type="number" step="any" placeholder="Longitude" value={lngInput} onChange={(e) => setLngInput(e.target.value)} className="flex-1 border rounded-lg px-3 py-2 text-sm" />
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Used for distance-based matching.</p>
+          </div>
+          {error && <p className="text-red-500 text-sm">{error}</p>}
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={onClose} className="flex-1 px-4 py-2 bg-gray-200 rounded-lg">Cancel</button>
+            <button type="submit" disabled={loading} className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg disabled:opacity-50">
+              {loading ? 'Saving...' : 'Save Service Area'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
@@ -104,16 +233,15 @@ const ProviderBookings = () => {
   const [testMessage, setTestMessage] = useState('');
   const locationInterval = useRef(null);
 
-  // Manual open chat
+  // Manual open chat function
   const openChatForBooking = (booking) => {
     setChatBooking(booking);
   };
-
   const closeChat = () => {
     setChatBooking(null);
   };
 
-  // Socket status
+  // Socket status monitoring
   useEffect(() => {
     if (!socket) {
       setSocketStatus('disconnected');
@@ -156,7 +284,9 @@ const ProviderBookings = () => {
           } else {
             setLocationWarning({ show: false, message: '' });
           }
-        } catch (err) { console.error('Location update failed:', err); }
+        } catch (err) {
+          console.error('Location update failed:', err);
+        }
       },
       (err) => {
         console.error('Geolocation error:', err);
@@ -400,9 +530,7 @@ const ProviderBookings = () => {
                 <p className="font-semibold">{req.customerName} wants <span className="text-emerald-600">{req.serviceName}</span></p>
                 <p className="text-sm">Amount: ₹{req.amount} | Date: {new Date(req.scheduledDate).toLocaleDateString()}</p>
                 <p className="text-xs truncate">{req.address?.street}, {req.address?.city}</p>
-                {req.expiresAt && <ExpirationTimer expiry={req.expiresAt} onExpire={() => {
-                  // Optional: you could call a method to remove expired, but global context will auto-remove on booking-taken
-                }} />}
+                {req.expiresAt && <ExpirationTimer expiry={req.expiresAt} onExpire={() => {}} />}
               </div>
               <button onClick={() => acceptRequest(req.bookingId)} className="px-5 py-2 bg-emerald-600 text-white rounded-lg">Accept Booking</button>
             </div>
