@@ -1,17 +1,17 @@
 // src/services/api.js
 
-// ✅ Dynamic BASE_URL - works on local network too
+// ✅ Dynamic BASE_URL – works on localhost, network, and production (Render)
 const getBaseUrl = () => {
+    // For production (Vercel), use the Render backend URL
     if (import.meta.env.PROD) {
-        return import.meta.env.VITE_BASE_URL || 'https://ghar-seva-server-1.onrender.com/api/v1';
+        return import.meta.env.VITE_API_URL || 'https://ghar-seva-server-1.onrender.com/api/v1';
     }
     
+    // For development
     const hostname = window.location.hostname;
-    
     if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
         return `http://${hostname}:5000/api/v1`;
     }
-    
     return 'http://localhost:5000/api/v1';
 };
 
@@ -19,12 +19,14 @@ const BASE_URL = getBaseUrl();
 
 console.log('🔧 API BASE_URL:', BASE_URL);
 
+// Cache for categories
 let categoriesCache = {
   data: null,
   timestamp: null,
   promise: null,
 };
 
+// Generic fetch function with credentials
 const apiFetch = async (endpoint, options = {}) => {
   let response;
   try {
@@ -37,7 +39,7 @@ const apiFetch = async (endpoint, options = {}) => {
     }
     
     response = await fetch(`${BASE_URL}${endpoint}`, {
-      credentials: 'include',
+      credentials: 'include',  // ✅ Important for cookies (iOS)
       headers,
       ...options,
     });
@@ -64,6 +66,7 @@ const apiFetch = async (endpoint, options = {}) => {
   return data;
 };
 
+// ========== Categories (with cache) ==========
 export const fetchCategories = async (forceRefresh = false) => {
   const now = Date.now();
   const CACHE_TTL = 5 * 60 * 1000;
@@ -113,6 +116,27 @@ export const logout = async () => {
 
 export const getMe = async () => {
   return apiFetch('/auth/me');
+};
+
+export const forgotPassword = async (email) => {
+  return apiFetch('/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+};
+
+export const resetPassword = async (token, newPassword) => {
+  return apiFetch('/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ token, newPassword }),
+  });
+};
+
+export const changePassword = async (currentPassword, newPassword) => {
+  return apiFetch('/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
 };
 
 // ========== User Avatar APIs ==========
@@ -195,7 +219,7 @@ export const setDefaultAddress = async (addressId) => {
   });
 };
 
-// ========== Admin APIs ==========
+// ========== Admin APIs (keep existing – not changed) ==========
 export const fetchAdminDashboard = async () => {
   return apiFetch('/admin/dashboard');
 };
@@ -214,9 +238,6 @@ export const fetchAdminUserDetails = async (userId) => {
 export const updateAdminUserStatus = async (userId, status) => {
   return apiFetch(`/admin/users/${userId}/status`, {
     method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-    },
     body: JSON.stringify({ status }),
   });
 };
@@ -256,9 +277,6 @@ export const fetchAdminVerifications = async (page = 1, limit = 20, status = '',
 export const verifyProvider = async (providerId, status, note = '') => {
   return apiFetch(`/admin/verifications/${providerId}`, {
     method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-    },
     body: JSON.stringify({ status, note }),
   });
 };
@@ -445,23 +463,17 @@ export const fetchProviderNotifications = async () => {
   return apiFetch('/providers/notifications');
 };
 
-// ✅ Heartbeat API – updates provider's lastActive timestamp
 export const updateHeartbeat = async () => {
   return apiFetch('/providers/heartbeat', {
     method: 'POST',
   });
 };
 
-// ✅ Correct: Only one export for each function
-export const mar9yMnTm4NSzvG9rrwjM2ec8xZgh1cafXH8 = async (notificationId) => {
+export const marahJ91ZuNL8Y2px8iYciYeHN8sfSh5eXH8 = async (notificationId) => {
   return apiFetch(`/providers/notifications/${notificationId}/read`, {
     method: 'PATCH',
   });
 };
-
-// Alias for backward compatibility (single export only)
-export const marahJ91ZuNL8Y2px8iYciYeHN8sfSh5eXH8 = mar9yMnTm4NSzvG9rrwjM2ec8xZgh1cafXH8;
- 
 
 export const markAllProviderNotificationsRead = async () => {
   return apiFetch('/providers/notifications/read-all', {
@@ -480,7 +492,6 @@ export const searchProviders = async (latitude, longitude, radius = 10, serviceC
   return apiFetch(url);
 };
 
-// ✅ NEW: Fetch featured providers for homepage
 export const fetchFeaturedProviders = async (limit = 20) => {
   return apiFetch(`/providers/featured?limit=${limit}`);
 };
@@ -534,9 +545,6 @@ export const fetchAllWithdrawals = async (status = '', page = 1, limit = 20) => 
 export const approveWithdrawal = async (withdrawalId, transactionId, adminNote) => {
   return apiFetch(`/admin/withdrawals/${withdrawalId}/approve`, {
     method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-    },
     body: JSON.stringify({ transactionId, adminNote }),
   });
 };
@@ -544,9 +552,6 @@ export const approveWithdrawal = async (withdrawalId, transactionId, adminNote) 
 export const rejectWithdrawal = async (withdrawalId, adminNote) => {
   return apiFetch(`/admin/withdrawals/${withdrawalId}/reject`, {
     method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-    },
     body: JSON.stringify({ adminNote }),
   });
 };
@@ -608,14 +613,12 @@ export const completeBooking = async (bookingId, otp) => {
   });
 };
 
-// ✅ NEW: Accept booking
 export const acceptBooking = async (bookingId) => {
   return apiFetch(`/bookings/${bookingId}/accept`, {
     method: 'POST',
   });
 };
 
-// ✅ NEW: Fetch chat history
 export const fetchChatHistory = async (bookingId) => {
   return apiFetch(`/chat/${bookingId}`);
 };
@@ -763,7 +766,6 @@ export const sendNotificationToProvider = async (providerId, message) => {
   });
 };
 
-// Reschedule requests
 export const fetchRescheduleRequests = async (page = 1, limit = 20, status = 'pending') => {
   return apiFetch(`/admin/reschedule-requests?page=${page}&limit=${limit}&status=${status}`);
 };

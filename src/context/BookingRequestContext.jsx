@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useEffect, useRef } from 'react';
+// src/context/BookingRequestContext.jsx
+import { createContext, useContext, useState, useEffect } from 'react';
 import { useSocket } from './SocketContext';
 import { useAuth } from './AuthContext';
 import { acceptBooking } from '../services/api';
@@ -11,7 +12,6 @@ export const useBookingRequests = () => {
   return context;
 };
 
-// Sound play function
 let audioCtx = null;
 const playNotybell = async () => {
   try {
@@ -31,7 +31,7 @@ export const BookingRequestProvider = ({ children }) => {
   const { user } = useAuth();
   const { socket } = useSocket();
   const [incomingRequests, setIncomingRequests] = useState([]);
-  const [activePopup, setActivePopup] = useState(null); // currently showing popup booking
+  const [activePopup, setActivePopup] = useState(null);
 
   useEffect(() => {
     if (!socket || user?.role !== 'provider') return;
@@ -39,14 +39,8 @@ export const BookingRequestProvider = ({ children }) => {
     const handleNewRequest = (data) => {
       console.log('🔔 New booking request (global):', data);
       playNotybell();
-      
-      // Add to list
       setIncomingRequests(prev => [...prev, data]);
-      
-      // Show popup immediately
       setActivePopup(data);
-      
-      // Auto-hide popup after 30 seconds if not accepted
       const timer = setTimeout(() => {
         setActivePopup(prev => prev?.bookingId === data.bookingId ? null : prev);
       }, 30000);
@@ -78,9 +72,7 @@ export const BookingRequestProvider = ({ children }) => {
     }
   };
 
-  const dismissPopup = () => {
-    setActivePopup(null);
-  };
+  const dismissPopup = () => setActivePopup(null);
 
   return (
     <BookingRequestContext.Provider value={{

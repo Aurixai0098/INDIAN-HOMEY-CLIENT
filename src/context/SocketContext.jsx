@@ -20,7 +20,6 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     if (!user) {
-      // Cleanup if user logs out
       if (socket) {
         socket.disconnect();
         setSocket(null);
@@ -29,31 +28,36 @@ export const SocketProvider = ({ children }) => {
       return;
     }
 
-    // Get API URL from env or default
-    const apiUrl = import.meta.env.VITE_API_URL || 'https://ghar-seva-server-1.onrender.com';
+    // ✅ Production URL from environment
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || 'https://ghar-seva-server-1.onrender.com';
     
-    const newSocket = io(apiUrl, {
+    // ✅ iOS/mobile-friendly configuration
+    const newSocket = io(socketUrl, {
       withCredentials: true,
       transports: ['websocket', 'polling'],
       reconnection: true,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: 10,
       reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
+      autoConnect: true,
+      forceNew: true,
+      path: '/socket.io/'
     });
 
     newSocket.on('connect', () => {
       console.log('✅ Socket connected');
       setIsConnected(true);
-      // Register user with socket server
       newSocket.emit('register', { userId: user._id, role: user.role });
     });
 
-    newSocket.on('disconnect', () => {
-      console.log('❌ Socket disconnected');
+    newSocket.on('disconnect', (reason) => {
+      console.log('❌ Socket disconnected:', reason);
       setIsConnected(false);
     });
 
     newSocket.on('connect_error', (err) => {
-      console.error('Socket connection error:', err);
+      console.error('Socket connection error:', err.message);
       setIsConnected(false);
     });
 

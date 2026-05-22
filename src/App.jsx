@@ -39,7 +39,7 @@ import AdminEarningRating from "./pages/admin/AdminEarningRating";
 import AdminProviderStatus from "./pages/admin/AdminProviderStatus";
 import AdminCommission from "./pages/admin/AdminCommission";
 
-// Additional admin pages (for sidebar links)
+// Additional admin pages
 import AdminUserWallet from "./pages/admin/AdminUserWallet";
 import AdminComplaints from "./pages/admin/AdminComplaints";
 import AdminEmailCampaigns from "./pages/admin/AdminEmailCampaigns";
@@ -95,7 +95,6 @@ const AppContent = () => {
 
         {/* Admin Routes */}
         <Route path="/admin" element={<PrivateRoute><AdminLayout /></PrivateRoute>}>
-          {/* Core existing routes */}
           <Route index element={<AdminDashboard />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="provider-earnings" element={<AdminEarningRating />} />
@@ -185,10 +184,10 @@ const AppContent = () => {
   );
 };
 
+// ✅ Main App with CartProvider and BookingRequestProvider
 export default function App() {
   return (
     <CartProvider>
-      {/* ✅ BookingRequestProvider added – must be inside SocketProvider and AuthProvider (defined in main.jsx) */}
       <BookingRequestProvider>
         <AppContent />
       </BookingRequestProvider>
