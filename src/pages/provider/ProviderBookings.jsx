@@ -266,13 +266,17 @@ const ProviderBookings = () => {
     }
   };
 
+  // ✅ FIXED updateLiveLocation – uses absolute URL
   const updateLiveLocation = () => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
         try {
-          const res = await fetch('/api/v1/providers/location', {
+          const BASE_API_URL = import.meta.env.PROD 
+            ? (import.meta.env.VITE_API_URL || 'https://ghar-seva-server-1.onrender.com/api/v1')
+            : 'http://localhost:5000/api/v1';
+          const res = await fetch(`${BASE_API_URL}/providers/location`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',

@@ -14,11 +14,13 @@ const ChatBox = ({ bookingId, providerName, customerName, onClose }) => {
   const isProvider = user?.role === 'provider';
   const partnerName = isProvider ? customerName : providerName;
 
-  // Load chat history (optional – if fails, chat still works)
   useEffect(() => {
     const loadHistory = async () => {
       try {
-        const res = await fetch(`/api/v1/chat/${bookingId}`, { credentials: 'include' });
+        const BASE_API_URL = import.meta.env.PROD 
+          ? (import.meta.env.VITE_API_URL || 'https://ghar-seva-server-1.onrender.com/api/v1')
+          : 'http://localhost:5000/api/v1';
+        const res = await fetch(`${BASE_API_URL}/chat/${bookingId}`, { credentials: 'include' });
         if (res.ok) {
           const data = await res.json();
           if (data.success) setMessages(data.data.messages || []);
@@ -32,30 +34,24 @@ const ChatBox = ({ bookingId, providerName, customerName, onClose }) => {
     loadHistory();
   }, [bookingId]);
 
-  // Socket listeners for real-time messages
   useEffect(() => {
     if (!socket) return;
-
     const handleNewMessage = (data) => {
       if (data.bookingId === bookingId) {
         setMessages(prev => {
-          // Avoid duplicates
           if (data._id && prev.some(m => m._id === data._id)) return prev;
           return [...prev, data];
         });
       }
     };
-
     socket.on('new-message', handleNewMessage);
     socket.on('message-sent', handleNewMessage);
-
     return () => {
       socket.off('new-message', handleNewMessage);
       socket.off('message-sent', handleNewMessage);
     };
   }, [socket, bookingId]);
 
-  // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -66,7 +62,6 @@ const ChatBox = ({ bookingId, providerName, customerName, onClose }) => {
       alert('Connection issue. Please refresh.');
       return;
     }
-
     const messageData = {
       bookingId,
       message: newMessage.trim(),
@@ -74,8 +69,6 @@ const ChatBox = ({ bookingId, providerName, customerName, onClose }) => {
       senderRole: user.role,
       type: 'text',
     };
-
-    // Optimistic update
     const tempId = 'temp_' + Date.now();
     setMessages(prev => [...prev, {
       _tempId: tempId,
@@ -83,7 +76,6 @@ const ChatBox = ({ bookingId, providerName, customerName, onClose }) => {
       senderRole: user.role,
       createdAt: new Date().toISOString()
     }]);
-
     socket.emit('send-message', messageData);
     setNewMessage('');
   };
@@ -91,15 +83,10 @@ const ChatBox = ({ bookingId, providerName, customerName, onClose }) => {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[1100] p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[500px]">
-        {/* Header */}
         <div className="flex justify-between items-center p-4 border-b">
           <h3 className="font-bold text-gray-800">Chat with {partnerName || 'Customer'}</h3>
-          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded">
-            <X size={20} />
-          </button>
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded"><X size={20} /></button>
         </div>
-
-        {/* Messages Area */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
           {loading ? (
             <div className="text-center text-gray-400 py-8">Loading...</div>
@@ -123,24 +110,9 @@ const ChatBox = ({ bookingId, providerName, customerName, onClose }) => {
           )}
           <div ref={messagesEndRef} />
         </div>
-
-        {/* Input */}
         <div className="p-3 border-t bg-white flex gap-2">
-          <input
-            type="text"
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-            placeholder="Type a message..."
-            className="flex-1 px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
-          />
-          <button
-            onClick={sendMessage}
-            disabled={!newMessage.trim()}
-            className="p-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50"
-          >
-            <Send size={18} />
-          </button>
+          <input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && sendMessage()} placeholder="Type a message..." className="flex-1 px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
+          <button onClick={sendMessage} disabled={!newMessage.trim()} className="p-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50"><Send size={18} /></button>
         </div>
       </div>
     </div>

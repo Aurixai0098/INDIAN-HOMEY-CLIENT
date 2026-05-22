@@ -28,10 +28,8 @@ export const SocketProvider = ({ children }) => {
       return;
     }
 
-    // ✅ Production URL from environment
     const socketUrl = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || 'https://ghar-seva-server-1.onrender.com';
     
-    // ✅ iOS/mobile-friendly configuration
     const newSocket = io(socketUrl, {
       withCredentials: true,
       transports: ['websocket', 'polling'],
