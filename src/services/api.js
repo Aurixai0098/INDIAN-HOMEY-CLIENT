@@ -1,13 +1,23 @@
 // src/services/api.js
 
-// ✅ Dynamic BASE_URL – works on localhost, network, and production (Render)
+// ✅ Smart BASE_URL – always ensures /api/v1 in production
 const getBaseUrl = () => {
-    // For production (Vercel), use the Render backend URL
     if (import.meta.env.PROD) {
-        return import.meta.env.VITE_API_URL || 'https://ghar-seva-server-1.onrender.com/api/v1';
+        // Priority: VITE_API_URL > fallback
+        let customUrl = import.meta.env.VITE_API_URL;
+        if (!customUrl) {
+            customUrl = 'https://ghar-seva-server-1.onrender.com';
+        }
+        // Remove trailing slash and then add /api/v1
+        customUrl = customUrl.replace(/\/$/, '');
+        // If customUrl already ends with /api/v1, use as is; otherwise append
+        if (customUrl.endsWith('/api/v1')) {
+            return customUrl;
+        }
+        return `${customUrl}/api/v1`;
     }
     
-    // For development
+    // Development (localhost or network)
     const hostname = window.location.hostname;
     if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
         return `http://${hostname}:5000/api/v1`;
@@ -17,29 +27,24 @@ const getBaseUrl = () => {
 
 const BASE_URL = getBaseUrl();
 
-console.log('🔧 API BASE_URL:', BASE_URL);
+console.log('🔧 API BASE_URL (prod?', import.meta.env.PROD, '):', BASE_URL);
 
 // Cache for categories
-let categoriesCache = {
-  data: null,
-  timestamp: null,
-  promise: null,
-};
+let categoriesCache = { data: null, timestamp: null, promise: null };
 
 // Generic fetch function with credentials
 const apiFetch = async (endpoint, options = {}) => {
   let response;
   try {
-    const headers = {
-      ...options.headers,
-    };
-    
+    const headers = { ...options.headers };
     if (!(options.body instanceof FormData)) {
       headers['Content-Type'] = 'application/json';
     }
-    
-    response = await fetch(`${BASE_URL}${endpoint}`, {
-      credentials: 'include',  // ✅ Important for cookies (iOS)
+    const url = `${BASE_URL}${endpoint}`;
+    // Optional: log only in development
+    if (import.meta.env.DEV) console.log('📡 Fetching:', url);
+    response = await fetch(url, {
+      credentials: 'include',
       headers,
       ...options,
     });
@@ -219,7 +224,7 @@ export const setDefaultAddress = async (addressId) => {
   });
 };
 
-// ========== Admin APIs (keep existing – not changed) ==========
+// ========== Admin APIs ==========
 export const fetchAdminDashboard = async () => {
   return apiFetch('/admin/dashboard');
 };
