@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom'; // ✅ useSearchParams इंपोर्ट किया
 import { 
   fetchNotifications, 
   markNotificationRead, 
@@ -10,7 +10,6 @@ import {
 } from '../services/api';
 import { Bell, CheckCheck, Clock, Loader2, MessageCircle, CalendarCheck, AlertCircle } from 'lucide-react';
 
-// Play a short "ding" sound
 const playNotificationSound = () => {
   try {
     const audio = new Audio('https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3');
@@ -25,6 +24,9 @@ const NotificationBell = () => {
   const { user } = useAuth();
   const { socket } = useSocket();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams(); // ✅ URL से openChat लें
+  const openChatId = searchParams.get('openChat');
+
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -33,7 +35,6 @@ const NotificationBell = () => {
   const dropdownRef = useRef(null);
   const bellButtonRef = useRef(null);
 
-  // Load initial notifications
   const loadNotifications = useCallback(async () => {
     if (!user) return;
     setIsLoading(true);
@@ -50,7 +51,6 @@ const NotificationBell = () => {
     }
   }, [user]);
 
-  // Polling fallback (every 60s)
   useEffect(() => {
     if (!user) return;
     loadNotifications();
@@ -58,11 +58,13 @@ const NotificationBell = () => {
     return () => clearInterval(interval);
   }, [user, loadNotifications]);
 
-  // Real‑time socket listeners
   useEffect(() => {
     if (!socket || !user) return;
 
     const handleNewMessage = (data) => {
+      // ✅ अगर यह मैसेज उसी बुकिंग का है जिसकी चैट अभी खुली है, तो नोटिफिकेशन मत दिखाओ
+      if (openChatId && data.bookingId === openChatId) return;
+
       if (data.senderRole === 'provider') {
         playNotificationSound();
         const newNotif = {
@@ -101,7 +103,7 @@ const NotificationBell = () => {
       socket.off('new-message', handleNewMessage);
       socket.off('booking-accepted', handleBookingAccepted);
     };
-  }, [socket, user]);
+  }, [socket, user, openChatId]); // openChatId डिपेंडेंसी में डालें
 
   const handleMarkRead = async (id, e) => {
     e?.stopPropagation();

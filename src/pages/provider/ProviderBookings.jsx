@@ -1,46 +1,92 @@
-// src/pages/provider/ProviderBookings.jsx
 import { useState, useEffect, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { 
   Calendar, Clock, User, Package, IndianRupee, 
   CheckCircle, AlertCircle, Eye, RefreshCw, Shield, 
   AlertTriangle, Loader2, X, KeyRound, CreditCard,
-  ChevronRight, Phone, MessageCircle, MapPin, Bell
+  ChevronRight, Phone, MessageCircle, MapPin, Bell,
+  Settings, Save, Crosshair, Search
 } from 'lucide-react';
 import { 
   fetchMyBookings, confirmBooking, startBooking, 
   completeBooking, generateBookingOTP, fetchProviderVerificationStatus,
-  fetchProviderProfile, acceptBooking
+  fetchProviderProfile, updateServiceArea
 } from '../../services/api';
 import { useSocket } from '../../context/SocketContext';
+import { useAuth } from '../../context/AuthContext';
+import { useBookingRequests } from '../../context/BookingRequestContext';
 import ChatBox from '../../components/booking/ChatBox';
+import LocationMapModal from '../../components/booking/LocationMapModal';
 
-// ✅ ऑडियो सेटअप – पहली क्लिक पर अनलॉक होगा
+// Expiration Timer Component
+const ExpirationTimer = ({ expiry, onExpire }) => {
+  const [timeLeft, setTimeLeft] = useState('');
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const remaining = Math.max(0, Math.floor((expiry - Date.now()) / 1000));
+      if (remaining <= 0) {
+        clearInterval(interval);
+        onExpire();
+        setTimeLeft('Expired');
+      } else {
+        setTimeLeft(`${remaining}s`);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [expiry, onExpire]);
+  return <span className="text-xs text-amber-600 font-mono ml-2">Expires in {timeLeft}</span>;
+};
+
+// Audio setup (for sound – already in context, but keep for local if needed)
 let audioCtx = null;
-
 const playNotybell = async () => {
   try {
-    if (!audioCtx) {
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    if (audioCtx.state === 'suspended') {
-      await audioCtx.resume();
-    }
-    const response = await fetch('/notybell.mp3'); // अपनी फ़ाइल का सही नाम + एक्सटेंशन
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') await audioCtx.resume();
+    const response = await fetch('/notybell.mp3');
     const arrayBuffer = await response.arrayBuffer();
     const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
     const source = audioCtx.createBufferSource();
     source.buffer = audioBuffer;
     source.connect(audioCtx.destination);
     source.start(0);
-  } catch (err) {
-    console.warn('Sound play failed:', err);
-  }
+  } catch (err) { console.warn('Sound play failed:', err); }
 };
 
+// Helper: Geocode city
+const geocodeCity = async (cityName) => {
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cityName)}&limit=1`;
+  try {
+    const res = await fetch(url, { headers: { 'User-Agent': 'GharSevaApp/1.0' } });
+    const data = await res.json();
+    if (data && data.length) {
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    }
+  } catch (err) { console.error('Geocoding error:', err); }
+  return null;
+};
+
+// Service Area Modal (simplified – keep your existing)
+const ServiceAreaModal = ({ isOpen, onClose, currentArea, onUpdate }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl max-w-md w-full p-6">
+        <h3 className="text-xl font-bold mb-4">Set Service Area</h3>
+        <p className="text-sm text-gray-500">Implement your service area form here</p>
+        <button onClick={onClose} className="mt-4 px-4 py-2 bg-gray-200 rounded">Close</button>
+      </div>
+    </div>
+  );
+};
+
+// ======================== MAIN ProviderBookings Component ========================
 const ProviderBookings = () => {
+  const { user } = useAuth();
   const { socket } = useSocket();
+  const { incomingRequests, acceptRequest } = useBookingRequests(); // ✅ global state
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('active');
@@ -49,37 +95,105 @@ const ProviderBookings = () => {
   const [completing, setCompleting] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState(null);
   const pollingRef = useRef(null);
-  const [incomingRequests, setIncomingRequests] = useState([]);
   const [providerData, setProviderData] = useState(null);
   const [chatBooking, setChatBooking] = useState(null);
+  const [locationWarning, setLocationWarning] = useState({ show: false, message: '' });
+  const [showLocationMap, setShowLocationMap] = useState(false);
+  const [showServiceAreaModal, setShowServiceAreaModal] = useState(false);
+  const [socketStatus, setSocketStatus] = useState('checking');
+  const [testMessage, setTestMessage] = useState('');
+  const locationInterval = useRef(null);
 
-  // ✅ पहली क्लिक पर ऑडियो अनलॉक करें
+  // Manual open chat
+  const openChatForBooking = (booking) => {
+    setChatBooking(booking);
+  };
+
+  const closeChat = () => {
+    setChatBooking(null);
+  };
+
+  // Socket status
+  useEffect(() => {
+    if (!socket) {
+      setSocketStatus('disconnected');
+      return;
+    }
+    setSocketStatus(socket.connected ? 'connected' : 'disconnected');
+    const onConnect = () => setSocketStatus('connected');
+    const onDisconnect = () => setSocketStatus('disconnected');
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+    return () => {
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
+    };
+  }, [socket]);
+
+  const reregisterSocket = () => {
+    if (socket && user) {
+      socket.emit('register', { userId: user._id, role: 'provider' });
+      setTestMessage('Re-registered! Waiting for booking...');
+      setTimeout(() => setTestMessage(''), 3000);
+    }
+  };
+
+  const updateLiveLocation = () => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        try {
+          const res = await fetch('/api/v1/providers/location', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ lat: latitude, lng: longitude })
+          });
+          const data = await res.json();
+          if (data.data?.withinServiceArea === false) {
+            setLocationWarning({ show: true, message: '⚠️ You are outside your service area. Bookings may not reach you.' });
+          } else {
+            setLocationWarning({ show: false, message: '' });
+          }
+        } catch (err) { console.error('Location update failed:', err); }
+      },
+      (err) => {
+        console.error('Geolocation error:', err);
+        setLocationWarning({ show: true, message: 'Unable to get your location. Please enable GPS and refresh.' });
+      },
+      { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
+    );
+  };
+
+  const handleUpdateServiceArea = async (newArea) => {
+    const res = await updateServiceArea(newArea);
+    if (res.success) {
+      await loadProviderData();
+      updateLiveLocation();
+    } else {
+      throw new Error(res.message || 'Update failed');
+    }
+  };
+
+  useEffect(() => {
+    updateLiveLocation();
+    locationInterval.current = setInterval(updateLiveLocation, 30000);
+    return () => {
+      if (locationInterval.current) clearInterval(locationInterval.current);
+    };
+  }, []);
+
   useEffect(() => {
     const unlockAudio = async () => {
       try {
-        if (!audioCtx) {
-          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        if (audioCtx.state === 'suspended') {
-          await audioCtx.resume();
-        }
-        console.log('🔊 Audio unlocked');
-      } catch (err) {
-        console.warn('Audio unlock failed:', err);
-      }
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') await audioCtx.resume();
+      } catch (err) {}
     };
     document.addEventListener('click', unlockAudio, { once: true });
     return () => document.removeEventListener('click', unlockAudio);
   }, []);
-
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const openChatId = params.get('openChat');
-    if (openChatId && bookings.length > 0) {
-      const booking = bookings.find(b => b._id === openChatId);
-      if (booking) setChatBooking(booking);
-    }
-  }, [location.search, bookings]);
 
   useEffect(() => {
     checkVerification();
@@ -93,9 +207,7 @@ const ProviderBookings = () => {
     try {
       const res = await fetchProviderProfile();
       if (res.success) setProviderData(res.data.provider);
-    } catch (err) {
-      console.error('Failed to load provider data', err);
-    }
+    } catch (err) { console.error('Failed to load provider data', err); }
   };
 
   const checkVerification = async () => {
@@ -110,16 +222,11 @@ const ProviderBookings = () => {
           setLoading(false);
         }
       }
-    } catch (err) {
-      console.error(err);
-      setLoading(false);
-    }
+    } catch (err) { console.error(err); setLoading(false); }
   };
 
   const startPolling = () => {
-    pollingRef.current = setInterval(() => {
-      loadBookings(false);
-    }, 10000);
+    pollingRef.current = setInterval(() => { loadBookings(false); }, 10000);
   };
 
   const loadBookings = async (showLoading = true) => {
@@ -127,56 +234,21 @@ const ProviderBookings = () => {
     try {
       const res = await fetchMyBookings(1, 50, '');
       if (res.success) setBookings(res.data.bookings || []);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      if (showLoading) setLoading(false);
-    }
+    } catch (err) { console.error(err); }
+    finally { if (showLoading) setLoading(false); }
   };
 
   useEffect(() => {
-    if (verificationStatus?.verificationStatus === 'verified') {
-      loadBookings(true);
-    }
+    if (verificationStatus?.verificationStatus === 'verified') loadBookings(true);
   }, []);
-
-  useEffect(() => {
-    if (!socket) return;
-    socket.on('new-booking-request', (data) => {
-      setIncomingRequests(prev => [...prev, data]);
-      playNotybell();  // 🔊 नई बुकिंग आने पर साउंड
-    });
-    socket.on('booking-taken', (data) => {
-      setIncomingRequests(prev => prev.filter(req => req.bookingId !== data.bookingId));
-    });
-    return () => {
-      socket.off('new-booking-request');
-      socket.off('booking-taken');
-    };
-  }, [socket]);
-
-  // ✅ बग ठीक – सिर्फ API कॉल, डुप्लीकेट socket emit नहीं
-  const handleAccept = async (bookingId) => {
-    setIncomingRequests(prev => prev.filter(r => r.bookingId !== bookingId));
-    try {
-      await acceptBooking(bookingId);
-      loadBookings(true);
-    } catch (err) {
-      console.error('Accept error:', err);
-      loadBookings(true);
-    }
-  };
 
   const handleConfirm = async (bookingId) => {
     setActionLoading(bookingId);
     try {
       await confirmBooking(bookingId);
       loadBookings(false);
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      setActionLoading(null);
-    }
+    } catch (err) { alert(err.message); }
+    finally { setActionLoading(null); }
   };
 
   const handleStart = async (bookingId) => {
@@ -184,44 +256,28 @@ const ProviderBookings = () => {
     try {
       await startBooking(bookingId);
       loadBookings(false);
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      setActionLoading(null);
-    }
+    } catch (err) { alert(err.message); }
+    finally { setActionLoading(null); }
   };
 
   const handleGenerateOTP = async (bookingId) => {
     setOtpModal({ show: true, bookingId, otp: '', generating: true });
     try {
       const res = await generateBookingOTP(bookingId);
-      if (res.success) {
-        setOtpModal({ show: true, bookingId, otp: res.otp, generating: false });
-      } else {
-        alert(res.message || 'Failed to generate OTP');
-        setOtpModal({ show: false, bookingId: null, otp: '', generating: false });
-      }
-    } catch (err) {
-      alert(err.message);
-      setOtpModal({ show: false, bookingId: null, otp: '', generating: false });
-    }
+      if (res.success) setOtpModal({ show: true, bookingId, otp: res.otp, generating: false });
+      else { alert(res.message || 'Failed to generate OTP'); setOtpModal({ show: false, bookingId: null, otp: '', generating: false }); }
+    } catch (err) { alert(err.message); setOtpModal({ show: false, bookingId: null, otp: '', generating: false }); }
   };
 
   const handleComplete = async (bookingId, otp) => {
-    if (!otp) {
-      alert('Please enter the OTP');
-      return;
-    }
+    if (!otp) { alert('Please enter the OTP'); return; }
     setCompleting(true);
     try {
       await completeBooking(bookingId, otp);
       setOtpModal({ show: false, bookingId: null, otp: '', generating: false });
       loadBookings(false);
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      setCompleting(false);
-    }
+    } catch (err) { alert(err.message); }
+    finally { setCompleting(false); }
   };
 
   const getStatusConfig = (status) => {
@@ -295,16 +351,60 @@ const ProviderBookings = () => {
     <div className="max-w-6xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Manage Bookings</h1>
-        <button onClick={() => loadBookings(true)} className="p-2 bg-white border rounded-xl"><RefreshCw className="w-4 h-4" /></button>
+        <div className="flex gap-2">
+          <div className={`px-3 py-1 rounded-full text-xs flex items-center gap-1 ${socketStatus === 'connected' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+            <div className={`w-2 h-2 rounded-full ${socketStatus === 'connected' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+            Socket: {socketStatus}
+          </div>
+          <button onClick={reregisterSocket} className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600">Re‑register Socket</button>
+          <button onClick={() => setShowServiceAreaModal(true)} className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 transition flex items-center gap-2">
+            <Settings className="w-4 h-4" /> Set Service Area
+          </button>
+          <button onClick={() => loadBookings(true)} className="p-2 bg-white border rounded-xl"><RefreshCw className="w-4 h-4" /></button>
+        </div>
+      </div>
+      {testMessage && <div className="mb-2 text-sm text-blue-600">{testMessage}</div>}
+
+      {locationWarning.show && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl flex items-center gap-2">
+          <AlertCircle className="w-5 h-5" />
+          {locationWarning.message}
+        </div>
+      )}
+
+      <div className="mb-4 p-3 bg-blue-50 rounded-xl text-sm">
+        <div className="flex justify-between items-center">
+          <p className="font-semibold">📌 How booking matching works:</p>
+          <div className="flex gap-2">
+            <button onClick={() => setShowLocationMap(true)} className="text-xs bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700 transition">
+              <MapPin className="w-3 h-3 inline mr-1" /> View on Map
+            </button>
+          </div>
+        </div>
+        <ul className="list-disc list-inside text-xs text-gray-600 mt-2">
+          <li>Your live location (GPS) is used – updated every 30 sec</li>
+          <li>You must be within {providerData?.serviceArea?.radius || 10} km of customer's address</li>
+          <li>Your status must be Verified & Available</li>
+          <li>Your working hours must match booking time</li>
+          {locationWarning.show && <li className="text-red-600">⚠️ You are currently outside your service area – bookings won't reach you.</li>}
+        </ul>
       </div>
 
+      {/* Incoming Requests Section – uses global state */}
       {incomingRequests.length > 0 && (
         <div className="mb-6 space-y-3">
           <div className="flex items-center gap-2 text-amber-600 font-semibold"><Bell className="w-5 h-5" /> New Booking Requests ({incomingRequests.length})</div>
           {incomingRequests.map(req => (
-            <div key={req.bookingId} className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex justify-between items-center">
-              <div><p className="font-semibold">{req.customerName} wants <span className="text-emerald-600">{req.serviceName}</span></p><p className="text-sm">Amount: ₹{req.amount} | Date: {new Date(req.scheduledDate).toLocaleDateString()}</p><p className="text-xs truncate">{req.address?.street}, {req.address?.city}</p></div>
-              <button onClick={() => handleAccept(req.bookingId)} className="px-5 py-2 bg-emerald-600 text-white rounded-lg">Accept Booking</button>
+            <div key={req.bookingId} className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex justify-between items-center flex-wrap gap-3">
+              <div>
+                <p className="font-semibold">{req.customerName} wants <span className="text-emerald-600">{req.serviceName}</span></p>
+                <p className="text-sm">Amount: ₹{req.amount} | Date: {new Date(req.scheduledDate).toLocaleDateString()}</p>
+                <p className="text-xs truncate">{req.address?.street}, {req.address?.city}</p>
+                {req.expiresAt && <ExpirationTimer expiry={req.expiresAt} onExpire={() => {
+                  // Optional: you could call a method to remove expired, but global context will auto-remove on booking-taken
+                }} />}
+              </div>
+              <button onClick={() => acceptRequest(req.bookingId)} className="px-5 py-2 bg-emerald-600 text-white rounded-lg">Accept Booking</button>
             </div>
           ))}
         </div>
@@ -350,7 +450,7 @@ const ProviderBookings = () => {
                   <div className="flex gap-2">
                     <Link to={`/provider/bookings/${booking._id}`} className="text-sm text-gray-500 hover:text-emerald-600"><Eye className="w-4 h-4 inline mr-1" /> View Details</Link>
                     {booking.customer?.phone && <a href={`https://wa.me/${booking.customer.phone.replace(/\D/g, '')}`} target="_blank" className="text-sm text-gray-500 hover:text-emerald-600"><MessageCircle className="w-4 h-4 inline mr-1" /> WhatsApp</a>}
-                    {isActive && <button onClick={() => setChatBooking(booking)} className="text-sm text-purple-600"><MessageCircle className="w-4 h-4 inline mr-1" /> Chat</button>}
+                    {isActive && <button onClick={() => openChatForBooking(booking)} className="text-sm text-purple-600"><MessageCircle className="w-4 h-4 inline mr-1" /> Chat</button>}
                   </div>
                   <div>{getActions(booking)}</div>
                 </div>
@@ -382,7 +482,25 @@ const ProviderBookings = () => {
           bookingId={chatBooking._id}
           providerName={providerData?.businessName || 'Provider'}
           customerName={chatBooking.customer?.fullName || 'Customer'}
-          onClose={() => setChatBooking(null)}
+          onClose={closeChat}
+        />
+      )}
+
+      {showLocationMap && (
+        <LocationMapModal
+          currentLocation={providerData?.currentLocation}
+          serviceAreaCenter={providerData?.serviceArea?.coordinates}
+          radiusKm={providerData?.serviceArea?.radius || 10}
+          onClose={() => setShowLocationMap(false)}
+        />
+      )}
+
+      {showServiceAreaModal && (
+        <ServiceAreaModal
+          isOpen={showServiceAreaModal}
+          onClose={() => setShowServiceAreaModal(false)}
+          currentArea={providerData?.serviceArea}
+          onUpdate={handleUpdateServiceArea}
         />
       )}
     </div>

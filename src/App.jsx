@@ -53,6 +53,9 @@ import AdminRescheduleRequests from "./pages/admin/AdminRescheduleRequests";
 import AdminCouponsOffers from "./pages/admin/AdminCouponsOffers";
 import ProviderBookingDetail from "./pages/provider/ProviderBookingDetail";
 
+// ✅ Import BookingRequestProvider for global popup & sound
+import { BookingRequestProvider } from "./context/BookingRequestContext";
+
 // Main App Content Component
 const AppContent = () => {
   const location = useLocation();
@@ -108,7 +111,6 @@ const AppContent = () => {
           {/* User Management sub-pages */}
           <Route path="user-wallet" element={<AdminUserWallet />} />
           <Route path="complaints" element={<AdminComplaints />} />
-          {/* Reuse existing pages for detail/bookings */}
           <Route path="user-details" element={<AdminUsers />} />
           <Route path="user-bookings" element={<AdminBookings />} />
 
@@ -124,7 +126,6 @@ const AppContent = () => {
           <Route path="total-revenue" element={<AdminRevenue />} />
           <Route path="wallet-system" element={<AdminUserWallet />} />
           <Route path="coupons-offers" element={<AdminCouponsOffers />} />
-          {/* Placeholders for missing advanced pages */}
           <Route path="provider-payouts" element={<div className="p-8 text-center">Provider Payouts Coming Soon</div>} />
           <Route path="pending-settlements" element={<div className="p-8 text-center">Pending Settlements Coming Soon</div>} />
 
@@ -187,7 +188,10 @@ const AppContent = () => {
 export default function App() {
   return (
     <CartProvider>
-      <AppContent />
+      {/* ✅ BookingRequestProvider added – must be inside SocketProvider and AuthProvider (defined in main.jsx) */}
+      <BookingRequestProvider>
+        <AppContent />
+      </BookingRequestProvider>
     </CartProvider>
   );
 }

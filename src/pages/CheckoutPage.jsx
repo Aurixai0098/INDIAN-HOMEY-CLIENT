@@ -1,32 +1,26 @@
-// src/pages/CheckoutPage.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import { fetchAddresses, addAddress, createBooking } from '../services/api';
-import MatchingProgress from '../components/booking/MatchingProgress';
+import NearbyProvidersModal from '../components/booking/NearbyProvidersModal';
+import { MapPin } from 'lucide-react';
 
-// ✅ वही ऑडियो सेटअप (पब्लिक फोल्डर से notybell.mp3)
-let audioCtx = null;
-const playNotybell = async () => {
+// Helper to geocode address (same as backend)
+const geocodeAddress = async (address) => {
+  const query = `${address.street}, ${address.city}, ${address.state}, ${address.pincode}`;
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
   try {
-    if (!audioCtx) {
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const res = await fetch(url, { headers: { 'User-Agent': 'GharSevaApp/1.0' } });
+    const data = await res.json();
+    if (data && data.length) {
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
     }
-    if (audioCtx.state === 'suspended') {
-      await audioCtx.resume();
-    }
-    const response = await fetch('/notybell.mp3');
-    const arrayBuffer = await response.arrayBuffer();
-    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-    const source = audioCtx.createBufferSource();
-    source.buffer = audioBuffer;
-    source.connect(audioCtx.destination);
-    source.start(0);
   } catch (err) {
-    console.warn('Sound failed:', err);
+    console.error('Geocoding error:', err);
   }
+  return null;
 };
 
 const formatPrice = (price) => `₹${Number(price).toFixed(2)}`;
@@ -44,38 +38,15 @@ const CheckoutPage = () => {
   const [newAddress, setNewAddress] = useState({
     label: 'Home', street: '', city: '', state: '', pincode: '', landmark: '', isDefault: false,
   });
-
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTimeStart, setScheduledTimeStart] = useState('10:00');
   const [scheduledTimeEnd, setScheduledTimeEnd] = useState('12:00');
   const [notes, setNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('online');
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  const [showMatching, setShowMatching] = useState(false);
-  const [matchingStep, setMatchingStep] = useState(0);
-  const [matchingError, setMatchingError] = useState(null);
-  const [currentBookingId, setCurrentBookingId] = useState(null);
-  const [matchedProvider, setMatchedProvider] = useState(null);
-  const [accepted, setAccepted] = useState(false);
-
-  // ✅ पहली क्लिक पर ऑडियो अनलॉक करें
-  useEffect(() => {
-    const unlock = async () => {
-      try {
-        if (!audioCtx) {
-          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        if (audioCtx.state === 'suspended') {
-          await audioCtx.resume();
-        }
-      } catch (err) {}
-    };
-    document.addEventListener('click', unlock, { once: true });
-    return () => document.removeEventListener('click', unlock);
-  }, []);
+  const [showNearbyModal, setShowNearbyModal] = useState(false);
+  const [customerCoords, setCustomerCoords] = useState(null);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -85,6 +56,15 @@ const CheckoutPage = () => {
     if (cartItems.length === 0) navigate('/cart');
     loadAddresses();
   }, []);
+
+  // Geocode selected address to show nearby providers
+  useEffect(() => {
+    if (selectedAddress) {
+      geocodeAddress(selectedAddress).then(coords => {
+        if (coords) setCustomerCoords(coords);
+      });
+    }
+  }, [selectedAddress]);
 
   const loadAddresses = async () => {
     try {
@@ -120,7 +100,6 @@ const CheckoutPage = () => {
 
     setLoading(true);
     setError('');
-    setAccepted(false);
 
     const firstCartItem = cartItems[0];
     if (!firstCartItem.categoryId) {
@@ -154,44 +133,14 @@ const CheckoutPage = () => {
     try {
       const res = await createBooking(bookingData);
       if (res.success) {
-        const bookingId = res.data.booking._id;
-        setCurrentBookingId(bookingId);
-        
-        let timeoutId = null;
-
-        if (socket) {
-          socket.on('booking-accepted', (data) => {
-            if (data.bookingId === bookingId && !accepted) {
-              setAccepted(true);
-              if (timeoutId) clearTimeout(timeoutId);
-              setMatchedProvider(data.provider);
-              setMatchingStep(4);
-              setShowMatching(false);
-              playNotybell();  // 🔊 साउंड
-              setTimeout(() => {
-                clearCart();
-                navigate('/my-bookings', { state: { bookingCreated: true, message: 'Booking confirmed! Provider will contact you soon.' } });
-              }, 500);
-            }
-          });
-        }
-
-        // 3 सेकंड बाद मैचिंग मोडल दिखाएं अगर accept न हुआ हो
-        timeoutId = setTimeout(() => {
-          if (!accepted) {
-            setShowMatching(true);
-            setMatchingStep(1);
-            setTimeout(() => setMatchingStep(2), 2000);
-            setTimeout(() => setMatchingStep(3), 4000);
-          }
-        }, 3000);
-
-        // 30 सेकंड टाइमआउट
-        setTimeout(() => {
-          if (!accepted && showMatching) {
-            setMatchingError('No provider accepted your request. Please try again.');
-          }
-        }, 30000);
+        // Clear cart and redirect to My Bookings immediately
+        clearCart();
+        navigate('/my-bookings', { 
+          state: { 
+            bookingCreated: true, 
+            message: '✅ Booking created! You will be notified when a provider accepts.' 
+          } 
+        });
       } else {
         setError(res.message || 'Booking failed');
       }
@@ -214,11 +163,13 @@ const CheckoutPage = () => {
     );
   }
 
+  const firstCartItem = cartItems[0];
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-12">
       <h1 className="text-2xl font-bold mb-8">Checkout</h1>
       <div className="grid md:grid-cols-2 gap-8">
-        {/* LEFT COLUMN – order summary, payment method, address, schedule */}
+        {/* LEFT COLUMN */}
         <div className="space-y-6">
           {/* Order Summary */}
           <div className="bg-white rounded-xl shadow-sm border p-6">
@@ -334,30 +285,34 @@ const CheckoutPage = () => {
               </div>
             </div>
             <button
+              onClick={() => setShowNearbyModal(true)}
+              className="w-full mt-3 bg-blue-100 text-blue-700 py-2 rounded-xl text-sm font-medium hover:bg-blue-200 transition flex items-center justify-center gap-2"
+            >
+              <MapPin className="w-4 h-4" /> View Nearby Providers
+            </button>
+            <button
               onClick={handlePlaceOrder}
               disabled={loading || !selectedAddress}
-              className="w-full mt-6 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition"
+              className="w-full mt-3 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
-              {loading ? 'Placing Order...' : 'Place Order (Auto-match Provider)'}
+              {loading ? 'Placing Order...' : 'Place Order'}
             </button>
             <p className="text-xs text-gray-400 text-center mt-3">
-              After placing order, we will find the best provider near you.
+              After placing order, you will be notified when a provider accepts.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Matching Modal */}
-      {showMatching && (
-        <div className="fixed inset-0 bg-black/50 z-[1100] flex items-center justify-center p-4">
-          <MatchingProgress
-            currentStep={matchingStep}
-            error={matchingError}
-            onCancel={() => {
-              setShowMatching(false);
-            }}
-          />
-        </div>
+      {/* Nearby Providers Modal */}
+      {showNearbyModal && (
+        <NearbyProvidersModal
+          isOpen={showNearbyModal}
+          onClose={() => setShowNearbyModal(false)}
+          lat={customerCoords?.lat}
+          lng={customerCoords?.lng}
+          serviceCategory={firstCartItem?.categoryId}
+        />
       )}
     </div>
   );

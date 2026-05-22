@@ -1,6 +1,6 @@
 // src/components/InfiniteProvidersMarquee.jsx
 import { useState, useEffect, useRef } from 'react';
-import { Star, CheckCircle, Briefcase, DollarSign, Award, MapPin, Wifi } from 'lucide-react';
+import { Star, CheckCircle, Briefcase, DollarSign,Clock, Award, MapPin, Wifi } from 'lucide-react';
 
 const ProviderCard = ({ provider }) => {
     const fullStars = Math.floor(provider.rating);

@@ -1,8 +1,7 @@
-// src/components/ProviderNotificationBell.jsx
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { fetchProviderNotifications, markAllProviderNotificationsRead, marahJ91ZuNL8Y2px8iYciYeHN8sfSh5eXH8 } from '../services/api';
 import { Bell, CheckCheck, Clock, Loader2, BellRing, MessageCircle, CalendarCheck, DollarSign } from 'lucide-react';
 
@@ -20,6 +19,9 @@ const ProviderNotificationBell = () => {
   const { user } = useAuth();
   const { socket } = useSocket();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const openChatId = searchParams.get('openChat');
+
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -43,7 +45,6 @@ const ProviderNotificationBell = () => {
     }
   };
 
-  // Polling fallback
   useEffect(() => {
     if (user?.role !== 'provider') return;
     loadNotifications();
@@ -51,11 +52,12 @@ const ProviderNotificationBell = () => {
     return () => clearInterval(interval);
   }, [user]);
 
-  // Real‑time socket listeners for provider
   useEffect(() => {
     if (!socket || user?.role !== 'provider') return;
 
     const handleNewMessage = (data) => {
+      if (openChatId && data.bookingId === openChatId) return;
+
       if (data.senderRole === 'customer') {
         playNotificationSound();
         const newNotif = {
@@ -111,7 +113,7 @@ const ProviderNotificationBell = () => {
       socket.off('new-booking-request', handleBookingRequest);
       socket.off('payment-received', handlePaymentReceived);
     };
-  }, [socket, user]);
+  }, [socket, user, openChatId]);
 
   const handleMarkRead = async (id, e) => {
     e?.stopPropagation();
@@ -142,7 +144,10 @@ const ProviderNotificationBell = () => {
   const handleNotificationClick = (notif) => {
     if (!notif.isRead) handleMarkRead(notif._id);
     setShowDropdown(false);
-    if (notif.reference?.id) {
+    // For message notifications, open chat directly
+    if (notif.type === 'message' && notif.reference?.id) {
+      navigate(`/provider/bookings?openChat=${notif.reference.id}`);
+    } else if (notif.reference?.id) {
       navigate(`/provider/bookings/${notif.reference.id}`);
     } else {
       navigate('/provider/bookings');

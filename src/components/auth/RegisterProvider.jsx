@@ -1,8 +1,7 @@
-// src/pages/RegisterProvider.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '.././../context/AuthContext';
-import { fetchCategories, fetchServices, registerProvider } from '.././../services/api';
+import { useAuth } from '..//../context/AuthContext';
+import { fetchCategories, fetchServices, registerProvider } from '../../services/api';
 
 const RegisterProvider = () => {
   const { user, setUser } = useAuth();
@@ -17,14 +16,16 @@ const RegisterProvider = () => {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedServices, setSelectedServices] = useState([]);
 
-  // Form fields
+  // Form fields – corrected serviceArea structure
   const [formData, setFormData] = useState({
     businessName: '',
     bio: '',
     experience: 1,
     serviceArea: {
-      type: 'Point',
-      coordinates: [74.6399, 26.4499],
+      coordinates: {
+        type: 'Point',
+        coordinates: [74.6399, 26.4499]  // [lng, lat]
+      },
       radius: 10,
       pincodes: [],
       cities: [],
@@ -104,7 +105,12 @@ const RegisterProvider = () => {
           subServices: selectedServices,
         },
       ],
-      serviceArea: formData.serviceArea,
+      serviceArea: {
+        coordinates: formData.serviceArea.coordinates,
+        radius: formData.serviceArea.radius,
+        pincodes: formData.serviceArea.pincodes,
+        cities: formData.serviceArea.cities,
+      },
       workingHours: formData.workingHours,
     };
 
@@ -112,7 +118,6 @@ const RegisterProvider = () => {
       const res = await registerProvider(payload);
       if (res.success) {
         setSuccess(true);
-        // Refresh user context (role becomes 'provider')
         if (setUser) setUser(prev => ({ ...prev, role: 'provider' }));
         setTimeout(() => navigate('/provider'), 2000);
       } else {
@@ -278,7 +283,7 @@ const RegisterProvider = () => {
           </div>
         </div>
 
-        {/* Service Area (simplified) */}
+        {/* Service Area – corrected inputs */}
         <div className="bg-white rounded-xl shadow-sm border p-6">
           <h2 className="text-xl font-semibold mb-4">Service Area</h2>
           <div className="space-y-3">
@@ -287,10 +292,16 @@ const RegisterProvider = () => {
               <input
                 type="number"
                 step="any"
-                value={formData.serviceArea.coordinates[1]}
+                value={formData.serviceArea.coordinates.coordinates[1]}
                 onChange={e => setFormData({
                   ...formData,
-                  serviceArea: { ...formData.serviceArea, coordinates: [parseFloat(formData.serviceArea.coordinates[0]), parseFloat(e.target.value)] }
+                  serviceArea: {
+                    ...formData.serviceArea,
+                    coordinates: {
+                      ...formData.serviceArea.coordinates,
+                      coordinates: [formData.serviceArea.coordinates.coordinates[0], parseFloat(e.target.value)]
+                    }
+                  }
                 })}
                 className="w-full border rounded-lg px-4 py-2"
               />
@@ -300,10 +311,16 @@ const RegisterProvider = () => {
               <input
                 type="number"
                 step="any"
-                value={formData.serviceArea.coordinates[0]}
+                value={formData.serviceArea.coordinates.coordinates[0]}
                 onChange={e => setFormData({
                   ...formData,
-                  serviceArea: { ...formData.serviceArea, coordinates: [parseFloat(e.target.value), parseFloat(formData.serviceArea.coordinates[1])] }
+                  serviceArea: {
+                    ...formData.serviceArea,
+                    coordinates: {
+                      ...formData.serviceArea.coordinates,
+                      coordinates: [parseFloat(e.target.value), formData.serviceArea.coordinates.coordinates[1]]
+                    }
+                  }
                 })}
                 className="w-full border rounded-lg px-4 py-2"
               />

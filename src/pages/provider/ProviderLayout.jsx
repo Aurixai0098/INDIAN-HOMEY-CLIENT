@@ -1,7 +1,7 @@
-// src/pages/provider/ProviderLayout.jsx
 import { useState, useEffect, useRef } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useBookingRequests } from '../../context/BookingRequestContext';
 import {
   LayoutDashboard,
   Calendar,
@@ -20,13 +20,17 @@ import {
   Briefcase,
   Star,
   Power,
-  PowerOff
+  PowerOff,
+  Bell,
+  XCircle,
+  CheckCircle
 } from 'lucide-react';
 import { updateProviderProfile, updateHeartbeat } from '../../services/api';
-import ProviderNotificationBell from '../../components/ProviderNotificationBell'; // ✅ Import the component
+import ProviderNotificationBell from '../../components/ProviderNotificationBell';
 
 const ProviderLayout = () => {
   const { user, setUser, logout } = useAuth();
+  const { activePopup, acceptRequest, dismissPopup } = useBookingRequests();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -104,6 +108,48 @@ const ProviderLayout = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* Global Popup for New Booking Request */}
+      {activePopup && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[1200] p-4 animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative">
+            <button onClick={dismissPopup} className="absolute right-4 top-4 text-gray-400 hover:text-gray-600">
+              <XCircle className="w-5 h-5" />
+            </button>
+            <div className="text-center mb-4">
+              <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Bell className="w-8 h-8 text-amber-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-800">New Booking Request!</h3>
+              <p className="text-gray-500 mt-1">A customer needs your service</p>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-4 mb-5">
+              <p className="font-semibold">{activePopup.customerName} wants <span className="text-emerald-600">{activePopup.serviceName}</span></p>
+              <p className="text-sm text-gray-600 mt-1">Amount: ₹{activePopup.amount}</p>
+              <p className="text-sm text-gray-600">Date: {new Date(activePopup.scheduledDate).toLocaleDateString()}</p>
+              <p className="text-xs text-gray-500 mt-2 truncate">{activePopup.address?.street}, {activePopup.address?.city}</p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => acceptRequest(activePopup.bookingId)}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2"
+              >
+                <CheckCircle className="w-5 h-5" /> Accept Booking
+              </button>
+              <button
+                onClick={dismissPopup}
+                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-xl font-semibold"
+              >
+                Dismiss
+              </button>
+            </div>
+            <p className="text-center text-xs text-gray-400 mt-3">
+              This request will expire in 30 seconds
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Sidebar (same as before, unchanged) */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity duration-300"
@@ -111,7 +157,6 @@ const ProviderLayout = () => {
         />
       )}
 
-      {/* Sidebar */}
       <aside
         className={`fixed top-0 left-0 bottom-0 w-72 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
@@ -161,7 +206,6 @@ const ProviderLayout = () => {
             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-medium rounded-full">
               <Star className="w-3 h-3" /> Verified
             </span>
-          
           </div>
         </div>
 
@@ -183,11 +227,6 @@ const ProviderLayout = () => {
                       }`}
                     />
                     <span className="font-medium text-sm">{item.label}</span>
-                    {item.label === 'Bookings' && (
-                      <span className="ml-auto text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-semibold">
-                        5
-                      </span>
-                    )}
                   </div>
                 )}
               </NavLink>
@@ -198,7 +237,6 @@ const ProviderLayout = () => {
             <p className="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
               Settings
             </p>
-          
             <button
               onClick={logout}
               className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-gray-600 hover:bg-red-50 hover:text-red-600 transition-all duration-200 group"
@@ -241,7 +279,6 @@ const ProviderLayout = () => {
             </div>
 
             <div className="flex items-center gap-2 sm:gap-3">
-              {/* Online/Offline Toggle Button */}
               <button
                 onClick={toggleAvailability}
                 className={`p-2 rounded-xl border transition-colors shadow-sm ${
@@ -254,14 +291,8 @@ const ProviderLayout = () => {
                 {isAvailable ? <Power className="w-5 h-5" /> : <PowerOff className="w-5 h-5" />}
               </button>
 
-         
-
-              {/* ✅ Replace static bell with notification component */}
               <ProviderNotificationBell />
 
-            
-
-              {/* User dropdown */}
               <div className="relative" ref={userMenuRef}>
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
@@ -316,9 +347,6 @@ const ProviderLayout = () => {
               </div>
             </div>
           </div>
-
-          {/* Mobile search bar */}
-        
         </header>
 
         <div className="p-4 sm:p-6">
@@ -331,7 +359,7 @@ const ProviderLayout = () => {
           from { opacity: 0; transform: translateY(-8px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        .animate-in { animation: fadeIn 0.2s ease-out; }
+        .animate-fadeIn { animation: fadeIn 0.2s ease-out; }
       `}</style>
     </div>
   );

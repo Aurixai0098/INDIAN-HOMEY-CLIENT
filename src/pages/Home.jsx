@@ -133,18 +133,18 @@ export default function Home() {
         }}
       >
         {/* Dark overlay for better text readability */}
-        <div className="absolute inset-0 bg-black/20 z-0"></div>
+        <div className="absolute inset-0  z-0"></div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10 w-full py-12 md:py-16">
           <div className="flex flex-col items-center text-center">
             {/* Logo/Brand Name */}
-            <div className="mb-6">
+            {/* <div className="mb-6">
               <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white drop-shadow-lg tracking-tight">
                 INDIAN HOMEY
               </h1>
             </div>
-            
-            <div className="max-w-3xl mx-auto">
+             */}
+            {/* <div className="max-w-3xl mx-auto">
               <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white drop-shadow-lg mb-4">
                 Expert Professional
                 <br />
@@ -172,7 +172,7 @@ export default function Home() {
                   Find Professionals
                 </Link>
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
       </section>
