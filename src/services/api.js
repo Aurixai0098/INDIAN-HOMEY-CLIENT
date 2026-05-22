@@ -98,9 +98,54 @@ export const updateAddress = async (addressId, addressData) => apiFetch(`/users/
 export const deleteAddress = async (addressId) => apiFetch(`/users/addresses/${addressId}`, { method: 'DELETE' });
 export const setDefaultAddress = async (addressId) => apiFetch(`/users/addresses/${addressId}/default`, { method: 'PATCH' });
 
-// ========== Admin APIs (keep your existing ones – all using apiFetch) ==========
-// Please ensure all your admin functions (fetchAdminDashboard, fetchAdminUsers, etc.) use apiFetch.
-// For brevity, I'm not repeating all of them; your existing functions already call apiFetch.
+// ========== Admin APIs (ALL exports required by admin pages) ==========
+export const fetchAdminDashboard = async () => apiFetch('/admin/dashboard');
+export const fetchAdminUsers = async (page = 1, limit = 20, role = '', status = '') => {
+    let url = `/admin/users?page=${page}&limit=${limit}`;
+    if (role) url += `&role=${role}`;
+    if (status) url += `&status=${status}`;
+    return apiFetch(url);
+};
+export const fetchAdminUserDetails = async (userId) => apiFetch(`/admin/users/${userId}`);
+export const updateAdminUserStatus = async (userId, status) => apiFetch(`/admin/users/${userId}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
+export const updateUserByAdmin = async (userId, userData) => apiFetch(`/admin/users/${userId}`, { method: 'PUT', body: JSON.stringify(userData) });
+export const getUserStats = async (userId) => apiFetch(`/admin/users/${userId}/stats`);
+export const sendPushNotification = async (targetType, targetId, message) => apiFetch('/admin/notifications/push', { method: 'POST', body: JSON.stringify({ targetType, targetId, message }) });
+export const sendSmsAlert = async (targetType, targetId, message) => apiFetch('/admin/notifications/sms', { method: 'POST', body: JSON.stringify({ targetType, targetId, message }) });
+export const fetchAdminVerifications = async (page = 1, limit = 20, status = '', accountStatus = '') => {
+    let url = `/admin/verifications?page=${page}&limit=${limit}`;
+    if (status && status !== 'all') url += `&status=${status}`;
+    if (accountStatus && accountStatus !== 'all') url += `&accountStatus=${accountStatus}`;
+    return apiFetch(url);
+};
+export const verifyProvider = async (providerId, status, note = '') => apiFetch(`/admin/verifications/${providerId}`, { method: 'PATCH', body: JSON.stringify({ status, note }) });
+export const fetchProviderDocuments = async (providerId) => apiFetch(`/admin/providers/${providerId}/documents`);
+export const createCategory = async (categoryData) => apiFetch('/admin/categories', { method: 'POST', body: JSON.stringify(categoryData) });
+export const updateCategory = async (categoryId, categoryData) => apiFetch(`/admin/categories/${categoryId}`, { method: 'PUT', body: JSON.stringify(categoryData) });
+export const deleteCategory = async (categoryId) => apiFetch(`/admin/categories/${categoryId}`, { method: 'DELETE' });
+export const createService = async (serviceData) => apiFetch('/admin/services', { method: 'POST', body: JSON.stringify(serviceData) });
+export const updateService = async (serviceId, serviceData) => apiFetch(`/admin/services/${serviceId}`, { method: 'PUT', body: JSON.stringify(serviceData) });
+export const deleteService = async (serviceId) => apiFetch(`/admin/services/${serviceId}`, { method: 'DELETE' });
+export const fetchAdminBookings = async (page = 1, limit = 20, status = '') => {
+    let url = `/admin/bookings?page=${page}&limit=${limit}`;
+    if (status) url += `&status=${status}`;
+    return apiFetch(url);
+};
+export const fetchRevenueReport = async (startDate, endDate) => apiFetch(`/admin/reports/revenue?startDate=${startDate}&endDate=${endDate}`);
+export const fetchAdminCategories = async () => apiFetch('/admin/categories');
+export const fetchAdminServices = async () => apiFetch('/admin/services');
+export const fetchCommission = async () => apiFetch('/admin/settings/commission');
+export const updateCommission = async (commissionPercentage) => apiFetch('/admin/settings/commission', { method: 'PUT', body: JSON.stringify({ commissionPercentage }) });
+export const fetchUserWallets = async (page = 1, limit = 20, search = '') => {
+    let url = `/admin/user-wallets?page=${page}&limit=${limit}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    return apiFetch(url);
+};
+export const fetchUserWalletDetails = async (userId) => apiFetch(`/admin/user-wallets/${userId}`);
+export const addWalletFunds = async (userId, amount, note = '') => apiFetch(`/admin/user-wallets/${userId}/funds`, { method: 'POST', body: JSON.stringify({ amount, note }) });
+export const addWalletCashback = async (userId, amount, note = '') => apiFetch(`/admin/user-wallets/${userId}/cashback`, { method: 'POST', body: JSON.stringify({ amount, note }) });
+export const processWalletRefund = async (userId, amount, note = '') => apiFetch(`/admin/user-wallets/${userId}/refund`, { method: 'POST', body: JSON.stringify({ amount, note }) });
+export const fetchUserTransactions = async (userId, page = 1, limit = 10) => apiFetch(`/admin/user-wallets/${userId}/transactions?page=${page}&limit=${limit}`);
 
 // ========== Provider APIs ==========
 export const registerProvider = async (providerData) => apiFetch('/providers/register', { method: 'POST', body: JSON.stringify(providerData) });
@@ -148,6 +193,9 @@ export const fetchAllWithdrawals = async (status = '', page = 1, limit = 20) => 
 };
 export const approveWithdrawal = async (withdrawalId, transactionId, adminNote) => apiFetch(`/admin/withdrawals/${withdrawalId}/approve`, { method: 'PATCH', body: JSON.stringify({ transactionId, adminNote }) });
 export const rejectWithdrawal = async (withdrawalId, adminNote) => apiFetch(`/admin/withdrawals/${withdrawalId}/reject`, { method: 'PATCH', body: JSON.stringify({ adminNote }) });
+export const updateWithdrawalStatus = async (withdrawalId, status, reason = '', transactionId = '') => apiFetch(`/admin/withdrawals/${withdrawalId}/status`, { method: 'PATCH', body: JSON.stringify({ status, reason, transactionId }) });
+export const getAllProviderWallets = async () => apiFetch('/admin/provider-wallets');
+export const fetchProviderWithdrawals = async (providerId, page = 1, limit = 50) => apiFetch(`/admin/providers/${providerId}/withdrawals?page=${page}&limit=${limit}`);
 
 // ========== Booking APIs ==========
 export const createBooking = async (bookingData) => apiFetch('/bookings', { method: 'POST', body: JSON.stringify(bookingData) });
@@ -204,11 +252,6 @@ export const fetchProviderStatusList = async () => apiFetch('/admin/providers/st
 // ========== Commission Settings ==========
 export const getCommissionSettings = async () => apiFetch('/admin/settings/commission');
 export const updateCommissionSettings = async (data) => apiFetch('/admin/settings/commission', { method: 'PUT', body: JSON.stringify(data) });
-
-// ========== Enhanced Withdrawal ==========
-export const updateWithdrawalStatus = async (withdrawalId, status, reason = '', transactionId = '') => apiFetch(`/admin/withdrawals/${withdrawalId}/status`, { method: 'PATCH', body: JSON.stringify({ status, reason, transactionId }) });
-export const getAllProviderWallets = async () => apiFetch('/admin/provider-wallets');
-export const fetchProviderWithdrawals = async (providerId, page = 1, limit = 50) => apiFetch(`/admin/providers/${providerId}/withdrawals?page=${page}&limit=${limit}`);
 
 // ========== Complaints & Reschedule ==========
 export const fetchComplaints = async (page = 1, limit = 20, status = '', type = '') => {
@@ -283,5 +326,5 @@ export const toggleMaintenanceMode = async (isEnabled, message = '') => apiFetch
 export const checkForAppUpdate = async () => apiFetch('/admin/updates/check');
 export const publishAppUpdate = async (version, message, forceUpdate, downloadUrl) => apiFetch('/admin/updates/publish', { method: 'POST', body: JSON.stringify({ version, message, forceUpdate, downloadUrl }) });
 
-// ✅ Export apiFetch for direct use in components like ProviderBookings
+// ✅ Export apiFetch for direct use
 export { apiFetch };
