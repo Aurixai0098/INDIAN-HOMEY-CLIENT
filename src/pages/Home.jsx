@@ -190,104 +190,139 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Categories Slider - Clean design without borders */}
-      {/* Categories Section - Styled to match your reference image */}
-      <section className="py-8 w-full bg-white">
-        <div className="w-full px-4">
-          {/* Header */}
-          <h2 className="text-xl font-bold text-gray-900 mb-6 px-2">All Cotegorys</h2>
+      
+     {/* Categories/Offers Section - Banner Style */}
+<section className="py-8 w-full bg-white">
+  <div className="w-full px-4">
+    <h2 className="text-xl font-bold text-gray-900 mb-6 px-2">All Catogerys</h2>
 
-          <div className="relative flex items-center">
-            {/* Left Scroll Button */}
-            <button
-              onClick={() => scrollCategory('left')}
-              className="absolute left-0 z-10 p-2 bg-white shadow-lg rounded-full text-gray-600 hover:bg-gray-50"
+    <div className="relative flex items-center">
+      {/* Scroll Buttons */}
+      <button onClick={() => scrollCategory('left')} className="absolute left-2 z-20 p-2 bg-white shadow-xl rounded-full text-gray-600 hover:bg-gray-100 hidden md:flex">
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+      </button>
+
+      {/* Scrollable Container */}
+      <div ref={categoryScrollRef} className="flex gap-4 overflow-x-auto no-scrollbar scroll-smooth px-2 pb-4">
+        {categoriesLoading ? (
+          Array(4).fill(0).map((_, i) => <div key={i} className="min-w-[300px] sm:min-w-[400px] h-[200px] bg-gray-100 rounded-2xl animate-pulse"></div>)
+        ) : (
+          categories.map((cat) => (
+            <Link
+              to={`/category/${cat.slug}`}
+              key={cat._id}
+              className="relative min-w-[300px] sm:min-w-[400px] h-[200px] rounded-2xl overflow-hidden group shadow-md hover:shadow-xl transition-all duration-300"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-            </button>
-
-            {/* Scrollable Container */}
-            <div ref={categoryScrollRef} className="flex gap-4 overflow-x-auto no-scrollbar scroll-smooth px-2 pb-4">
-              {categoriesLoading ? (
-                Array(8).fill(0).map((_, i) => (
-                  <div key={i} className="min-w-[140px] h-[180px] bg-gray-100 rounded-xl animate-pulse"></div>
-                ))
-              ) : (
-                categories.map((cat) => (
-                  <Link
-                    to={`/category/${cat.slug}`}
-                    key={cat._id}
-                    className="flex flex-col min-w-[140px] group transition-transform duration-200 hover:scale-105"
-                  >
-                    {/* Card Image Wrapper */}
-                    <div className="w-full h-[140px] bg-gray-100 rounded-2xl flex items-center justify-center mb-3 overflow-hidden">
-                      {cat.icon?.url ? (
-                        <img src={cat.icon.url} alt={cat.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-4xl text-gray-400">{cat.name.charAt(0)}</span>
-                      )}
-                    </div>
-                    {/* Card Text */}
-                    <span className="text-sm font-semibold text-gray-800 text-left px-1">
-                      {cat.name}
-                    </span>
-                    <span className="text-xs text-emerald-600 font-medium px-1">
-                      View Store
-                    </span>
-                  </Link>
-                ))
-              )}
-            </div>
-
-            {/* Right Scroll Button */}
-            <button
-              onClick={() => scrollCategory('right')}
-              className="absolute right-0 z-10 p-2 bg-white shadow-lg rounded-full text-gray-600 hover:bg-gray-50"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* Featured Services Section */}
-      {featuredServices.length > 0 && (
-        <section className="py-12 md:py-16 px-4 sm:px-6 bg-slate-50">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 md:mb-12 gap-4">
-              <div>
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-2">Featured Services</h2>
-                <p className="text-slate-500 text-sm md:text-base">Most popular services chosen by our customers</p>
+              {/* Background Image */}
+              <img 
+                src={cat.icon?.url || "https://via.placeholder.com/400x200"} 
+                alt={cat.name} 
+                className="w-full h-full object-cover" 
+              />
+              
+              {/* Overlay Gradient for Text Readability */}
+              <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent p-6 flex flex-col justify-center">
+                <h3 className="text-white text-xl md:text-2xl font-bold mb-4">{cat.name}</h3>
+                
+                {/* Button */}
+                <div className="bg-white text-black text-sm font-semibold py-2 px-4 rounded w-fit hover:bg-gray-100 transition-colors">
+                  Book now
+                </div>
               </div>
-              <Link to="/services" className="flex items-center gap-2 text-slate-800 font-semibold hover:text-emerald-600 transition-all group whitespace-nowrap text-sm md:text-base">
-                View All Services
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 group-hover:translate-x-1 transition-transform">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                </svg>
-              </Link>
+            </Link>
+          ))
+        )}
+      </div>
+
+      <button onClick={() => scrollCategory('right')} className="absolute right-2 z-20 p-2 bg-white shadow-xl rounded-full text-gray-600 hover:bg-gray-100 hidden md:flex">
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+      </button>
+    </div>
+  </div>
+</section>
+
+     {/* Featured Services Section */}
+      {featuredServices.length > 0 && (
+        <section className="py-8 md:py-12 bg-white">
+          <div className="px-4 w-full">
+            {/* Header */}
+            <div className="w-full  flex justify-center items-center mb-6 px-2 ">
+              <h2 className="text-xl font-bold text-slate-900 font-allura md:text-6xl underline ">Featured Services</h2>
+          
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5 md:gap-6">
+
+            {/* Grid Container */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-3 gap-3 md:gap-4">
               {featuredServices.slice(0, 8).map(service => (
-                <ServiceCard key={service._id} service={service} />
+                <Link 
+                  key={service._id} 
+                  to={`/service/${service.slug}`} 
+                  className="flex flex-col group cursor-pointer transition-transform duration-030 hover:scale-105"
+                >
+                  {/* Card Image Wrapper - Matching the Category Style */}
+                  <div className="w-full h-[140px] sm:h-3/4 bg-gray-50 rounded-sm flex items-center justify-center mb-3 overflow-hidden">
+                    <img
+                      src={service.images?.[0]?.url || "https://via.placeholder.com/400x400?text=Service"}
+                      alt={service.name}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  </div>
+                  
+                  {/* Card Text Info */}
+                  <div className="px-1">
+                    <h4 className="font-semibold text-gray-800 text-sm truncate">{service.name}</h4>
+                    <p className="text-emerald-600 font-bold text-sm">
+                      ₹{service.basePrice}
+                    </p>
+                    <span className="text-xs text-gray-400">View Store</span>
+                  </div>
+                </Link>
               ))}
             </div>
           </div>
         </section>
       )}
 
-      {/* Popular Services Section */}
+  {/* Popular Services Section */}
       {popularServices.length > 0 && (
-        <section className="py-12 md:py-16 px-4 sm:px-6 bg-white">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 md:mb-12 gap-4">
-              <div>
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-2">Popular Services</h2>
-                <p className="text-slate-500 text-sm md:text-base">Trending now – booked by thousands</p>
+        <section className="py-8 md:py-12 bg-white">
+          <div className="px-4 w-full">
+            {/* Header */}
+            <div className="flex justify-between items-center mb-6 px-2">
+              <div className=' w-full flex  flex-col justify-center items-center'> 
+                <h2 className="text-xl md:text-6xl mb-3    font-extrabold font-allura  text-slate-900">Popular Services</h2>
+                <p className="text-xl text-slate-500 font-allura underline">Trending now – booked by thousands</p>
               </div>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5 md:gap-6">
+
+            {/* Grid Container */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 gap-3 md:gap-4">
               {popularServices.slice(0, 8).map(service => (
-                <ServiceCard key={service._id} service={service} />
+                <Link 
+                  key={service._id} 
+                  to={`/service/${service.slug}`} 
+                  className="flex flex-col group cursor-pointer transition-transform duration-200 hover:scale-105"
+                >
+                  {/* Card Image Wrapper */}
+                  <div className="w-full h-[140px] sm:h-3/4 bg-gray-50 rounded-sm flex items-center justify-center mb-3 overflow-hidden">
+                    <img
+                      src={service.images?.[0]?.url || "https://via.placeholder.com/400x400?text=Service"}
+                      alt={service.name}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  </div>
+                  
+                  {/* Card Text Info */}
+                  <div className="px-1">
+                    <h4 className="font-semibold text-gray-800 text-sm truncate">{service.name}</h4>
+                    <p className="text-emerald-600 font-bold text-sm">
+                      ₹{service.basePrice}
+                    </p>
+                    <span className="text-xs text-gray-400">View Store</span>
+                  </div>
+                </Link>
               ))}
             </div>
           </div>
@@ -298,33 +333,33 @@ export default function Home() {
       <section className="py-14 md:py-20 px-4 sm:px-6 bg-slate-50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-10 md:mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-2">How it works</h2>
-            <p className="text-slate-500">3 simple steps to INDIAN HOMEY freedom</p>
+            <h2 className="text-3xl sm:text-6xl font-bold text-slate-900 font-allura  mb-2">How it works</h2>
+            <p className="text-slate-500  font-allura md:text-3xl">3 simple steps to <span className=' font-bold '>INDIAN HOMEY</span> freedom</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 items-start">
             <div className="flex flex-col items-center text-center">
               <div className="w-28 h-28 sm:w-32 sm:h-32 flex-shrink-0 bg-white rounded-2xl shadow-md p-3 flex items-center justify-center mb-4">
                 <img src="https://img.icons8.com/color/96/appointment-reminders--v1.png" alt="Step 1" className="w-16 sm:w-20" />
               </div>
-              <span className="text-emerald-600 font-bold text-sm block mb-2">Step 1</span>
-              <h4 className="text-lg sm:text-xl font-bold text-slate-800">Book Online or Phone</h4>
-              <p className="text-slate-500 text-sm mt-2">Choose your service and schedule at your convenience</p>
+              <span className="text-emerald-600 font-bold text-sm block mb-2 font-allura md:text-3xl">Step 1</span>
+              <h4 className="text-lg sm:text-xl font-bold text-slate-800 font-allura md:text-3xl">Book Online or Phone</h4>
+              <p className="text-slate-500 text-sm mt-2 font-allura  md:text-2xl">Choose your service and schedule at your convenience</p>
             </div>
             <div className="flex flex-col items-center text-center">
               <div className="w-28 h-28 sm:w-32 sm:h-32 flex-shrink-0 bg-white rounded-2xl shadow-md p-3 flex items-center justify-center mb-4">
                 <img src="https://img.icons8.com/color/96/smartphone--v1.png" alt="Step 2" className="w-16 sm:w-20" />
               </div>
-              <span className="text-emerald-600 font-bold text-sm block mb-2">Step 2</span>
-              <h4 className="text-lg sm:text-xl font-bold text-slate-800">Get Booking Details Via SMS</h4>
-              <p className="text-slate-500 text-sm mt-2">Receive confirmation and professional details</p>
+              <span className="text-emerald-600 font-bold text-sm block mb-2 font-allura md:text-3xl">Step 2</span>
+              <h4 className="text-lg sm:text-xl font-bold text-slate-800 font-allura md:text-3xl">Get Booking Details Via SMS</h4>
+              <p className="text-slate-500 text-sm mt-2 font-allura md:text-2xl ">Receive confirmation and professional details</p>
             </div>
             <div className="flex flex-col items-center text-center">
               <div className="w-28 h-28 sm:w-32 sm:h-32 flex-shrink-0 bg-white rounded-2xl shadow-md p-3 flex items-center justify-center mb-4">
                 <img src="https://img.icons8.com/color/96/money-transfer.png" alt="Step 3" className="w-16 sm:w-20" />
               </div>
-              <span className="text-emerald-600 font-bold text-sm block mb-2">Step 3</span>
-              <h4 className="text-lg sm:text-xl font-bold text-slate-800">Pay After Work is Done</h4>
-              <p className="text-slate-500 text-sm mt-2">Secure payment only after service completion</p>
+              <span className="text-emerald-600 font-bold text-sm block mb-2 font-allura md:text-3xl">Step 3</span>
+              <h4 className="text-lg sm:text-xl font-bold text-slate-800 font-allura md:text-3xl">Pay After Work is Done</h4>
+              <p className="text-slate-500 text-sm mt-2 font-allura md:text-3xl">Secure payment only after service completion</p>
             </div>
           </div>
         </div>

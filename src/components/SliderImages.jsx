@@ -51,7 +51,7 @@ const ReviewCard = ({ review }) => (
       {/* Quote */}
       <div className="relative">
         <Quote className="w-8 h-8 text-emerald-100 absolute -top-2 -left-1 group-hover:text-emerald-200 transition-colors" />
-        <p className="text-slate-600 leading-relaxed italic text-sm md:text-base mb-6 line-clamp-4 relative z-10 pl-4">
+        <p className="text-slate-600 leading-relaxed italic font-allura text-sm md:text-base mb-6 line-clamp-4 relative z-10 pl-4">
           {review.comment}
         </p>
       </div>
@@ -65,12 +65,12 @@ const ReviewCard = ({ review }) => (
           className="w-11 h-11 md:w-12 md:h-12 rounded-full object-cover border-2 border-white shadow-md" 
         />
       ) : (
-        <div className="w-11 h-11 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-bold text-sm shadow-md">
+        <div className="w-11 font-allura h-11 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-bold text-sm shadow-md">
           {review.name?.charAt(0)?.toUpperCase() || '?'}
         </div>
       )}
       <div className="flex-1 min-w-0">
-        <h4 className="font-bold text-slate-900 text-sm md:text-base truncate">{review.name}</h4>
+        <h4 className="font-bold text-slate-900 text-sm md:text-base truncate font-allura">{review.name}</h4>
         <p className="text-xs text-slate-400">{review.date}</p>
       </div>
       <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center flex-shrink-0">
@@ -97,10 +97,10 @@ const InfiniteReviewsMarquee = ({ reviews }) => {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-10 md:mb-14">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-3">
+          <h2 className="text-2xl sm:text-3xl md:text-6xl font-bold font-allura  text-slate-900 mb-3">
             Our Customer Reviews
           </h2>
-          <p className="text-slate-500 italic text-sm md:text-base max-w-xl mx-auto">
+          <p className="text-slate-500 italic  underline md:text-2xl text-sm  max-w-xl font-allura mx-auto">
             What our happy clients say about Ghar Seva
           </p>
           <div className="flex items-center justify-center gap-2 mt-4">
