@@ -273,7 +273,7 @@ const CategoryPage = () => {
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('default');
-  const [viewMode, setViewMode] = useState('grid');
+  const [viewMode, setViewMode] = useState('list');
   const [priceRange, setPriceRange] = useState([0, 10000]);
 
   const loadCategory = async () => {

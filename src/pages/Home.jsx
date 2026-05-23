@@ -50,7 +50,7 @@ export default function Home() {
     checkScreenSize();
     window.addEventListener('resize', checkScreenSize);
     window.addEventListener('resize', getNavbarHeight);
-    
+
     // Small delay to ensure navbar is rendered
     setTimeout(getNavbarHeight, 100);
     getNavbarHeight();
@@ -178,55 +178,60 @@ export default function Home() {
       </section>
 
       {/* Categories Slider - Clean design without borders */}
-      <section className="py-8 md:py-12 px-4 sm:px-6 bg-white border-b border-gray-100">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <button 
-              onClick={() => scrollCategory('left')} 
-              className="shrink-0 w-10 h-10 flex items-center justify-center bg-gray-100 rounded-full text-slate-600 hover:bg-gray-200 active:scale-95 transition-all tap-feedback"
+      {/* Categories Section - Styled to match your reference image */}
+      <section className="py-8 w-full bg-white">
+        <div className="w-full px-4">
+          {/* Header */}
+          <h2 className="text-xl font-bold text-gray-900 mb-6 px-2">Rajat, still looking for these?</h2>
+
+          <div className="relative flex items-center">
+            {/* Left Scroll Button */}
+            <button
+              onClick={() => scrollCategory('left')}
+              className="absolute left-0 z-10 p-2 bg-white shadow-lg rounded-full text-gray-600 hover:bg-gray-50"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-              </svg>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
             </button>
-            
-            <div ref={categoryScrollRef} className="flex flex-1 items-center gap-6 md:gap-8 overflow-x-auto no-scrollbar horizontal-scroll py-4">
+
+            {/* Scrollable Container */}
+            <div ref={categoryScrollRef} className="flex gap-4 overflow-x-auto no-scrollbar scroll-smooth px-2 pb-4">
               {categoriesLoading ? (
                 Array(8).fill(0).map((_, i) => (
-                  <div key={i} className="flex flex-col items-center min-w-[90px] sm:min-w-[110px]">
-                    <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gray-100 rounded-2xl animate-pulse"></div>
-                    <div className="w-14 h-3 bg-gray-100 rounded mt-3 animate-pulse"></div>
-                  </div>
+                  <div key={i} className="min-w-[140px] h-[180px] bg-gray-100 rounded-xl animate-pulse"></div>
                 ))
               ) : (
                 categories.map((cat) => (
-                  <Link 
-                    to={`/category/${cat.slug}`} 
-                    key={cat._id} 
-                    className="flex flex-col items-center min-w-[90px] sm:min-w-[110px] group cursor-pointer tap-feedback transition-all duration-300 hover:transform hover:-translate-y-1"
+                  <Link
+                    to={`/category/${cat.slug}`}
+                    key={cat._id}
+                    className="flex flex-col min-w-[140px] group transition-transform duration-200 hover:scale-105"
                   >
-                    <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gray-50 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:bg-emerald-50">
+                    {/* Card Image Wrapper */}
+                    <div className="w-full h-[140px] bg-gray-100 rounded-2xl flex items-center justify-center mb-3 overflow-hidden">
                       {cat.icon?.url ? (
-                        <img src={cat.icon.url} alt={cat.name} className="w-12 h-12 object-contain" />
+                        <img src={cat.icon.url} alt={cat.name} className="w-full h-full object-cover" />
                       ) : (
-                        <span className="text-3xl sm:text-4xl text-gray-400">{cat.name.charAt(0)}</span>
+                        <span className="text-4xl text-gray-400">{cat.name.charAt(0)}</span>
                       )}
                     </div>
-                    <span className="text-sm sm:text-base font-medium text-gray-700 text-center mt-3 group-hover:text-emerald-600 transition-colors whitespace-nowrap">
+                    {/* Card Text */}
+                    <span className="text-sm font-semibold text-gray-800 text-left px-1">
                       {cat.name}
+                    </span>
+                    <span className="text-xs text-emerald-600 font-medium px-1">
+                      View Store
                     </span>
                   </Link>
                 ))
               )}
             </div>
-            
-            <button 
-              onClick={() => scrollCategory('right')} 
-              className="shrink-0 w-10 h-10 flex items-center justify-center bg-gray-100 rounded-full text-slate-600 hover:bg-gray-200 active:scale-95 transition-all tap-feedback"
+
+            {/* Right Scroll Button */}
+            <button
+              onClick={() => scrollCategory('right')}
+              className="absolute right-0 z-10 p-2 bg-white shadow-lg rounded-full text-gray-600 hover:bg-gray-50"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-              </svg>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
             </button>
           </div>
         </div>
