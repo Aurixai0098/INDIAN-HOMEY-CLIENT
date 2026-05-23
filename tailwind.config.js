@@ -4,8 +4,8 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        // 'allura' naam ki class ban jayegi -> font-allura
-        allura: ['Allura', 'cursive'], 
+        merienda: ['Merienda', 'cursive'],
+        ubuntu: ['Ubuntu Condensed', 'sans-serif'],
       },
     },
   },

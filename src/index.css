@@ -3,14 +3,22 @@
 @tailwind utilities;
 
 @font-face {
-  font-family: 'Allura';
-  /* Public folder mein file hone par path aise dein */
-  src: url('/Allura-Regular.ttf') format('truetype');
+  font-family: 'Merienda';
+  src: url('/Merienda-Regular.ttf') format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 
+@font-face {
+  font-family: 'Ubuntu Condensed';
+  src: url('/UbuntuCondensed-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+
 *{
-    font-family: allura;
+    font-family:merienda ;
 }

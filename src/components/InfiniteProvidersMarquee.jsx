@@ -130,8 +130,8 @@ const InfiniteProvidersMarquee = () => {
     return (
         <div className="w-full overflow-hidden py-8 bg-gray-50">
             <div className="text-center mb-8">
-                <h2 className="text-3xl md:text-6xl  font-bold text-gray-800 font-allura ">Our Trusted Professionals</h2>
-                <p className="text-gray-500 font-allura underline text-3xl">Skilled experts ready to serve you</p>
+                <h2 className="text-3xl md:text-6xl   text-gray-800   ">Our Trusted Professionals</h2>
+                <p className="text-gray-500   underline text-3xl">Skilled experts ready to serve you</p>
             </div>
             <div 
                 ref={scrollContainerRef}

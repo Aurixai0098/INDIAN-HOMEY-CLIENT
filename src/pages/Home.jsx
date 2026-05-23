@@ -247,7 +247,7 @@ export default function Home() {
           <div className="px-4 w-full">
             {/* Header */}
             <div className="w-full  flex justify-center items-center mb-6 px-2 ">
-              <h2 className="text-xl font-bold text-slate-900 font-allura md:text-6xl underline ">Featured Services</h2>
+              <h2 className="text-xl  text-slate-900   md:text-6xl  ">Featured Services</h2>
           
             </div>
 
@@ -257,7 +257,7 @@ export default function Home() {
                 <Link 
                   key={service._id} 
                   to={`/service/${service.slug}`} 
-                  className="flex flex-col group cursor-pointer transition-transform duration-030 hover:scale-105"
+                  className="flex flex-col group cursor-pointer transition-transform  rounded-2xl"
                 >
                   {/* Card Image Wrapper - Matching the Category Style */}
                   <div className="w-full h-[140px] sm:h-3/4 bg-gray-50 rounded-sm flex items-center justify-center mb-3 overflow-hidden">
@@ -291,8 +291,8 @@ export default function Home() {
             {/* Header */}
             <div className="flex justify-between items-center mb-6 px-2">
               <div className=' w-full flex  flex-col justify-center items-center'> 
-                <h2 className="text-xl md:text-6xl mb-3    font-extrabold font-allura  text-slate-900">Popular Services</h2>
-                <p className="text-xl text-slate-500 font-allura underline">Trending now – booked by thousands</p>
+                <h2 className="text-xl md:text-6xl mb-3       text-slate-900">Popular Services</h2>
+                <p className="text-xl text-slate-500   underline">Trending now – booked by thousands</p>
               </div>
             </div>
 
@@ -333,33 +333,33 @@ export default function Home() {
       <section className="py-14 md:py-20 px-4 sm:px-6 bg-slate-50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-10 md:mb-16">
-            <h2 className="text-3xl sm:text-6xl font-bold text-slate-900 font-allura  mb-2">How it works</h2>
-            <p className="text-slate-500  font-allura md:text-3xl">3 simple steps to <span className=' font-bold '>INDIAN HOMEY</span> freedom</p>
+            <h2 className="text-3xl sm:text-6xl  text-slate-900    mb-2">How it works</h2>
+            <p className="text-slate-500    md:text-3xl">3 simple steps to <span className='   '>INDIAN HOMEY</span> freedom</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 items-start">
             <div className="flex flex-col items-center text-center">
               <div className="w-28 h-28 sm:w-32 sm:h-32 flex-shrink-0 bg-white rounded-2xl shadow-md p-3 flex items-center justify-center mb-4">
                 <img src="https://img.icons8.com/color/96/appointment-reminders--v1.png" alt="Step 1" className="w-16 sm:w-20" />
               </div>
-              <span className="text-emerald-600 font-bold text-sm block mb-2 font-allura md:text-3xl">Step 1</span>
-              <h4 className="text-lg sm:text-xl font-bold text-slate-800 font-allura md:text-3xl">Book Online or Phone</h4>
-              <p className="text-slate-500 text-sm mt-2 font-allura  md:text-2xl">Choose your service and schedule at your convenience</p>
+              <span className="text-emerald-600   text-sm block mb-2   md:text-3xl">Step 1</span>
+              <h4 className="text-lg sm:text-xl   text-slate-800   md:text-3xl">Book Online or Phone</h4>
+              <p className="text-slate-500 text-sm mt-2    md:text-2xl">Choose your service and schedule at your convenience</p>
             </div>
             <div className="flex flex-col items-center text-center">
               <div className="w-28 h-28 sm:w-32 sm:h-32 flex-shrink-0 bg-white rounded-2xl shadow-md p-3 flex items-center justify-center mb-4">
                 <img src="https://img.icons8.com/color/96/smartphone--v1.png" alt="Step 2" className="w-16 sm:w-20" />
               </div>
-              <span className="text-emerald-600 font-bold text-sm block mb-2 font-allura md:text-3xl">Step 2</span>
-              <h4 className="text-lg sm:text-xl font-bold text-slate-800 font-allura md:text-3xl">Get Booking Details Via SMS</h4>
-              <p className="text-slate-500 text-sm mt-2 font-allura md:text-2xl ">Receive confirmation and professional details</p>
+              <span className="text-emerald-600   text-sm block mb-2   md:text-3xl">Step 2</span>
+              <h4 className="text-lg sm:text-xl   text-slate-800   md:text-3xl">Get Booking Details Via SMS</h4>
+              <p className="text-slate-500 text-sm mt-2   md:text-2xl ">Receive confirmation and professional details</p>
             </div>
             <div className="flex flex-col items-center text-center">
               <div className="w-28 h-28 sm:w-32 sm:h-32 flex-shrink-0 bg-white rounded-2xl shadow-md p-3 flex items-center justify-center mb-4">
                 <img src="https://img.icons8.com/color/96/money-transfer.png" alt="Step 3" className="w-16 sm:w-20" />
               </div>
-              <span className="text-emerald-600 font-bold text-sm block mb-2 font-allura md:text-3xl">Step 3</span>
-              <h4 className="text-lg sm:text-xl font-bold text-slate-800 font-allura md:text-3xl">Pay After Work is Done</h4>
-              <p className="text-slate-500 text-sm mt-2 font-allura md:text-3xl">Secure payment only after service completion</p>
+              <span className="text-emerald-600   text-sm block mb-2   md:text-3xl">Step 3</span>
+              <h4 className="text-lg sm:text-xl   text-slate-800   md:text-3xl">Pay After Work is Done</h4>
+              <p className="text-slate-500 text-sm mt-2   md:text-3xl">Secure payment only after service completion</p>
             </div>
           </div>
         </div>
