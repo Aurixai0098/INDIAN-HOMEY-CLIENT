@@ -241,94 +241,149 @@ export default function Home() {
   </div>
 </section>
 
-     {/* Featured Services Section */}
-      {featuredServices.length > 0 && (
-        <section className="py-8 md:py-12 bg-white">
-          <div className="px-4 w-full">
-            {/* Header */}
-            <div className="w-full  flex justify-center items-center mb-6 px-2 ">
-              <h2 className="text-xl  text-slate-900   md:text-6xl  ">Featured Services</h2>
-          
-            </div>
+{/* Featured Services Section - Unique Banner with Scroll Buttons */}
+{featuredServices.length > 0 && (
+  <section className="py-12 bg-white relative">
+    <div className="px-4">
+      {/* Header */}
+      <div className="flex justify-center items-center mb-10">
+        <h2 className="text-3xl md:text-6xl font-extrabold text-slate-900 font-merienda underline decoration-emerald-500 underline-offset-8">
+          Featured Services
+        </h2>
+      </div>
 
-            {/* Grid Container */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-3 gap-3 md:gap-4">
-              {featuredServices.slice(0, 8).map(service => (
-                <Link 
-                  key={service._id} 
-                  to={`/service/${service.slug}`} 
-                  className="flex flex-col group cursor-pointer transition-transform  rounded-2xl"
-                >
-                  {/* Card Image Wrapper - Matching the Category Style */}
-                  <div className="w-full h-[140px] sm:h-3/4 bg-gray-50 rounded-sm flex items-center justify-center mb-3 overflow-hidden">
-                    <img
-                      src={service.images?.[0]?.url || "https://via.placeholder.com/400x400?text=Service"}
-                      alt={service.name}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                  </div>
-                  
-                  {/* Card Text Info */}
-                  <div className="px-1">
-                    <h4 className="font-semibold text-gray-800 text-sm truncate">{service.name}</h4>
-                    <p className="text-emerald-600 font-bold text-sm">
-                      ₹{service.basePrice}
-                    </p>
-                    <span className="text-xs text-gray-400">View Store</span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
+      {/* Container with relative positioning for arrows */}
+      <div className="relative group">
+        
+        {/* Left Scroll Button */}
+        <button 
+          onClick={() => {
+            const container = document.getElementById('featured-scroll');
+            container.scrollBy({ left: -400, behavior: 'smooth' });
+          }}
+          className="absolute -left-4 top-1/2 z-20 hidden md:flex bg-white p-3 rounded-full shadow-xl text-slate-800 hover:bg-emerald-500 hover:text-white transition-all transform -translate-y-1/2"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+        </button>
 
-  {/* Popular Services Section */}
-      {popularServices.length > 0 && (
-        <section className="py-8 md:py-12 bg-white">
-          <div className="px-4 w-full">
-            {/* Header */}
-            <div className="flex justify-between items-center mb-6 px-2">
-              <div className=' w-full flex  flex-col justify-center items-center'> 
-                <h2 className="text-xl md:text-6xl mb-3       text-slate-900">Popular Services</h2>
-                <p className="text-xl text-slate-500   underline">Trending now – booked by thousands</p>
+        {/* Scrollable Container */}
+        <div id="featured-scroll" className="flex gap-6 overflow-x-auto no-scrollbar scroll-smooth pb-8 px-2">
+          {featuredServices.slice(0, 8).map((service) => (
+            <Link
+              key={service._id}
+              to={`/service/${service.slug}`}
+              className="relative min-w-[320px] sm:min-w-[450px] h-[300px] rounded-3xl overflow-hidden group shadow-[0_20px_50px_-15px_rgba(0,0,0,0.3)] hover:shadow-[0_20px_50px_-5px_rgba(16,185,129,0.4)] transition-all duration-500"
+            >
+              <img
+                src={service.images?.[0]?.url || "https://via.placeholder.com/600x400"}
+                alt={service.name}
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-8 flex flex-col justify-end">
+                <h4 className="text-white text-3xl font-bold font-merienda mb-2 translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
+                  {service.name}
+                </h4>
+                <div className="flex items-end justify-between">
+                  <p className="text-emerald-400 font-bold text-xl">₹{service.basePrice}</p>
+                  <div className="bg-white text-black font-bold py-3 px-6 rounded-full transform translate-x-4 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-300">
+                    Book now →
+                  </div>
+                </div>
               </div>
-            </div>
+            </Link>
+          ))}
+        </div>
 
-            {/* Grid Container */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 gap-3 md:gap-4">
-              {popularServices.slice(0, 8).map(service => (
-                <Link 
-                  key={service._id} 
-                  to={`/service/${service.slug}`} 
-                  className="flex flex-col group cursor-pointer transition-transform duration-200 hover:scale-105"
-                >
-                  {/* Card Image Wrapper */}
-                  <div className="w-full h-[140px] sm:h-3/4 bg-gray-50 rounded-sm flex items-center justify-center mb-3 overflow-hidden">
-                    <img
-                      src={service.images?.[0]?.url || "https://via.placeholder.com/400x400?text=Service"}
-                      alt={service.name}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                  </div>
-                  
-                  {/* Card Text Info */}
-                  <div className="px-1">
-                    <h4 className="font-semibold text-gray-800 text-sm truncate">{service.name}</h4>
-                    <p className="text-emerald-600 font-bold text-sm">
-                      ₹{service.basePrice}
-                    </p>
-                    <span className="text-xs text-gray-400">View Store</span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
+        {/* Right Scroll Button */}
+        <button 
+          onClick={() => {
+            const container = document.getElementById('featured-scroll');
+            container.scrollBy({ left: 400, behavior: 'smooth' });
+          }}
+          className="absolute -right-4 top-1/2 z-20 hidden md:flex bg-white p-3 rounded-full shadow-xl text-slate-800 hover:bg-emerald-500 hover:text-white transition-all transform -translate-y-1/2"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+        </button>
+      </div>
+    </div>
+  </section>
+)}
 
+ {/* Popular Services Section - Horizontal Scrollable Banners */}
+{popularServices.length > 0 && (
+  <section className="py-12 bg-white relative">
+    <div className="px-4">
+      {/* Header */}
+      <div className="flex flex-col justify-center items-center mb-10">
+        <h2 className="text-3xl md:text-6xl font-extrabold text-slate-900 font-merienda mb-3">
+          Popular Services
+        </h2>
+        <p className="text-xl text-slate-500 font-ubuntu underline underline-offset-4 decoration-emerald-500">
+          Trending now – booked by thousands
+        </p>
+      </div>
+
+      {/* Container with relative positioning for arrows */}
+      <div className="relative group">
+        
+        {/* Left Scroll Button */}
+        <button 
+          onClick={() => {
+            const container = document.getElementById('popular-scroll');
+            container.scrollBy({ left: -400, behavior: 'smooth' });
+          }}
+          className="absolute -left-4 top-1/2 z-20 hidden md:flex bg-white p-3 rounded-full shadow-xl text-slate-800 hover:bg-emerald-500 hover:text-white transition-all transform -translate-y-1/2"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+        </button>
+
+        {/* Scrollable Container */}
+        <div id="popular-scroll" className="flex gap-6 overflow-x-auto no-scrollbar scroll-smooth pb-8 px-2">
+          {popularServices.slice(0, 8).map((service) => (
+            <Link
+              key={service._id}
+              to={`/service/${service.slug}`}
+              className="relative min-w-[320px] sm:min-w-[450px] h-[300px] rounded-3xl overflow-hidden group shadow-[0_20px_50px_-15px_rgba(0,0,0,0.3)] hover:shadow-[0_20px_50px_-5px_rgba(16,185,129,0.4)] transition-all duration-500"
+            >
+              {/* Background Image */}
+              <img
+                src={service.images?.[0]?.url || "https://via.placeholder.com/600x400"}
+                alt={service.name}
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+              />
+              
+              {/* Content Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-8 flex flex-col justify-end">
+                <h4 className="text-white text-3xl font-bold font-merienda mb-2 translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
+                  {service.name}
+                </h4>
+                <div className="flex items-end justify-between">
+                  <p className="text-emerald-400 font-bold text-xl font-ubuntu">
+                    ₹{service.basePrice}
+                  </p>
+                  <div className="bg-white text-black font-bold py-3 px-6 rounded-full transform translate-x-4 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-300">
+                    Book now →
+                  </div>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+
+        {/* Right Scroll Button */}
+        <button 
+          onClick={() => {
+            const container = document.getElementById('popular-scroll');
+            container.scrollBy({ left: 400, behavior: 'smooth' });
+          }}
+          className="absolute -right-4 top-1/2 z-20 hidden md:flex bg-white p-3 rounded-full shadow-xl text-slate-800 hover:bg-emerald-500 hover:text-white transition-all transform -translate-y-1/2"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+        </button>
+      </div>
+    </div>
+  </section>
+)}
       {/* How It Works section */}
       <section className="py-14 md:py-20 px-4 sm:px-6 bg-slate-50">
         <div className="max-w-7xl mx-auto">
