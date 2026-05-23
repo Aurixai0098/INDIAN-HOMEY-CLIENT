@@ -32,15 +32,18 @@ const Footer = () => {
         {/* TOP SECTION: Branding, Support, Company, Legal, Press (unchanged) */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-8 mb-16">
           <div className="col-span-1">
-            <h2 className="text-3xl font-bold mb-6">Ghar Seva</h2>
+            <h2 className="text-3xl font-bold flex flex-row md:flex-col items-center gap-3 md:gap-0  mb-6">
+              <img src="https://res.cloudinary.com/dfqsa6hoc/image/upload/v1779533276/PhotoshopExtension_Image__1_-removebg-preview_fzvzvy.png" alt="logo"  className='h-14 md:h-20' />
+              <img src="https://res.cloudinary.com/dfqsa6hoc/image/upload/v1779533121/PhotoshopExtension_Image-removebg-preview_pbe76a.png" alt="name logo" className='h-14' />
+            </h2>
             <div className="space-y-4">
               <div>
                 <p className="text-sm text-gray-400 mb-1">Feel free to reach us at:</p>
-                <a href="mailto:help@gharseva.com" className="text-[#22c55e] hover:underline block">help@gharseva.com</a>
+                <a href="mailto:help@indianhomey.com" className="text-[#22c55e] hover:underline block">help@indianhomey.com</a>
               </div>
               <div>
                 <p className="text-sm text-gray-400 mb-1">Careers:</p>
-                <a href="mailto:careers@gharseva.com" className="text-[#22c55e] hover:underline block">careers@gharseva.com</a>
+                <a href="mailto:careers@indianhomey.com" className="text-[#22c55e] hover:underline block">careers@indianhomey.com</a>
               </div>
             </div>
           </div>
@@ -57,9 +60,9 @@ const Footer = () => {
           <div>
             <h4 className="text-xs font-bold uppercase tracking-widest mb-6">Company</h4>
             <ul className="space-y-4 text-sm text-gray-300">
-              <li><a href="#" className="hover:text-white">Become a Ghar Seva Professional</a></li>
-              <li><a href="#" className="hover:text-white">Become a Ghar Seva Buddy</a></li>
-              <li><a href="#" className="hover:text-white">Request Ghar Seva in your locality</a></li>
+              <li><a href="#" className="hover:text-white">Become a INDIAN HOMEY Professional</a></li>
+              <li><a href="#" className="hover:text-white">Become a INDIAN HOMEY Buddy</a></li>
+              <li><a href="#" className="hover:text-white">Request INDIAN HOMEY in your locality</a></li>
             </ul>
           </div>
 
@@ -76,7 +79,7 @@ const Footer = () => {
           <div>
             <h4 className="text-xs font-bold uppercase tracking-widest mb-6">Press</h4>
             <ul className="space-y-4 text-sm text-gray-300">
-              <li><a href="mailto:press@gharseva.com" className="text-[#22c55e] hover:underline">press@gharseva.com</a></li>
+              <li><a href="mailto:press@indianhomey.com" className="text-[#22c55e] hover:underline">press@indianhomey.com</a></li>
               <li><a href="#" className="hover:text-white">Press Kit</a></li>
             </ul>
           </div>
@@ -163,7 +166,7 @@ const Footer = () => {
             </a>
           </div>
           <p className="text-xs text-gray-500 uppercase tracking-widest">
-            Ghar Seva © {new Date().getFullYear()}
+            INDIAN HOMEY © {new Date().getFullYear()}
           </p>
         </div>
       </div>

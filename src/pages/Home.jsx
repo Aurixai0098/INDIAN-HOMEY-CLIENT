@@ -281,7 +281,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-10 md:mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-2">How it works</h2>
-            <p className="text-slate-500">3 simple steps to Ghar Seva freedom</p>
+            <p className="text-slate-500">3 simple steps to INDIAN HOMEY freedom</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 items-start">
             <div className="flex flex-col items-center text-center">

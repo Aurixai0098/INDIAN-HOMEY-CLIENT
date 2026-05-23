@@ -158,7 +158,7 @@ const RegisterProvider = () => {
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
       <h1 className="text-3xl font-bold mb-2">Become a Professional</h1>
-      <p className="text-gray-600 mb-8">Join Ghar Seva and grow your business</p>
+      <p className="text-gray-600 mb-8">Join INDIAN HOMEY and grow your business</p>
 
       {error && <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-6">{error}</div>}
 
