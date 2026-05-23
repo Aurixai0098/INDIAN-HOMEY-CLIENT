@@ -96,33 +96,38 @@ export const AuthProvider = ({ children }) => {
         return () => { window.fetch = originalFetch; };
     }, []);
 
-    const register = async (userData) => {
-        const res = await fetch(`${BASE_URL}/auth/register`, {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(userData),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message || "Registration failed");
-        setUser(data.data.user);
-        setShowAuth(false);
-        return data;
-    };
+  const register = async (userData) => {
+    const res = await fetch(`${BASE_URL}/auth/register`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(userData),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      // Throw structured error from backend
+      throw new Error(data.message || "Registration failed");
+    }
+    setUser(data.data.user);
+    setShowAuth(false);
+    return data;
+  };
 
-    const login = async (email, password) => {
-        const res = await fetch(`${BASE_URL}/auth/login`, {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, password }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message || "Login failed");
-        setUser(data.data.user);
-        setShowAuth(false);
-        return data;
-    };
+  const login = async (email, password) => {
+    const res = await fetch(`${BASE_URL}/auth/login`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || "Login failed");
+    }
+    setUser(data.data.user);
+    setShowAuth(false);
+    return data;
+  };
 
     const logout = async () => {
         try {
