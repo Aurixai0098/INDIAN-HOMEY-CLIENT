@@ -182,7 +182,7 @@ export default function Home() {
       <section className="py-8 w-full bg-white">
         <div className="w-full px-4">
           {/* Header */}
-          <h2 className="text-xl font-bold text-gray-900 mb-6 px-2">Rajat, still looking for these?</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-6 px-2">All Cotegorys</h2>
 
           <div className="relative flex items-center">
             {/* Left Scroll Button */}
