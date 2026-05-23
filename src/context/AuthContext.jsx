@@ -34,6 +34,7 @@ export const AuthProvider = ({ children }) => {
     pendingRequests = [];
   };
 
+  // ✅ FIXED: Do NOT automatically open login modal on refresh failure
   const refreshAccessToken = async () => {
     try {
       const res = await fetch(`${BASE_URL}/auth/refresh-token`, {
@@ -42,12 +43,12 @@ export const AuthProvider = ({ children }) => {
       });
       if (res.ok) return true;
       setUser(null);
-      setShowAuth(true);
+      // ❌ Removed setShowAuth(true) – no automatic modal
       return false;
     } catch (error) {
       console.error("Refresh token error:", error);
       setUser(null);
-      setShowAuth(true);
+      // ❌ Removed setShowAuth(true)
       return false;
     }
   };
@@ -96,6 +97,7 @@ export const AuthProvider = ({ children }) => {
     return () => { window.fetch = originalFetch; };
   }, []);
 
+  // ✅ FIXED: attach full error data for validation messages
   const register = async (userData) => {
     const res = await fetch(`${BASE_URL}/auth/register`, {
       method: "POST",
@@ -105,8 +107,10 @@ export const AuthProvider = ({ children }) => {
     });
     const data = await res.json();
     if (!res.ok) {
-      // Throw structured error from backend
-      throw new Error(data.message || "Registration failed");
+      const error = new Error(data.message || "Registration failed");
+      error.data = data;
+      error.status = res.status;
+      throw error;
     }
     setUser(data.data.user);
     setShowAuth(false);
@@ -122,7 +126,10 @@ export const AuthProvider = ({ children }) => {
     });
     const data = await res.json();
     if (!res.ok) {
-      throw new Error(data.message || "Login failed");
+      const error = new Error(data.message || "Login failed");
+      error.data = data;
+      error.status = res.status;
+      throw error;
     }
     setUser(data.data.user);
     setShowAuth(false);
@@ -148,11 +155,8 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider value={value}>
       {loading ? (
         <div className="flex items-center justify-center min-h-screen bg-gray-50 flex-col gap-4">
-          {/* Container for logo + spinning ring */}
           <div className="relative w-28 h-28">
-            {/* Spinning outer ring */}
             <div className="absolute inset-0 rounded-full border-4 border-blue-600 border-t-transparent animate-spin"></div>
-            {/* Centered logo */}
             <div className="absolute inset-0 flex items-center justify-center">
               <img
                 src="https://res.cloudinary.com/dfqsa6hoc/image/upload/v1779533276/PhotoshopExtension_Image__1_-removebg-preview_fzvzvy.png"
@@ -161,7 +165,6 @@ export const AuthProvider = ({ children }) => {
               />
             </div>
           </div>
-          {/* Welcome text */}
           <p className="text-gray-800 font-semibold text-xl mt-2">Welcome to INDIAN HOMEY</p>
         </div>
       ) : children}
