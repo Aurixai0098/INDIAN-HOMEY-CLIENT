@@ -98,7 +98,7 @@ export const updateAddress = async (addressId, addressData) => apiFetch(`/users/
 export const deleteAddress = async (addressId) => apiFetch(`/users/addresses/${addressId}`, { method: 'DELETE' });
 export const setDefaultAddress = async (addressId) => apiFetch(`/users/addresses/${addressId}/default`, { method: 'PATCH' });
 
-// ========== Admin APIs (ALL exports required by admin pages) ==========
+// ========== Admin APIs ==========
 export const fetchAdminDashboard = async () => apiFetch('/admin/dashboard');
 export const fetchAdminUsers = async (page = 1, limit = 20, role = '', status = '') => {
     let url = `/admin/users?page=${page}&limit=${limit}`;
@@ -146,6 +146,14 @@ export const addWalletFunds = async (userId, amount, note = '') => apiFetch(`/ad
 export const addWalletCashback = async (userId, amount, note = '') => apiFetch(`/admin/user-wallets/${userId}/cashback`, { method: 'POST', body: JSON.stringify({ amount, note }) });
 export const processWalletRefund = async (userId, amount, note = '') => apiFetch(`/admin/user-wallets/${userId}/refund`, { method: 'POST', body: JSON.stringify({ amount, note }) });
 export const fetchUserTransactions = async (userId, page = 1, limit = 10) => apiFetch(`/admin/user-wallets/${userId}/transactions?page=${page}&limit=${limit}`);
+
+// ✅ NEW: Fetch all providers with their ServiceProvider details (for admin)
+export const fetchAllProviders = async (page = 1, limit = 20, status = '', verificationStatus = '') => {
+    let url = `/admin/providers?page=${page}&limit=${limit}`;
+    if (status) url += `&status=${status}`;
+    if (verificationStatus) url += `&verificationStatus=${verificationStatus}`;
+    return apiFetch(url);
+};
 
 // ========== Provider APIs ==========
 export const registerProvider = async (providerData) => apiFetch('/providers/register', { method: 'POST', body: JSON.stringify(providerData) });
