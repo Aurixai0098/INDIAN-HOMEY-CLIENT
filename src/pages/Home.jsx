@@ -150,8 +150,8 @@ export default function Home() {
     }
   };
 
-  const desktopBgImage = "https://res.cloudinary.com/djtvxmttf/image/upload/v1778755088/banner_1_vl9ona.png";
-  const mobileBgImage = "https://res.cloudinary.com/djtvxmttf/image/upload/v1778755202/banner_mobile_1_ottjgx.png";
+  const desktopBgImage = "https://res.cloudinary.com/djtvxmttf/image/upload/v1779629942/ChatGPT_Image_May_24_2026_07_07_18_PM_idtagr.png";
+  const mobileBgImage = "https://res.cloudinary.com/djtvxmttf/image/upload/v1779630617/ChatGPT_Image_May_24_2026_07_20_07_PM_mx6cxe.png";
 
   if (loading) {
     return (

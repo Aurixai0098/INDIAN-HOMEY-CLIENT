@@ -512,7 +512,7 @@ const Navbar = () => {
           {/* ========== MOBILE VIEW ========== */}
           {isMobileView && (
             <div className="flex flex-col gap-3">
-              {/* Top Bar: Logo | Search, Location, Notification, Avatar */}
+              {/* Top Bar: Logo | Search, Location, Notification, Avatar/Hamburger */}
               <div className="flex items-center justify-between gap-2">
                 {/* Logo */}
                 <Link to="/" className="flex shrink-0 items-center gap-2 no-underline" onClick={handleLogoRotate}>
@@ -554,19 +554,29 @@ const Navbar = () => {
                     </svg>
                   </button>
 
-                  {/* Notification Bell (was previously cart icon) */}
+                  {/* Notification Bell (only when logged in) */}
                   {user && <NotificationBell />}
-                  {!user && <div className="w-9 h-9" /> /* placeholder */}
+                  {!user && <div className="w-9 h-9" /> /* placeholder to keep layout stable */}
 
-                  {/* Avatar that opens drawer (replaces hamburger) */}
+                  {/* Menu button – Avatar when logged in, Hamburger when logged out */}
                   <button 
                     onClick={() => setMobileMenuOpen(true)} 
                     className="flex items-center justify-center w-9 h-9 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600 shadow-md active:scale-95 transition-all"
                   >
-                    {user?.avatar?.url ? (
-                      <img src={user.avatar.url} alt="avatar" className="w-full h-full object-cover" />
+                    {user ? (
+                      // Logged in: show avatar or initials
+                      user.avatar?.url ? (
+                        <img src={user.avatar.url} alt="avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-white text-sm font-bold">
+                          {getInitials(user.name || user.email)}
+                        </span>
+                      )
                     ) : (
-                      <span className="text-white text-sm font-bold">{getInitials(user?.name || user?.email || 'U')}</span>
+                      // Not logged in: show hamburger icon
+                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                      </svg>
                     )}
                   </button>
                 </div>

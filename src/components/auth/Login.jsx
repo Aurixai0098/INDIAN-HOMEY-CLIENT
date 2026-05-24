@@ -377,11 +377,11 @@ const Login = ({ initialPanel = "signin" }) => {
                   {loading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : "Sign In"}
                   {!loading && <ArrowRight size={16} />}
                 </button>
-                <div className="relative my-4">
+                {/* <div className="relative my-4">
                   <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
                   <div className="relative flex justify-center text-xs"><span className="px-2 bg-white text-gray-400">Or continue with</span></div>
-                </div>
-                <div className="flex justify-center">
+                </div> */}
+                {/* <div className="flex justify-center">
                   <GoogleLogin
                     onSuccess={handleGoogleSuccess}
                     onError={handleGoogleError}
@@ -392,13 +392,13 @@ const Login = ({ initialPanel = "signin" }) => {
                     shape="rectangular"
                     width="100%"
                   />
-                </div>
+                </div> */}
                 <div className="block sm:hidden text-center mt-4">
                   <button
                     onClick={() => togglePanel("signup")}
-                    className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                    className="text-xs  font-medium"
                   >
-                    Don't have an account? Sign Up
+                    Don't have an account?<span className="text-blue-800"> Sign Up</span>
                   </button>
                 </div>
               </form>
@@ -473,11 +473,11 @@ const Login = ({ initialPanel = "signin" }) => {
                   {loading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : "Sign Up"}
                   {!loading && <ArrowRight size={16} />}
                 </button>
-                <div className="relative my-3">
+                {/* <div className="relative my-3">
                   <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
                   <div className="relative flex justify-center text-xs"><span className="px-2 bg-white text-gray-400">Or sign up with</span></div>
-                </div>
-                <div className="flex justify-center">
+                </div> */}
+                {/* <div className="flex justify-center">
                   <GoogleLogin
                     onSuccess={handleGoogleSuccess}
                     onError={handleGoogleError}
@@ -488,13 +488,13 @@ const Login = ({ initialPanel = "signin" }) => {
                     shape="rectangular"
                     width="100%"
                   />
-                </div>
+                </div> */}
                 <div className="block sm:hidden text-center mt-4">
                   <button
                     onClick={() => togglePanel("signin")}
-                    className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                    className="text-xs   font-medium"
                   >
-                    Already have an account? Sign In
+                    Already have an account?<span className="text-blue-800"> Sign In</span>
                   </button>
                 </div>
               </form>
