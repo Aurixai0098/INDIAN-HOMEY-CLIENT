@@ -60,7 +60,7 @@ const Footer = () => {
           <div>
             <h4 className="text-xs font-bold uppercase tracking-widest mb-6">Company</h4>
             <ul className="space-y-4 text-sm text-gray-300">
-              <li><a href="#" className="hover:text-white">Become a INDIAN HOMEY Professional</a></li>
+              <li><a href="register-provider" className="hover:text-white">Become a INDIAN HOMEY Professional</a></li>
               <li><a href="#" className="hover:text-white">Become a INDIAN HOMEY Buddy</a></li>
               <li><a href="#" className="hover:text-white">Request INDIAN HOMEY in your locality</a></li>
             </ul>

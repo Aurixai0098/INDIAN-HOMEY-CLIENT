@@ -1,5 +1,6 @@
 // src/context/AuthContext.jsx
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 
 const getBaseUrl = () => {
   if (import.meta.env.PROD) {
@@ -25,6 +26,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showAuth, setShowAuth] = useState(false);
+  const navigate = useNavigate();
 
   let refreshPromise = null;
   let pendingRequests = [];
@@ -34,7 +36,6 @@ export const AuthProvider = ({ children }) => {
     pendingRequests = [];
   };
 
-  // ✅ FIXED: Do NOT automatically open login modal on refresh failure
   const refreshAccessToken = async () => {
     try {
       const res = await fetch(`${BASE_URL}/auth/refresh-token`, {
@@ -43,12 +44,10 @@ export const AuthProvider = ({ children }) => {
       });
       if (res.ok) return true;
       setUser(null);
-      // ❌ Removed setShowAuth(true) – no automatic modal
       return false;
     } catch (error) {
       console.error("Refresh token error:", error);
       setUser(null);
-      // ❌ Removed setShowAuth(true)
       return false;
     }
   };
@@ -97,7 +96,6 @@ export const AuthProvider = ({ children }) => {
     return () => { window.fetch = originalFetch; };
   }, []);
 
-  // ✅ FIXED: attach full error data for validation messages
   const register = async (userData) => {
     const res = await fetch(`${BASE_URL}/auth/register`, {
       method: "POST",
@@ -114,6 +112,10 @@ export const AuthProvider = ({ children }) => {
     }
     setUser(data.data.user);
     setShowAuth(false);
+    // ✅ Role-based redirect after registration
+    if (data.data.user.role === 'admin') navigate('/admin');
+    else if (data.data.user.role === 'provider') navigate('/provider');
+    else navigate('/');
     return data;
   };
 
@@ -133,6 +135,10 @@ export const AuthProvider = ({ children }) => {
     }
     setUser(data.data.user);
     setShowAuth(false);
+    // ✅ Role-based redirect after login
+    if (data.data.user.role === 'admin') navigate('/admin');
+    else if (data.data.user.role === 'provider') navigate('/provider');
+    else navigate('/');
     return data;
   };
 
@@ -143,6 +149,7 @@ export const AuthProvider = ({ children }) => {
       console.error("Logout error:", error);
     } finally {
       setUser(null);
+      navigate('/');
     }
   };
 

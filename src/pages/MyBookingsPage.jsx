@@ -410,8 +410,10 @@ const MyBookingsPage = () => {
   const [trackingBooking, setTrackingBooking] = useState(null);
   const [chatBooking, setChatBooking] = useState(null);
 
-  // ❌ AUTO-OPEN CHAT VIA URL PARAMETER – REMOVED
-  // (No useEffect for auto-opening chat)
+  // ✅ FIX: Scroll to top when page loads
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, []);
 
   // Show success message from checkout
   useEffect(() => {
@@ -677,7 +679,7 @@ const MyBookingsPage = () => {
         </div>
       )}
 
-      {/* Chat Modal – Only when manually opened */}
+      {/* Chat Modal */}
       {chatBooking && (
         <ChatBox
           bookingId={chatBooking._id}

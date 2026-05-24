@@ -1,8 +1,20 @@
 // src/components/auth/Login.jsx
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
+import { 
+  Mail, 
+  Lock, 
+  User, 
+  Phone, 
+  Eye, 
+  EyeOff, 
+  ArrowRight, 
+  X,
+  CheckCircle,
+  AlertCircle
+} from "lucide-react";
 
-// Reusable password input with eye button (defined outside to prevent focus loss)
+// Password input with eye toggle
 const PasswordInput = ({ value, onChange, placeholder, show, toggleShow, error }) => (
   <div className="relative">
     <input
@@ -10,33 +22,38 @@ const PasswordInput = ({ value, onChange, placeholder, show, toggleShow, error }
       placeholder={placeholder}
       value={value}
       onChange={onChange}
-      className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm pr-10 ${
-        error ? "border-red-500" : "border-gray-300"
+      className={`w-full pl-11 pr-10 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm ${
+        error ? "border-red-500 bg-red-50" : "border-gray-200 bg-gray-50"
       }`}
     />
+    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
     <button
       type="button"
       onClick={toggleShow}
-      className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700"
+      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
     >
-      {show ? (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-      ) : (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65" />
-        </svg>
-      )}
+      {show ? <EyeOff size={16} /> : <Eye size={16} />}
     </button>
-    {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+    {error && <p className="text-red-500 text-xs mt-1 ml-1">{error}</p>}
   </div>
 );
 
-const Login = () => {
+const InputField = ({ icon: Icon, ...props }) => (
+  <div className="relative">
+    <Icon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+    <input
+      {...props}
+      className={`w-full pl-11 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm ${
+        props.error ? "border-red-500 bg-red-50" : "border-gray-200 bg-gray-50"
+      }`}
+    />
+    {props.error && <p className="text-red-500 text-xs mt-1 ml-1">{props.error}</p>}
+  </div>
+);
+
+const Login = ({ initialPanel = "signin" }) => {
   const { setShowAuth, register, login } = useAuth();
-  const [activePanel, setActivePanel] = useState("signin");
+  const [activePanel, setActivePanel] = useState(initialPanel);
 
   // Registration fields
   const [firstName, setFirstName] = useState("");
@@ -50,7 +67,7 @@ const Login = () => {
   const [emailLogin, setEmailLogin] = useState("");
   const [passwordLogin, setPasswordLogin] = useState("");
 
-  // Password visibility toggles
+  // Password visibility
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -59,7 +76,14 @@ const Login = () => {
   const [generalError, setGeneralError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
 
-  // Auto‑clear general error after 5 seconds
+  // Password strength for registration
+  const [passwordStrength, setPasswordStrength] = useState({ score: 0, message: "" });
+
+  // Reset active panel when initialPanel changes (modal reopened)
+  useEffect(() => {
+    setActivePanel(initialPanel);
+  }, [initialPanel]);
+
   useEffect(() => {
     if (generalError) {
       const timer = setTimeout(() => setGeneralError(""), 5000);
@@ -67,69 +91,54 @@ const Login = () => {
     }
   }, [generalError]);
 
-  // Clear field errors when user starts typing or switches panel
   useEffect(() => {
     setFieldErrors({});
-  }, [
-    firstName, lastName, emailReg, phone, passwordReg, confirmPassword,
-    emailLogin, passwordLogin, activePanel
-  ]);
+  }, [firstName, lastName, emailReg, phone, passwordReg, confirmPassword, emailLogin, passwordLogin, activePanel]);
 
-  const togglePanel = (panel) => {
-    setActivePanel(panel);
-    setGeneralError("");
-    setFieldErrors({});
-  };
+  useEffect(() => {
+    if (!passwordReg) {
+      setPasswordStrength({ score: 0, message: "" });
+      return;
+    }
+    let score = 0;
+    if (passwordReg.length >= 8) score++;
+    if (passwordReg.length >= 12) score++;
+    if (/[A-Z]/.test(passwordReg)) score++;
+    if (/[0-9]/.test(passwordReg)) score++;
+    if (/[^A-Za-z0-9]/.test(passwordReg)) score++;
+    let message = "";
+    if (score <= 2) message = "Weak";
+    else if (score <= 4) message = "Medium";
+    else message = "Strong";
+    setPasswordStrength({ score, message });
+  }, [passwordReg]);
 
-  const bgImage = "https://www.serviceonwheel.com/images/banner-clean.png";
-
-  // 🔥 Universal error parser (handles backend validation array, single messages, network errors)
   const parseBackendError = (err, isRegistration) => {
-    // Log for debugging (remove in production)
-    console.group("🔴 Error caught in Login");
-    console.log("Error object:", err);
-    if (err.data) console.log("Error.data:", err.data);
-    console.groupEnd();
-
     let fieldErrs = {};
     let general = null;
-
-    // Network / fetch failure
     if (!err.data) {
-      if (err.message === "Failed to fetch") {
-        general = "Cannot connect to server. Please check your internet or backend status.";
-      } else {
-        general = err.message || "An unexpected error occurred. Please try again.";
-      }
+      general = err.message === "Failed to fetch" 
+        ? "Cannot connect to server. Please check your internet." 
+        : err.message || "Something went wrong.";
       return { fieldErrors: fieldErrs, generalError: general };
     }
-
     const errorData = err.data;
-
-    // Case 1: Validation errors array (your backend's 422 response)
-    if (errorData.errors && Array.isArray(errorData.errors) && errorData.errors.length) {
+    if (errorData.errors && Array.isArray(errorData.errors)) {
       errorData.errors.forEach(item => {
         const backendField = item.field;
         const message = item.message;
         if (!backendField || !message) return;
-
         let frontendField = null;
         if (isRegistration) {
-          switch (backendField) {
-            case "firstName": frontendField = "firstName"; break;
-            case "lastName": frontendField = "lastName"; break;
-            case "email": frontendField = "emailReg"; break;
-            case "phone": frontendField = "phone"; break;
-            case "password": frontendField = "passwordReg"; break;
-            case "confirmPassword": frontendField = "confirmPassword"; break;
-            default: frontendField = backendField;
-          }
+          if (backendField === "firstName") frontendField = "firstName";
+          else if (backendField === "lastName") frontendField = "lastName";
+          else if (backendField === "email") frontendField = "emailReg";
+          else if (backendField === "phone") frontendField = "phone";
+          else if (backendField === "password") frontendField = "passwordReg";
+          else if (backendField === "confirmPassword") frontendField = "confirmPassword";
         } else {
-          switch (backendField) {
-            case "email": frontendField = "emailLogin"; break;
-            case "password": frontendField = "passwordLogin"; break;
-            default: frontendField = backendField;
-          }
+          if (backendField === "email") frontendField = "emailLogin";
+          else if (backendField === "password") frontendField = "passwordLogin";
         }
         if (frontendField) fieldErrs[frontendField] = message;
         else general = message;
@@ -138,8 +147,6 @@ const Login = () => {
       if (errorData.errors[0]?.message) general = errorData.errors[0].message;
       return { fieldErrors: fieldErrs, generalError: general };
     }
-
-    // Case 2: Single message (e.g., "Email already exists", "Invalid credentials")
     if (errorData.message) {
       const msg = errorData.message;
       const lower = msg.toLowerCase();
@@ -157,41 +164,32 @@ const Login = () => {
       }
       return { fieldErrors: fieldErrs, generalError: general };
     }
-
-    // Fallback
     general = "Something went wrong. Please try again.";
     return { fieldErrors: fieldErrs, generalError: general };
   };
 
-  // ----- Registration handler -----
   const handleRegister = async (e) => {
     e.preventDefault();
-
-    // Frontend validation
     const errors = {};
-    if (!firstName) errors.firstName = "First name is required";
-    if (!lastName) errors.lastName = "Last name is required";
-    if (!emailReg) errors.emailReg = "Email is required";
-    else if (!/\S+@\S+\.\S+/.test(emailReg)) errors.emailReg = "Enter a valid email address";
-    if (!phone) errors.phone = "Phone number is required";
-    else if (!/^[6-9]\d{9}$/.test(phone)) errors.phone = "Enter a valid 10-digit Indian mobile number";
-    if (!passwordReg) errors.passwordReg = "Password is required";
-    else if (passwordReg.length < 8) errors.passwordReg = "Password must be at least 8 characters";
-    if (!confirmPassword) errors.confirmPassword = "Please confirm your password";
+    if (!firstName) errors.firstName = "First name required";
+    if (!lastName) errors.lastName = "Last name required";
+    if (!emailReg) errors.emailReg = "Email required";
+    else if (!/\S+@\S+\.\S+/.test(emailReg)) errors.emailReg = "Invalid email";
+    if (!phone) errors.phone = "Phone required";
+    else if (!/^[6-9]\d{9}$/.test(phone)) errors.phone = "10-digit Indian mobile number";
+    if (!passwordReg) errors.passwordReg = "Password required";
+    else if (passwordReg.length < 8) errors.passwordReg = "Minimum 8 characters";
+    if (!confirmPassword) errors.confirmPassword = "Confirm password";
     else if (passwordReg !== confirmPassword) errors.confirmPassword = "Passwords do not match";
-
-    if (Object.keys(errors).length > 0) {
+    if (Object.keys(errors).length) {
       setFieldErrors(errors);
       return;
     }
-
     setLoading(true);
     setGeneralError("");
     setFieldErrors({});
-
     try {
       await register({ firstName, lastName, email: emailReg, phone, password: passwordReg });
-      // Success → AuthContext closes modal / redirects
     } catch (err) {
       const { fieldErrors, generalError } = parseBackendError(err, true);
       setFieldErrors(fieldErrors);
@@ -201,23 +199,18 @@ const Login = () => {
     }
   };
 
-  // ----- Login handler -----
   const handleLogin = async (e) => {
     e.preventDefault();
-
     const errors = {};
-    if (!emailLogin) errors.emailLogin = "Email is required";
-    if (!passwordLogin) errors.passwordLogin = "Password is required";
-
-    if (Object.keys(errors).length > 0) {
+    if (!emailLogin) errors.emailLogin = "Email required";
+    if (!passwordLogin) errors.passwordLogin = "Password required";
+    if (Object.keys(errors).length) {
       setFieldErrors(errors);
       return;
     }
-
     setLoading(true);
     setGeneralError("");
     setFieldErrors({});
-
     try {
       await login(emailLogin, passwordLogin);
     } catch (err) {
@@ -229,68 +222,89 @@ const Login = () => {
     }
   };
 
-  // ----- Render -----
+  const togglePanel = (panel) => {
+    setActivePanel(panel);
+    setGeneralError("");
+    setFieldErrors({});
+  };
+
   return (
-    <div className="min-h-screen w-full fixed z-[2000] flex items-center justify-center p-4 font-sans overflow-auto">
-      <div className="w-full max-w-3xl bg-white rounded-2xl border flex flex-col md:flex-row overflow-auto">
-        {/* Left Panel – background image & toggle buttons */}
-        <div
-          className="w-full md:w-1/2 relative flex flex-col justify-center items-center text-white p-5 md:p-8 min-h-[140px] md:min-h-[260px] bg-cover bg-center"
-          style={{ backgroundImage: `url(${bgImage})` }}
+    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn  overflow-auto">
+      <div className="relative w-full max-w-4xl mt-32 md:mt-0 bg-white rounded-3xl shadow-2xl overflow-hidden">
+        {/* Close button */}
+        <button
+          onClick={() => setShowAuth(false)}
+          className="absolute top-4 right-4 z-10 p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
         >
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-[1px]"></div>
-          <div className="relative z-10 text-center px-2">
-            {activePanel === "signin" ? (
-              <>
-                <h1 className="text-xl md:text-2xl font-bold mb-2 md:mb-3">Hello, Friend!</h1>
-                <p className="mb-3 md:mb-5 text-xs md:text-sm">Enter your personal details and start journey with us</p>
-                <div className="flex flex-col gap-3">
-                  <button onClick={() => togglePanel("signup")} className="border-2 border-white text-white px-5 md:px-8 py-2 rounded-full font-bold text-sm hover:bg-white hover:text-gray-800 transition-all duration-300">
-                    SIGN UP
-                  </button>
-                  <button onClick={() => setShowAuth(false)} className="hover:underline text-xs">Cancel</button>
-                </div>
-              </>
-            ) : (
-              <>
-                <h1 className="text-xl md:text-2xl font-bold mb-2 md:mb-3">Welcome Back!</h1>
-                <p className="mb-3 md:mb-5 text-xs md:text-sm">To keep connected with us please login with your personal info</p>
-                <div className="flex flex-col gap-3">
-                  <button onClick={() => togglePanel("signin")} className="border-2 border-white text-white px-5 md:px-8 py-2 rounded-full font-bold text-sm hover:bg-white hover:text-gray-800 transition-all duration-300">
-                    SIGN IN
-                  </button>
-                  <button onClick={() => setShowAuth(false)} className="hover:underline text-xs">Cancel</button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+          <X size={20} className="text-gray-600" />
+        </button>
 
-        {/* Right Panel – forms */}
-        <div className="w-full md:w-1/2 p-5 md:p-8 flex flex-col justify-center bg-white">
-          {generalError && (
-            <div className="mb-4 text-red-600 text-sm text-center bg-red-50 p-2 rounded border border-red-200">
-              {generalError}
-            </div>
-          )}
-
-          {activePanel === "signin" ? (
-            // LOGIN FORM
-            <form onSubmit={handleLogin} className="animate-fadeIn">
-              <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-3 md:mb-4">Sign In</h2>
-              <div className="space-y-3">
-                <div>
-                  <input
-                    type="email"
-                    placeholder="Email"
-                    value={emailLogin}
-                    onChange={(e) => setEmailLogin(e.target.value)}
-                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm ${
-                      fieldErrors.emailLogin ? "border-red-500" : "border-gray-300"
-                    }`}
+        <div className="flex flex-col md:flex-row">
+          {/* LEFT PANEL - Branding */}
+          <div className="w-full md:w-2/5  p-8 md:p-10 flex flex-col items-center justify-center text-gray-500">
+            <div className="mb-6">
+              <div className="flex flex-col items-center  mb-4">
+                <div className="w-20 h-20 rounded-xl flex items-center justify-center">
+                  <img src="https://res.cloudinary.com/dfqsa6hoc/image/upload/v1779533276/PhotoshopExtension_Image__1_-removebg-preview_fzvzvy.png" alt="logo"
+                  className="h-full"
                   />
-                  {fieldErrors.emailLogin && <p className="text-red-500 text-xs mt-1">{fieldErrors.emailLogin}</p>}
                 </div>
+                <span className="text-xl font-semibold">
+                  <img src="https://res.cloudinary.com/dfqsa6hoc/image/upload/v1779533121/PhotoshopExtension_Image-removebg-preview_pbe76a.png" alt="logo name"
+                  className=" h-20"
+                  />
+                </span>
+              </div>
+              {activePanel === "signin" ? (
+                <>
+                  <h2 className="text-3xl font-bold mb-2">Welcome back!</h2>
+                  <p className="text-blue-500 mb-6">Login to access your account</p>
+                  <div className="space-y-2 text-sm text-blue-300">
+                    <div className="flex items-center gap-2"><CheckCircle size={14} /> Manage bookings</div>
+                    <div className="flex items-center gap-2"><CheckCircle size={14} /> Track service professionals</div>
+                    <div className="flex items-center gap-2"><CheckCircle size={14} /> Get exclusive offers</div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-3xl font-bold mb-2">Join us today!</h2>
+                  <p className="text-blue-800 mb-6">Create your account in seconds</p>
+                  <div className="space-y-2 text-sm text-blue-500">
+                    <div className="flex items-center gap-2"><CheckCircle size={14} /> Book trusted professionals</div>
+                    <div className="flex items-center gap-2"><CheckCircle size={14} /> Pay after service</div>
+                    <div className="flex items-center gap-2"><CheckCircle size={14} /> 24/7 customer support</div>
+                  </div>
+                </>
+              )}
+            </div>
+            <button
+              onClick={() => togglePanel(activePanel === "signin" ? "signup" : "signin")}
+              className="mt-4 text-sm font-medium text-gray-500 hover:text-blue-800 transition-colors"
+            >
+              {activePanel === "signin" ? "Don't have an account? Sign Up →" : "Already have an account? Sign In →"}
+            </button>
+          </div>
+
+          {/* RIGHT PANEL - Forms */}
+          <div className="w-full md:w-3/5 p-6 md:p-8 bg-white">
+            {generalError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-red-700 text-sm">
+                <AlertCircle size={16} />
+                <span>{generalError}</span>
+              </div>
+            )}
+
+            {activePanel === "signin" ? (
+              <form onSubmit={handleLogin} className="space-y-5">
+                <h2 className="text-2xl font-bold text-gray-800">Sign In</h2>
+                <InputField
+                  icon={Mail}
+                  type="email"
+                  placeholder="Email address"
+                  value={emailLogin}
+                  onChange={(e) => setEmailLogin(e.target.value)}
+                  error={fieldErrors.emailLogin}
+                />
                 <PasswordInput
                   value={passwordLogin}
                   onChange={(e) => setPasswordLogin(e.target.value)}
@@ -299,90 +313,88 @@ const Login = () => {
                   toggleShow={() => setShowLoginPassword(!showLoginPassword)}
                   error={fieldErrors.passwordLogin}
                 />
+                <div className="flex justify-end">
+                  <button type="button" className="text-xs text-blue-600 hover:text-blue-700">Forgot password?</button>
+                </div>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg transition-all transform active:scale-95 shadow-lg text-sm disabled:opacity-50 flex justify-center items-center"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  {loading ? <div className="h-3 w-3 rounded-full border-2 border-white border-b-transparent animate-spin"></div> : "LOGIN"}
+                  {loading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : "Sign In"}
+                  {!loading && <ArrowRight size={16} />}
                 </button>
-              </div>
-            </form>
-          ) : (
-            // REGISTRATION FORM
-            <form onSubmit={handleRegister} className="animate-fadeIn">
-              <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-2">Create Account</h2>
-              <div className="relative my-3">
-                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-300"></div></div>
-                <div className="relative flex justify-center text-xs"><span className="px-2 bg-white text-gray-500">or use your email for registration</span></div>
-              </div>
-              <div className="space-y-3">
-                {/* First Name */}
-                <div>
-                  <input
+                <div className="relative my-6">
+                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
+                  <div className="relative flex justify-center text-xs"><span className="px-2 bg-white text-gray-400">Or continue with</span></div>
+                </div>
+                <div className="grid grid-cols-1 gap-3">
+                  <button type="button" className="flex items-center justify-center gap-2 py-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                    Google
+                  </button>
+                
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleRegister} className="space-y-4">
+                <h2 className="text-2xl font-bold text-gray-800">Create Account</h2>
+                <div className="grid grid-cols-2 gap-3">
+                  <InputField
+                    icon={User}
                     type="text"
-                    placeholder="First Name"
+                    placeholder="First name"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm ${
-                      fieldErrors.firstName ? "border-red-500" : "border-gray-300"
-                    }`}
+                    error={fieldErrors.firstName}
                   />
-                  {fieldErrors.firstName && <p className="text-red-500 text-xs mt-1">{fieldErrors.firstName}</p>}
-                </div>
-                {/* Last Name */}
-                <div>
-                  <input
+                  <InputField
+                    icon={User}
                     type="text"
-                    placeholder="Last Name"
+                    placeholder="Last name"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm ${
-                      fieldErrors.lastName ? "border-red-500" : "border-gray-300"
-                    }`}
+                    error={fieldErrors.lastName}
                   />
-                  {fieldErrors.lastName && <p className="text-red-500 text-xs mt-1">{fieldErrors.lastName}</p>}
                 </div>
-                {/* Email */}
-                <div>
-                  <input
-                    type="email"
-                    placeholder="Email"
-                    value={emailReg}
-                    onChange={(e) => setEmailReg(e.target.value)}
-                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm ${
-                      fieldErrors.emailReg ? "border-red-500" : "border-gray-300"
-                    }`}
-                  />
-                  {fieldErrors.emailReg && <p className="text-red-500 text-xs mt-1">{fieldErrors.emailReg}</p>}
-                </div>
-                {/* Phone */}
-                <div>
-                  <input
-                    type="tel"
-                    placeholder="Phone Number"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm ${
-                      fieldErrors.phone ? "border-red-500" : "border-gray-300"
-                    }`}
-                  />
-                  {fieldErrors.phone && <p className="text-red-500 text-xs mt-1">{fieldErrors.phone}</p>}
-                </div>
-                {/* Password */}
+                <InputField
+                  icon={Mail}
+                  type="email"
+                  placeholder="Email address"
+                  value={emailReg}
+                  onChange={(e) => setEmailReg(e.target.value)}
+                  error={fieldErrors.emailReg}
+                />
+                <InputField
+                  icon={Phone}
+                  type="tel"
+                  placeholder="Mobile number (10 digits)"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  error={fieldErrors.phone}
+                />
                 <PasswordInput
                   value={passwordReg}
                   onChange={(e) => setPasswordReg(e.target.value)}
-                  placeholder="Password (min 8 chars)"
+                  placeholder="Password (min 8 characters)"
                   show={showRegPassword}
                   toggleShow={() => setShowRegPassword(!showRegPassword)}
                   error={fieldErrors.passwordReg}
                 />
-                {/* Confirm Password */}
+                {passwordReg && (
+                  <div className="mt-1">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-1 bg-gray-200 rounded-full overflow-hidden">
+                        <div className={`h-full ${passwordStrength.score <= 2 ? "w-1/3 bg-red-500" : passwordStrength.score <= 4 ? "w-2/3 bg-yellow-500" : "w-full bg-green-500"}`} />
+                      </div>
+                      <span className="text-xs text-gray-500">{passwordStrength.message}</span>
+                    </div>
+                  </div>
+                )}
                 <PasswordInput
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm Password"
+                  placeholder="Confirm password"
                   show={showConfirmPassword}
                   toggleShow={() => setShowConfirmPassword(!showConfirmPassword)}
                   error={fieldErrors.confirmPassword}
@@ -390,18 +402,33 @@ const Login = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg transition text-sm disabled:opacity-50 flex justify-center items-center"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  {loading ? <div className="h-3 w-3 rounded-full border-2 border-white border-b-transparent animate-spin"></div> : "SIGN UP"}
+                  {loading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : "Sign Up"}
+                  {!loading && <ArrowRight size={16} />}
                 </button>
-              </div>
-            </form>
-          )}
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
+                  <div className="relative flex justify-center text-xs"><span className="px-2 bg-white text-gray-400">Or sign up with</span></div>
+                </div>
+                <div className="grid grid-cols-1 gap-3">
+                  <button type="button" className="flex items-center justify-center gap-2 py-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                    Google
+                  </button>
+                 
+                </div>
+              </form>
+            )}
+          </div>
         </div>
       </div>
       <style>{`
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-fadeIn { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn {
+          from { opacity: 0; backdrop-filter: blur(0); }
+          to { opacity: 1; backdrop-filter: blur(4px); }
+        }
+        .animate-fadeIn { animation: fadeIn 0.3s ease-out forwards; }
       `}</style>
     </div>
   );
