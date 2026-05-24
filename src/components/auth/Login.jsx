@@ -14,7 +14,7 @@ import {
   AlertCircle
 } from "lucide-react";
 
-// Password input with eye toggle
+// Password input with eye toggle - font size 16px to prevent zoom
 const PasswordInput = ({ value, onChange, placeholder, show, toggleShow, error }) => (
   <div className="relative">
     <input
@@ -22,7 +22,8 @@ const PasswordInput = ({ value, onChange, placeholder, show, toggleShow, error }
       placeholder={placeholder}
       value={value}
       onChange={onChange}
-      className={`w-full pl-11 pr-10 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm ${
+      style={{ fontSize: '16px' }}
+      className={`w-full pl-11 pr-10 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-base ${
         error ? "border-red-500 bg-red-50" : "border-gray-200 bg-gray-50"
       }`}
     />
@@ -43,7 +44,8 @@ const InputField = ({ icon: Icon, ...props }) => (
     <Icon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
     <input
       {...props}
-      className={`w-full pl-11 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm ${
+      style={{ fontSize: '16px' }}
+      className={`w-full pl-11 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-base ${
         props.error ? "border-red-500 bg-red-50" : "border-gray-200 bg-gray-50"
       }`}
     />
@@ -229,8 +231,8 @@ const Login = ({ initialPanel = "signin" }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn  overflow-auto">
-      <div className="relative w-full max-w-4xl mt-32 md:mt-0 bg-white rounded-3xl shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn overflow-y-auto">
+      <div className="relative w-full max-w-4xl my-8 md:my-0 bg-white rounded-3xl shadow-2xl overflow-hidden">
         {/* Close button */}
         <button
           onClick={() => setShowAuth(false)}
@@ -241,52 +243,56 @@ const Login = ({ initialPanel = "signin" }) => {
 
         <div className="flex flex-col md:flex-row">
           {/* LEFT PANEL - Branding */}
-          <div className="w-full md:w-2/5  p-8 md:p-10 flex flex-col items-center justify-center text-gray-500">
-            <div className="mb-6">
-              <div className="flex flex-col items-center  mb-4">
-                <div className="w-20 h-20 rounded-xl flex items-center justify-center">
-                  <img src="https://res.cloudinary.com/dfqsa6hoc/image/upload/v1779533276/PhotoshopExtension_Image__1_-removebg-preview_fzvzvy.png" alt="logo"
-                  className="h-full"
+          <div className="w-full md:w-2/5 p-6 md:p-8 flex flex-col items-center justify-center text-gray-500">
+            <div className="mb-4">
+              <div className="flex flex-col items-center mb-3">
+                <div className="w-16 h-16 rounded-xl flex items-center justify-center">
+                  <img 
+                    src="https://res.cloudinary.com/dfqsa6hoc/image/upload/v1779533276/PhotoshopExtension_Image__1_-removebg-preview_fzvzvy.png" 
+                    alt="logo"
+                    className="h-full"
                   />
                 </div>
-                <span className="text-xl font-semibold">
-                  <img src="https://res.cloudinary.com/dfqsa6hoc/image/upload/v1779533121/PhotoshopExtension_Image-removebg-preview_pbe76a.png" alt="logo name"
-                  className=" h-20"
+                <span className="text-xl font-semibold mt-1">
+                  <img 
+                    src="https://res.cloudinary.com/dfqsa6hoc/image/upload/v1779533121/PhotoshopExtension_Image-removebg-preview_pbe76a.png" 
+                    alt="logo name"
+                    className="h-12"
                   />
                 </span>
               </div>
               {activePanel === "signin" ? (
                 <>
-                  <h2 className="text-3xl font-bold mb-2">Welcome back!</h2>
-                  <p className="text-blue-500 mb-6">Login to access your account</p>
-                  <div className="space-y-2 text-sm text-blue-300">
-                    <div className="flex items-center gap-2"><CheckCircle size={14} /> Manage bookings</div>
-                    <div className="flex items-center gap-2"><CheckCircle size={14} /> Track service professionals</div>
-                    <div className="flex items-center gap-2"><CheckCircle size={14} /> Get exclusive offers</div>
+                  <h2 className="text-2xl font-bold mb-1">Welcome back!</h2>
+                  <p className="text-blue-500 mb-4 text-sm">Login to access your account</p>
+                  <div className="space-y-1.5 text-xs text-blue-400">
+                    <div className="flex items-center gap-1.5"><CheckCircle size={12} /> Manage bookings</div>
+                    <div className="flex items-center gap-1.5"><CheckCircle size={12} /> Track professionals</div>
+                    <div className="flex items-center gap-1.5"><CheckCircle size={12} /> Exclusive offers</div>
                   </div>
                 </>
               ) : (
                 <>
-                  <h2 className="text-3xl font-bold mb-2">Join us today!</h2>
-                  <p className="text-blue-800 mb-6">Create your account in seconds</p>
-                  <div className="space-y-2 text-sm text-blue-500">
-                    <div className="flex items-center gap-2"><CheckCircle size={14} /> Book trusted professionals</div>
-                    <div className="flex items-center gap-2"><CheckCircle size={14} /> Pay after service</div>
-                    <div className="flex items-center gap-2"><CheckCircle size={14} /> 24/7 customer support</div>
+                  <h2 className="text-2xl font-bold mb-1">Join us today!</h2>
+                  <p className="text-blue-800 mb-4 text-sm">Create your account in seconds</p>
+                  <div className="space-y-1.5 text-xs text-blue-500">
+                    <div className="flex items-center gap-1.5"><CheckCircle size={12} /> Book professionals</div>
+                    <div className="flex items-center gap-1.5"><CheckCircle size={12} /> Pay after service</div>
+                    <div className="flex items-center gap-1.5"><CheckCircle size={12} /> 24/7 support</div>
                   </div>
                 </>
               )}
             </div>
             <button
               onClick={() => togglePanel(activePanel === "signin" ? "signup" : "signin")}
-              className="mt-4 text-sm font-medium text-gray-500 hover:text-blue-800 transition-colors"
+              className="mt-2 text-xs font-medium text-gray-500 hover:text-blue-800 transition-colors"
             >
               {activePanel === "signin" ? "Don't have an account? Sign Up →" : "Already have an account? Sign In →"}
             </button>
           </div>
 
           {/* RIGHT PANEL - Forms */}
-          <div className="w-full md:w-3/5 p-6 md:p-8 bg-white">
+          <div className="w-full md:w-3/5 p-5 md:p-8 bg-white">
             {generalError && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-red-700 text-sm">
                 <AlertCircle size={16} />
@@ -295,8 +301,8 @@ const Login = ({ initialPanel = "signin" }) => {
             )}
 
             {activePanel === "signin" ? (
-              <form onSubmit={handleLogin} className="space-y-5">
-                <h2 className="text-2xl font-bold text-gray-800">Sign In</h2>
+              <form onSubmit={handleLogin} className="space-y-4">
+                <h2 className="text-xl font-bold text-gray-800">Sign In</h2>
                 <InputField
                   icon={Mail}
                   type="email"
@@ -319,27 +325,26 @@ const Login = ({ initialPanel = "signin" }) => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   {loading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : "Sign In"}
                   {!loading && <ArrowRight size={16} />}
                 </button>
-                <div className="relative my-6">
+                <div className="relative my-4">
                   <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
                   <div className="relative flex justify-center text-xs"><span className="px-2 bg-white text-gray-400">Or continue with</span></div>
                 </div>
                 <div className="grid grid-cols-1 gap-3">
-                  <button type="button" className="flex items-center justify-center gap-2 py-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium">
+                  <button type="button" className="flex items-center justify-center gap-2 py-2 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium">
                     <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
                     Google
                   </button>
-                
                 </div>
               </form>
             ) : (
-              <form onSubmit={handleRegister} className="space-y-4">
-                <h2 className="text-2xl font-bold text-gray-800">Create Account</h2>
-                <div className="grid grid-cols-2 gap-3">
+              <form onSubmit={handleRegister} className="space-y-3">
+                <h2 className="text-xl font-bold text-gray-800">Create Account</h2>
+                <div className="grid grid-cols-2 gap-2">
                   <InputField
                     icon={User}
                     type="text"
@@ -382,7 +387,7 @@ const Login = ({ initialPanel = "signin" }) => {
                   error={fieldErrors.passwordReg}
                 />
                 {passwordReg && (
-                  <div className="mt-1">
+                  <div className="mt-0">
                     <div className="flex items-center gap-2">
                       <div className="flex-1 h-1 bg-gray-200 rounded-full overflow-hidden">
                         <div className={`h-full ${passwordStrength.score <= 2 ? "w-1/3 bg-red-500" : passwordStrength.score <= 4 ? "w-2/3 bg-yellow-500" : "w-full bg-green-500"}`} />
@@ -402,21 +407,20 @@ const Login = ({ initialPanel = "signin" }) => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   {loading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : "Sign Up"}
                   {!loading && <ArrowRight size={16} />}
                 </button>
-                <div className="relative my-4">
+                <div className="relative my-3">
                   <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
                   <div className="relative flex justify-center text-xs"><span className="px-2 bg-white text-gray-400">Or sign up with</span></div>
                 </div>
                 <div className="grid grid-cols-1 gap-3">
-                  <button type="button" className="flex items-center justify-center gap-2 py-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium">
+                  <button type="button" className="flex items-center justify-center gap-2 py-2 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium">
                     <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
                     Google
                   </button>
-                 
                 </div>
               </form>
             )}
@@ -429,6 +433,10 @@ const Login = ({ initialPanel = "signin" }) => {
           to { opacity: 1; backdrop-filter: blur(4px); }
         }
         .animate-fadeIn { animation: fadeIn 0.3s ease-out forwards; }
+        /* Prevent zoom on mobile */
+        input, select, textarea {
+          font-size: 16px !important;
+        }
       `}</style>
     </div>
   );
