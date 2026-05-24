@@ -1,14 +1,14 @@
 // src/components/auth/Login.jsx
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
-import {
-  Mail,
-  Lock,
-  User,
-  Phone,
-  Eye,
-  EyeOff,
-  ArrowRight,
+import { 
+  Mail, 
+  Lock, 
+  User, 
+  Phone, 
+  Eye, 
+  EyeOff, 
+  ArrowRight, 
   X,
   CheckCircle,
   AlertCircle
@@ -23,8 +23,9 @@ const PasswordInput = ({ value, onChange, placeholder, show, toggleShow, error }
       value={value}
       onChange={onChange}
       style={{ fontSize: '16px' }}
-      className={`w-full pl-11 pr-10 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-base ${error ? "border-red-500 bg-red-50" : "border-gray-200 bg-gray-50"
-        }`}
+      className={`w-full pl-11 pr-10 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-base ${
+        error ? "border-red-500 bg-red-50" : "border-gray-200 bg-gray-50"
+      }`}
     />
     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
     <button
@@ -44,8 +45,9 @@ const InputField = ({ icon: Icon, ...props }) => (
     <input
       {...props}
       style={{ fontSize: '16px' }}
-      className={`w-full pl-11 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-base ${props.error ? "border-red-500 bg-red-50" : "border-gray-200 bg-gray-50"
-        }`}
+      className={`w-full pl-11 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-base ${
+        props.error ? "border-red-500 bg-red-50" : "border-gray-200 bg-gray-50"
+      }`}
     />
     {props.error && <p className="text-red-500 text-xs mt-1 ml-1">{props.error}</p>}
   </div>
@@ -117,8 +119,8 @@ const Login = ({ initialPanel = "signin" }) => {
     let fieldErrs = {};
     let general = null;
     if (!err.data) {
-      general = err.message === "Failed to fetch"
-        ? "Cannot connect to server. Please check your internet."
+      general = err.message === "Failed to fetch" 
+        ? "Cannot connect to server. Please check your internet." 
         : err.message || "Something went wrong.";
       return { fieldErrors: fieldErrs, generalError: general };
     }
@@ -229,55 +231,87 @@ const Login = ({ initialPanel = "signin" }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn overflow-y-auto">
-      <div className="relative w-full max-w-4xl my-8 md:my-0 bg-white rounded-3xl shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-2 sm:p-4 bg-black/50 backdrop-blur-sm animate-fadeIn overflow-y-auto">
+      <div className="relative w-full max-w-4xl my-4 sm:my-8 bg-white rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden">
         {/* Close button */}
         <button
           onClick={() => setShowAuth(false)}
-          className="absolute top-4 right-4 z-10 p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+          className="absolute top-3 right-3 z-10 p-1.5 sm:p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
         >
-          <X size={20} className="text-gray-600" />
+          <X size={18} className="text-gray-600" />
         </button>
 
-        <div className="flex flex-col md:flex-row">
-          {/* LEFT PANEL - Branding */}
-          <div className="w-full md:w-2/5 p-6 md:p-8 flex flex-col items-center justify-center text-gray-500">
+        {/* MOBILE: Simplified top branding (visible only on small screens) */}
+        <div className="block sm:hidden bg-gradient-to-r from-blue-50 to-indigo-50 pt-8 pb-4 px-4 text-center">
+          <div className="flex justify-center mb-2">
+            <img 
+              src="https://res.cloudinary.com/dfqsa6hoc/image/upload/v1779533276/PhotoshopExtension_Image__1_-removebg-preview_fzvzvy.png" 
+              alt="logo"
+              className="h-12"
+            />
+          </div>
+          <img 
+            src="https://res.cloudinary.com/dfqsa6hoc/image/upload/v1779533121/PhotoshopExtension_Image-removebg-preview_pbe76a.png" 
+            alt="logo name"
+            className="h-8 mx-auto"
+          />
+          <p className="text-sm text-gray-600 mt-2">
+            {activePanel === "signin" ? "Welcome back! Sign in to continue" : "Create your account in seconds"}
+          </p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row">
+          {/* LEFT PANEL - Visible only on tablets and desktop */}
+          <div className="hidden sm:flex sm:w-2/5 bg-gradient-to-br from-blue-50 to-indigo-50 p-6 md:p-8 flex-col items-center justify-center text-gray-600">
             <div className="mb-4">
               <div className="flex flex-col items-center mb-3">
                 <div className="w-16 h-16 rounded-xl flex items-center justify-center">
-                  <img
-                    src="https://res.cloudinary.com/dfqsa6hoc/image/upload/v1779533276/PhotoshopExtension_Image__1_-removebg-preview_fzvzvy.png"
+                  <img 
+                    src="https://res.cloudinary.com/dfqsa6hoc/image/upload/v1779533276/PhotoshopExtension_Image__1_-removebg-preview_fzvzvy.png" 
                     alt="logo"
                     className="h-full"
                   />
                 </div>
                 <span className="text-xl font-semibold mt-1">
-                  <img
-                    src="https://res.cloudinary.com/dfqsa6hoc/image/upload/v1779533121/PhotoshopExtension_Image-removebg-preview_pbe76a.png"
+                  <img 
+                    src="https://res.cloudinary.com/dfqsa6hoc/image/upload/v1779533121/PhotoshopExtension_Image-removebg-preview_pbe76a.png" 
                     alt="logo name"
-                    className="h-12"
+                    className="h-10"
                   />
                 </span>
               </div>
               {activePanel === "signin" ? (
                 <>
                   <h2 className="text-2xl font-bold mb-1">Welcome back!</h2>
-                  <p className="text-blue-500  text-sm">Login to access your account</p>
-
+                  <p className="text-blue-600 mb-4 text-sm">Login to access your account</p>
+                  <div className="space-y-1.5 text-xs text-gray-500">
+                    <div className="flex items-center gap-1.5"><CheckCircle size={12} /> Manage bookings</div>
+                    <div className="flex items-center gap-1.5"><CheckCircle size={12} /> Track professionals</div>
+                    <div className="flex items-center gap-1.5"><CheckCircle size={12} /> Exclusive offers</div>
+                  </div>
                 </>
               ) : (
                 <>
                   <h2 className="text-2xl font-bold mb-1">Join us today!</h2>
-                  <p className="text-blue-800 mb-4 text-sm">Create your account in seconds</p>
-
+                  <p className="text-blue-600 mb-4 text-sm">Create your account in seconds</p>
+                  <div className="space-y-1.5 text-xs text-gray-500">
+                    <div className="flex items-center gap-1.5"><CheckCircle size={12} /> Book professionals</div>
+                    <div className="flex items-center gap-1.5"><CheckCircle size={12} /> Pay after service</div>
+                    <div className="flex items-center gap-1.5"><CheckCircle size={12} /> 24/7 support</div>
+                  </div>
                 </>
               )}
             </div>
-
+            <button
+              onClick={() => togglePanel(activePanel === "signin" ? "signup" : "signin")}
+              className="mt-2 text-xs font-medium text-gray-500 hover:text-blue-800 transition-colors"
+            >
+              {activePanel === "signin" ? "Don't have an account? Sign Up →" : "Already have an account? Sign In →"}
+            </button>
           </div>
 
-          {/* RIGHT PANEL - Forms */}
-          <div className="w-full md:w-3/5 p-5 md:p-8 bg-white">
+          {/* RIGHT PANEL - Forms (full width on mobile, 3/5 on larger) */}
+          <div className="w-full sm:w-3/5 p-4 sm:p-6 md:p-8 bg-white">
             {generalError && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-red-700 text-sm">
                 <AlertCircle size={16} />
@@ -304,14 +338,8 @@ const Login = ({ initialPanel = "signin" }) => {
                   toggleShow={() => setShowLoginPassword(!showLoginPassword)}
                   error={fieldErrors.passwordLogin}
                 />
-                <div className="flex items-center justify-around ga justify-en">
+                <div className="flex justify-end">
                   <button type="button" className="text-xs text-blue-600 hover:text-blue-700">Forgot password?</button>
-                  <button
-                    onClick={() => togglePanel(activePanel === "signin" ? "signup" : "signin")}
-                    className="mt-2 text-xs font-medium text-gray-500 hover:text-blue-800 transition-colors"
-                  >
-                    {activePanel === "signin" ? "Don't have an account? Sign Up →" : "Already have an account? Sign In →"}
-                  </button>
                 </div>
                 <button
                   type="submit"
@@ -327,8 +355,17 @@ const Login = ({ initialPanel = "signin" }) => {
                 </div>
                 <div className="grid grid-cols-1 gap-3">
                   <button type="button" className="flex items-center justify-center gap-2 py-2 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
+                    <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
                     Google
+                  </button>
+                </div>
+                {/* Mobile-only toggle link */}
+                <div className="block sm:hidden text-center mt-4">
+                  <button
+                    onClick={() => togglePanel("signup")}
+                    className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    Don't have an account? Sign Up
                   </button>
                 </div>
               </form>
@@ -408,15 +445,18 @@ const Login = ({ initialPanel = "signin" }) => {
                   <div className="relative flex justify-center text-xs"><span className="px-2 bg-white text-gray-400">Or sign up with</span></div>
                 </div>
                 <div className="grid grid-cols-1 gap-3">
-                    <button
-                    onClick={() => togglePanel(activePanel === "signin" ? "signup" : "signin")}
-                    className="mt-2 text-xs hover:underline font-medium text-gray-500 hover:text-blue-800 transition-colors"
-                  >
-                    {activePanel === "signin" ? "Don't have an account? Sign Up →" : "Already have an account? Sign In →"}
-                  </button>
                   <button type="button" className="flex items-center justify-center gap-2 py-2 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
+                    <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
                     Google
+                  </button>
+                </div>
+                {/* Mobile-only toggle link */}
+                <div className="block sm:hidden text-center mt-4">
+                  <button
+                    onClick={() => togglePanel("signin")}
+                    className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    Already have an account? Sign In
                   </button>
                 </div>
               </form>
