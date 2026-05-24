@@ -7,7 +7,7 @@ import {
   removeUserAvatar,
   changePassword,
   updateNotificationPreferences,
-  fetchNotifications
+  fetchProviderProfile
 } from '../services/api';
 import { 
   Camera, 
@@ -31,15 +31,20 @@ import {
   ChevronRight,
   Eye,
   EyeOff,
-  Moon,
-  Sun,
   MailCheck,
   Smartphone,
-  Globe
+  Globe,
+  Edit2,
+  Briefcase,
+  MapPin,
+  Clock as ClockIcon
 } from 'lucide-react';
 
 const Profile = () => {
   const { user, setUser, logout } = useAuth();
+  
+  // Edit mode state
+  const [isEditing, setIsEditing] = useState(false);
   
   // Active tab
   const [activeTab, setActiveTab] = useState('profile');
@@ -80,7 +85,11 @@ const Profile = () => {
   });
   const [notifLoading, setNotifLoading] = useState(false);
   
-  // Stats (mock for now - can be extended later)
+  // Provider info (if user is provider)
+  const [providerInfo, setProviderInfo] = useState(null);
+  const [providerLoading, setProviderLoading] = useState(false);
+  
+  // Stats
   const [stats, setStats] = useState({
     totalBookings: 0,
     completedBookings: 0,
@@ -101,20 +110,24 @@ const Profile = () => {
     }
   }, [user]);
 
-  // Load user stats (optional)
+  // Load provider profile if user is provider
   useEffect(() => {
-    const loadStats = async () => {
-      try {
-        // You can replace this with actual API if available
-        const res = await fetchNotifications(1, 1);
-        if (res.success) {
-          // Just for demo – you can implement real stats endpoint
+    const loadProviderProfile = async () => {
+      if (user?.role === 'provider') {
+        setProviderLoading(true);
+        try {
+          const res = await fetchProviderProfile();
+          if (res.success) {
+            setProviderInfo(res.data.provider);
+          }
+        } catch (err) {
+          console.error('Failed to load provider profile:', err);
+        } finally {
+          setProviderLoading(false);
         }
-      } catch (err) {
-        console.error('Failed to load stats', err);
       }
     };
-    if (user) loadStats();
+    if (user) loadProviderProfile();
   }, [user]);
 
   // Handle profile form change
@@ -122,8 +135,8 @@ const Profile = () => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  // Handle profile update
-  const handleSubmit = async (e) => {
+  // Handle profile update (save)
+  const handleSaveProfile = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMessage('');
@@ -136,6 +149,7 @@ const Profile = () => {
         if (setUser) {
           setUser(prev => ({ ...prev, ...form }));
         }
+        setIsEditing(false); // Exit edit mode after save
         setTimeout(() => setMessage(''), 3000);
       }
     } catch (err) {
@@ -143,6 +157,25 @@ const Profile = () => {
       setMessageType('error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Cancel editing
+  const cancelEditing = () => {
+    setIsEditing(false);
+    // Reset form to original user data
+    if (user) {
+      setForm({
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        gender: user.gender || '',
+        dateOfBirth: user.dateOfBirth ? user.dateOfBirth.split('T')[0] : ''
+      });
+    }
+    setAvatarFile(null);
+    setAvatarPreview(user?.avatar?.url || null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -221,14 +254,6 @@ const Profile = () => {
     }
   };
 
-  const cancelAvatarUpload = () => {
-    setAvatarFile(null);
-    setAvatarPreview(user?.avatar?.url || null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
   // Password change handler
   const handlePasswordChange = async (e) => {
     e.preventDefault();
@@ -276,7 +301,7 @@ const Profile = () => {
     } catch (err) {
       setMessage(err.message || 'Failed to update preferences');
       setMessageType('error');
-      setNotifPrefs(notifPrefs); // revert
+      setNotifPrefs(notifPrefs);
     } finally {
       setNotifLoading(false);
     }
@@ -289,6 +314,16 @@ const Profile = () => {
       return () => clearTimeout(timer);
     }
   }, [message]);
+
+  // Format date for display
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Not set';
+    return new Date(dateString).toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 px-4 sm:px-6 lg:px-8">
@@ -343,14 +378,16 @@ const Profile = () => {
                   />
                 </div>
                 <h2 className="mt-4 text-xl font-bold text-gray-800">{user?.firstName} {user?.lastName}</h2>
-                <p className="text-sm text-gray-500 mt-1">{user?.email}</p>
+                <p className="text-sm text-gray-500 mt-1 flex items-center justify-center gap-1">
+                  <Mail size={12} /> {user?.email}
+                </p>
                 <div className="mt-3 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                   <CheckCircle size={12} className="mr-1" />
-                  Verified Account
+                  {user?.role === 'provider' ? 'Professional Account' : 'Verified Account'}
                 </div>
 
-                {/* Avatar upload controls */}
-                {avatarFile && (
+                {/* Avatar upload controls - only in edit mode */}
+                {isEditing && avatarFile && (
                   <div className="mt-4 flex justify-center gap-2">
                     <button
                       onClick={handleUploadAvatar}
@@ -361,7 +398,7 @@ const Profile = () => {
                       Save
                     </button>
                     <button
-                      onClick={cancelAvatarUpload}
+                      onClick={cancelEditing}
                       className="px-3 py-1.5 bg-gray-200 text-gray-700 text-xs rounded-lg hover:bg-gray-300 transition flex items-center gap-1"
                     >
                       <X size={12} />
@@ -369,7 +406,7 @@ const Profile = () => {
                     </button>
                   </div>
                 )}
-                {!avatarFile && avatarPreview && (
+                {isEditing && !avatarFile && avatarPreview && (
                   <button
                     onClick={handleRemoveAvatar}
                     disabled={uploading}
@@ -379,6 +416,25 @@ const Profile = () => {
                     Remove photo
                   </button>
                 )}
+              </div>
+
+              {/* Quick Stats Card */}
+              <div className="p-4 border-b border-gray-100 bg-gray-50">
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Quick Stats</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Total Bookings</span>
+                    <span className="font-semibold text-gray-800">{stats.totalBookings || 0}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Completed</span>
+                    <span className="font-semibold text-green-600">{stats.completedBookings || 0}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Total Spent</span>
+                    <span className="font-semibold text-emerald-600">₹{stats.totalSpent || 0}</span>
+                  </div>
+                </div>
               </div>
 
               {/* Navigation Tabs (Sidebar) */}
@@ -427,129 +483,226 @@ const Profile = () => {
                   <span>Sign Out</span>
                 </button>
               </div>
-
-              {/* Stats Card */}
-              <div className="p-4 border-t border-gray-100 bg-gray-50">
-                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Quick Stats</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Total Bookings</span>
-                    <span className="font-semibold text-gray-800">{stats.totalBookings || 0}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Completed</span>
-                    <span className="font-semibold text-green-600">{stats.completedBookings || 0}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Total Spent</span>
-                    <span className="font-semibold text-emerald-600">₹{stats.totalSpent || 0}</span>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
 
           {/* Main Content */}
           <div className="flex-1">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              {/* Tab: Profile Info */}
-              {activeTab === 'profile' && (
+            {/* Tab: Profile Info */}
+            {activeTab === 'profile' && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="p-6 md:p-8">
-                  <div className="flex items-center gap-3 mb-6">
-                    <User size={24} className="text-blue-600" />
-                    <h2 className="text-xl font-bold text-gray-800">Personal Information</h2>
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                      <User size={24} className="text-blue-600" />
+                      <h2 className="text-xl font-bold text-gray-800">Personal Information</h2>
+                    </div>
+                    {!isEditing && (
+                      <button
+                        onClick={() => setIsEditing(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition"
+                      >
+                        <Edit2 size={16} />
+                        Edit Profile
+                      </button>
+                    )}
                   </div>
-                  <form onSubmit={handleSubmit} className="space-y-5">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                        <input
-                          type="text"
-                          name="firstName"
-                          value={form.firstName}
-                          onChange={handleChange}
-                          required
-                          className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                          placeholder="Enter your first name"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                        <input
-                          type="text"
-                          name="lastName"
-                          value={form.lastName}
-                          onChange={handleChange}
-                          required
-                          className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                          placeholder="Enter your last name"
-                        />
-                      </div>
-                    </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                        <div className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl">
-                          <Mail size={18} className="text-gray-400" />
-                          <span className="text-gray-600">{user?.email}</span>
+                  {!isEditing ? (
+                    // Display mode
+                    <div className="space-y-5">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-500 mb-1">First Name</label>
+                          <p className="text-gray-800 font-medium">{form.firstName || '—'}</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-500 mb-1">Last Name</label>
+                          <p className="text-gray-800 font-medium">{form.lastName || '—'}</p>
                         </div>
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                        <div className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl">
-                          <Phone size={18} className="text-gray-400" />
-                          <span className="text-gray-600">{user?.phone}</span>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-500 mb-1">Email</label>
+                          <p className="text-gray-800 font-medium">{user?.email || '—'}</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-500 mb-1">Phone</label>
+                          <p className="text-gray-800 font-medium">{user?.phone || '—'}</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-500 mb-1">Gender</label>
+                          <p className="text-gray-800 font-medium capitalize">{form.gender || '—'}</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-500 mb-1">Date of Birth</label>
+                          <p className="text-gray-800 font-medium">{formatDate(form.dateOfBirth)}</p>
                         </div>
                       </div>
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
-                        <select
-                          name="gender"
-                          value={form.gender}
-                          onChange={handleChange}
-                          className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-white"
-                        >
-                          <option value="">Select gender</option>
-                          <option value="male">Male</option>
-                          <option value="female">Female</option>
-                          <option value="other">Other</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
-                        <div className="relative">
-                          <Calendar size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  ) : (
+                    // Edit mode - form
+                    <form onSubmit={handleSaveProfile} className="space-y-5">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
                           <input
-                            type="date"
-                            name="dateOfBirth"
-                            value={form.dateOfBirth}
+                            type="text"
+                            name="firstName"
+                            value={form.firstName}
                             onChange={handleChange}
-                            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                            required
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                          <input
+                            type="text"
+                            name="lastName"
+                            value={form.lastName}
+                            onChange={handleChange}
+                            required
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
                           />
                         </div>
                       </div>
-                    </div>
-
-                    <div className="pt-4 border-t border-gray-100 flex justify-end">
-                      <button
-                        type="submit"
-                        disabled={loading}
-                        className="px-8 py-2.5 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"
-                      >
-                        {loading && <Loader2 size={18} className="animate-spin" />}
-                        {loading ? 'Saving...' : 'Save Changes'}
-                      </button>
-                    </div>
-                  </form>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                          <div className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl">
+                            <Mail size={18} className="text-gray-400" />
+                            <span className="text-gray-600">{user?.email}</span>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                          <div className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl">
+                            <Phone size={18} className="text-gray-400" />
+                            <span className="text-gray-600">{user?.phone}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+                          <select
+                            name="gender"
+                            value={form.gender}
+                            onChange={handleChange}
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-white"
+                          >
+                            <option value="">Select gender</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="other">Other</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+                          <div className="relative">
+                            <Calendar size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                              type="date"
+                              name="dateOfBirth"
+                              value={form.dateOfBirth}
+                              onChange={handleChange}
+                              className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="pt-4 border-t border-gray-100 flex justify-end gap-3">
+                        <button
+                          type="button"
+                          onClick={cancelEditing}
+                          className="px-6 py-2.5 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={loading}
+                          className="px-8 py-2.5 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"
+                        >
+                          {loading && <Loader2 size={18} className="animate-spin" />}
+                          {loading ? 'Saving...' : 'Save Changes'}
+                        </button>
+                      </div>
+                    </form>
+                  )}
                 </div>
-              )}
 
-              {/* Tab: Security (Change Password) */}
-              {activeTab === 'security' && (
+                {/* Provider Information Section (only for provider users) */}
+                {user?.role === 'provider' && (
+                  <div className="border-t border-gray-100 p-6 md:p-8 bg-gray-50">
+                    <div className="flex items-center gap-3 mb-6">
+                      <Briefcase size={24} className="text-emerald-600" />
+                      <h2 className="text-xl font-bold text-gray-800">Professional Information</h2>
+                    </div>
+                    {providerLoading ? (
+                      <div className="flex justify-center py-8">
+                        <Loader2 size={32} className="animate-spin text-emerald-600" />
+                      </div>
+                    ) : providerInfo ? (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-500 mb-1">Business Name</label>
+                            <p className="text-gray-800 font-medium">{providerInfo.businessName || '—'}</p>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-500 mb-1">Years of Experience</label>
+                            <p className="text-gray-800 font-medium">{providerInfo.experience?.years || 0} years</p>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-500 mb-1">Bio</label>
+                          <p className="text-gray-700">{providerInfo.bio || '—'}</p>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-500 mb-1">Verification Status</label>
+                            <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${
+                              providerInfo.verificationStatus === 'verified' 
+                                ? 'bg-green-100 text-green-800'
+                                : providerInfo.verificationStatus === 'pending'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-red-100 text-red-800'
+                            }`}>
+                              {providerInfo.verificationStatus === 'verified' ? '✓ Verified' : 
+                               providerInfo.verificationStatus === 'pending' ? '⏳ Pending' : '✗ Rejected'}
+                            </span>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-500 mb-1">Service Radius</label>
+                            <p className="text-gray-800 font-medium flex items-center gap-1">
+                              <MapPin size={14} /> {providerInfo.serviceArea?.radius || 10} km
+                            </p>
+                          </div>
+                        </div>
+                        <div className="pt-3">
+                          <button
+                            onClick={() => window.location.href = '/provider/profile'}
+                            className="text-emerald-600 hover:text-emerald-700 text-sm font-medium flex items-center gap-1"
+                          >
+                            Manage Professional Profile →
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-gray-500 text-center py-4">No professional information available</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tab: Security (Change Password) */}
+            {activeTab === 'security' && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="p-6 md:p-8">
                   <div className="flex items-center gap-3 mb-6">
                     <Shield size={24} className="text-blue-600" />
@@ -631,7 +784,7 @@ const Profile = () => {
                         <button
                           type="submit"
                           disabled={passwordLoading}
-                          className="px-8 py-2.5 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2 shadow-sm"
+                          className="px-8 py-2.5 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"
                         >
                           {passwordLoading && <Loader2 size={18} className="animate-spin" />}
                           {passwordLoading ? 'Updating...' : 'Update Password'}
@@ -640,10 +793,12 @@ const Profile = () => {
                     </form>
                   </div>
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* Tab: Notifications */}
-              {activeTab === 'notifications' && (
+            {/* Tab: Notifications */}
+            {activeTab === 'notifications' && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="p-6 md:p-8">
                   <div className="flex items-center gap-3 mb-6">
                     <Bell size={24} className="text-blue-600" />
@@ -714,8 +869,8 @@ const Profile = () => {
                     </div>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

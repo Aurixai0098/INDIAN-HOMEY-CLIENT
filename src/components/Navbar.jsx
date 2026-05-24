@@ -417,14 +417,14 @@ const Navbar = () => {
                       <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                     </button>
                     <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 overflow-hidden">
-                      <div className="p-3 border-b border-gray-100 bg-gray-50">
-                        <p className="text-sm font-semibold text-gray-800">{user.name || 'User'}</p>
-                        <p className="text-xs text-gray-500 flex items-center gap-2">
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                            <path d="M1.5 8.67v8.58a3 3 0 003 3h15a3 3 0 003-3V8.67l-8.928 5.493a3 3 0 01-3.144 0L1.5 8.67z" />
-                            <path d="M22.5 6.908V6.75a3 3 0 00-3-3h-15a3 3 0 00-3 3v.158l9.714 5.978a1.5 1.5 0 001.572 0L22.5 6.908z" />
-                          </svg>
-                          {user.email}
+                      <div className=" flex justify-center flex-col items-center p-3 border-b border-gray-100 bg-gray-50">
+                        
+                        <p className="   text-xs text-gray-500 flex flex-col items-center gap-2">
+                        <span className='w-20 h-20 rounded-full overflow-hidden'>
+                          <img src={user.avatar.url} alt="avatar" className='w-full h-full bg-cover ' />
+                        </span>
+                        <span> {user?.fullName}</span>
+                          <span>{user.email}</span>
                         </p>
                         {user.role === 'provider' && (
                           <span className="inline-block mt-1 text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-semibold">Service Professional</span>

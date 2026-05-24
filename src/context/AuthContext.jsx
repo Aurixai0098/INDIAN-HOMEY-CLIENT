@@ -57,6 +57,7 @@ export const AuthProvider = ({ children }) => {
       const res = await fetch(`${BASE_URL}/auth/me`, { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
+         console.log(data)
         setUser(data.data?.user || null);
       } else {
         setUser(null);

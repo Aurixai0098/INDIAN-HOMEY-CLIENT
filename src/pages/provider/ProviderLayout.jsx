@@ -23,7 +23,8 @@ import {
   PowerOff,
   Bell,
   XCircle,
-  CheckCircle
+  CheckCircle,
+  HomeIcon
 } from 'lucide-react';
 import { updateProviderProfile, updateHeartbeat } from '../../services/api';
 import ProviderNotificationBell from '../../components/ProviderNotificationBell';
@@ -158,9 +159,8 @@ const ProviderLayout = () => {
       )}
 
       <aside
-        className={`fixed top-0 left-0 bottom-0 w-72 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed top-0 left-0 bottom-0 w-72 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
       >
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
           <div className="flex items-center gap-3">
@@ -215,16 +215,14 @@ const ProviderLayout = () => {
               <NavLink key={item.to} to={item.to} end={item.end} onClick={() => setSidebarOpen(false)}>
                 {({ isActive }) => (
                   <div
-                    className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 group cursor-pointer ${
-                      isActive
+                    className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 group cursor-pointer ${isActive
                         ? 'bg-emerald-50 text-emerald-700 shadow-sm'
                         : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                    }`}
+                      }`}
                   >
                     <item.icon
-                      className={`w-5 h-5 transition-colors ${
-                        isActive ? 'text-emerald-600' : 'text-gray-400 group-hover:text-emerald-500'
-                      }`}
+                      className={`w-5 h-5 transition-colors ${isActive ? 'text-emerald-600' : 'text-gray-400 group-hover:text-emerald-500'
+                        }`}
                     />
                     <span className="font-medium text-sm">{item.label}</span>
                   </div>
@@ -281,11 +279,10 @@ const ProviderLayout = () => {
             <div className="flex items-center gap-2 sm:gap-3">
               <button
                 onClick={toggleAvailability}
-                className={`p-2 rounded-xl border transition-colors shadow-sm ${
-                  isAvailable 
-                    ? 'bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100' 
+                className={`p-2 rounded-xl border transition-colors shadow-sm ${isAvailable
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100'
                     : 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100'
-                }`}
+                  }`}
                 title={isAvailable ? 'Go Offline' : 'Go Online'}
               >
                 {isAvailable ? <Power className="w-5 h-5" /> : <PowerOff className="w-5 h-5" />}
@@ -306,7 +303,7 @@ const ProviderLayout = () => {
                       )}&background=10b981&color=fff&size=40`
                     }
                     alt="Avatar"
-                    className="w-8 h-8 rounded-lg object-cover"
+                    className="w-10 h-10 rounded-full object-cover"
                   />
                   <ChevronDown className="w-4 h-4 text-gray-500" />
                 </button>
@@ -315,6 +312,7 @@ const ProviderLayout = () => {
                   <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                     <div className="px-4 py-3 border-b border-gray-100">
                       <p className="text-sm font-semibold text-gray-800">
+                        
                         {user?.businessName || `${user?.firstName} ${user?.lastName}`}
                       </p>
                       <p className="text-xs text-gray-500">{user?.email}</p>
@@ -327,11 +325,11 @@ const ProviderLayout = () => {
                       <User className="w-4 h-4" /> Profile
                     </NavLink>
                     <NavLink
-                      to="/provider/settings"
+                      to="/"
                       className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                       onClick={() => setUserMenuOpen(false)}
                     >
-                      <Settings className="w-4 h-4" /> Settings
+                      <HomeIcon className='w-4 h-4'/> Go to home page
                     </NavLink>
                     <button
                       onClick={() => {
