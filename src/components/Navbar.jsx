@@ -3,29 +3,34 @@ import { Link } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import { fetchCategories, searchServices } from '../services/api';
+import { fetchCategories, fetchServices, searchServices } from '../services/api';
 import NotificationBell from './NotificationBell';
 import ProviderLocationModal from '../pages/provider/ProviderLocationModal';
- import Login from './auth/Login';  
+import Login from './auth/Login';
+
 const Navbar = () => {
- 
-  const { user, logout, setShowAuth , showAuth } = useAuth();
+  const { user, logout, setShowAuth, showAuth } = useAuth();
   const { cartCount } = useCart();
-  
-  // State to control which panel to show in auth modal
   const [authPanel, setAuthPanel] = useState('signin');
 
   const [categories, setCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [allServices, setAllServices] = useState([]); // for rotating placeholder
 
+  // Rotating placeholder state
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const [rotatingPlaceholder, setRotatingPlaceholder] = useState('Search for services...');
+
+  // Search states
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
+  const [searchResults, setSearchResults] = useState({ categories: [], services: [] });
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const searchRef = useRef(null);
   const mobileSearchRef = useRef(null);
 
+  // Location & map states
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [location, setLocation] = useState('');
   const [currentCoords, setCurrentCoords] = useState(null);
@@ -47,7 +52,6 @@ const Navbar = () => {
   const [isMobileView, setIsMobileView] = useState(window.innerWidth < 1024);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Helper to open auth modal with specific panel
   const openAuthModal = (panel) => {
     setAuthPanel(panel);
     setShowAuth(true);
@@ -58,51 +62,83 @@ const Navbar = () => {
     return name.substring(0, 2).toUpperCase();
   };
 
+  // Load categories + services (for rotating placeholder)
   useEffect(() => {
-    const loadCategories = async () => {
+    const loadData = async () => {
       setCategoriesLoading(true);
       try {
-        const res = await fetchCategories();
-        if (res.success && res.data.categories) {
-          setCategories(res.data.categories.filter(cat => cat.isActive));
+        const [catRes, servicesRes] = await Promise.all([
+          fetchCategories(),
+          fetchServices(1, 100)
+        ]);
+        if (catRes.success && catRes.data.categories) {
+          setCategories(catRes.data.categories.filter(cat => cat.isActive));
+        }
+        if (servicesRes.success && servicesRes.data.services) {
+          setAllServices(servicesRes.data.services);
         }
       } catch (err) {
-        console.error('Failed to load categories:', err);
+        console.error('Failed to load data for navbar:', err);
       } finally {
         setCategoriesLoading(false);
       }
     };
-    loadCategories();
+    loadData();
   }, []);
 
+  // Rotating placeholder: every 3 seconds pick random category or service name
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const categoryNames = categories.map(c => c.name).filter(Boolean);
+      const serviceNames = allServices.map(s => s.name).filter(Boolean);
+      const allNames = [...categoryNames, ...serviceNames];
+      if (allNames.length === 0) return;
+
+      let newIndex;
+      do {
+        newIndex = Math.floor(Math.random() * allNames.length);
+      } while (newIndex === placeholderIndex && allNames.length > 1);
+
+      setPlaceholderIndex(newIndex);
+      setRotatingPlaceholder(`Search for ${allNames[newIndex]}...`);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [categories, allServices, placeholderIndex]);
+
+  // Search effect (categories + services)
   useEffect(() => {
     const delayDebounce = setTimeout(async () => {
-      if (searchQuery.trim().length > 0) {
-        setIsSearching(true);
-        try {
-          const res = await searchServices(searchQuery);
-          if (res.success) {
-            setSearchResults(res.services || []);
-            setShowSearchDropdown(true);
-          }
-        } catch (err) {
-          console.error('Search error:', err);
-          setSearchResults([]);
-        } finally {
-          setIsSearching(false);
-        }
-      } else {
-        setSearchResults([]);
+      const query = searchQuery.trim().toLowerCase();
+      if (query.length === 0) {
+        setSearchResults({ categories: [], services: [] });
         setShowSearchDropdown(false);
+        setIsSearching(false);
+        return;
       }
+
+      setIsSearching(true);
+      const matchedCategories = categories.filter(cat =>
+        cat.name.toLowerCase().includes(query)
+      );
+
+      let matchedServices = [];
+      try {
+        const res = await searchServices(searchQuery);
+        if (res.success && res.services) matchedServices = res.services;
+      } catch (err) { console.error('Search error:', err); }
+
+      setSearchResults({ categories: matchedCategories, services: matchedServices });
+      setShowSearchDropdown(true);
+      setIsSearching(false);
     }, 500);
     return () => clearTimeout(delayDebounce);
-  }, [searchQuery]);
+  }, [searchQuery, categories]);
 
+  // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (searchRef.current && !searchRef.current.contains(event.target) &&
-        mobileSearchRef.current && !mobileSearchRef.current.contains(event.target)) {
+          mobileSearchRef.current && !mobileSearchRef.current.contains(event.target)) {
         setShowSearchDropdown(false);
         setMobileSearchOpen(false);
       }
@@ -117,6 +153,7 @@ const Navbar = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Leaflet map initialization
   useEffect(() => {
     if (!document.getElementById('leaflet-css')) {
       const link = document.createElement('link');
@@ -192,9 +229,7 @@ const Navbar = () => {
         return address;
       }
       return null;
-    } catch (err) {
-      return null;
-    }
+    } catch (err) { return null; }
   };
 
   const forwardGeocode = async (address) => {
@@ -206,9 +241,7 @@ const Navbar = () => {
         return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), display: data[0].display_name };
       }
       return null;
-    } catch (err) {
-      return null;
-    }
+    } catch (err) { return null; }
   };
 
   const getCurrentLocation = () => {
@@ -315,25 +348,17 @@ const Navbar = () => {
           {/* ========== DESKTOP VIEW ========== */}
           {!isMobileView && (
             <div className="flex items-center justify-between gap-8">
-              {/* Logo - Updated with two images */}
+              {/* Logo */}
               <Link to="/" className="flex items-center gap-3 shrink-0 no-underline" onMouseEnter={handleLogoRotate} onClick={handleLogoRotate}>
                 <div className="rounded-lg w-20 h-20 flex items-center justify-center overflow-hidden bg-white p-1">
-                  <img 
-                    src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778658121/a7ea1860-5474-4e8d-800b-72c68b9f6b71.png" 
-                    alt="INDIAN HOMEY Logo" 
-                    className="w-full h-full object-contain" 
-                  />
+                  <img src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778658121/a7ea1860-5474-4e8d-800b-72c68b9f6b71.png" alt="INDIAN HOMEY Logo" className="w-full h-full object-contain" />
                 </div>
                 <div className="w-32 h-16">
-                  <img 
-                    src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778752596/3b3dd98d-e461-4412-ba36-b5086a6e6331.png" 
-                    alt="INDIAN HOMEY" 
-                    className="w-full h-full object-contain" 
-                  />
+                  <img src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778752596/3b3dd98d-e461-4412-ba36-b5086a6e6331.png" alt="INDIAN HOMEY" className="w-full h-full object-contain" />
                 </div>
               </Link>
 
-              {/* Search Bar */}
+              {/* Search Bar with rotating placeholder */}
               <div className="flex-1 max-w-xl relative" ref={searchRef}>
                 <div className="relative">
                   <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -343,8 +368,8 @@ const Navbar = () => {
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    onFocus={() => searchQuery.trim() && searchResults.length > 0 && setShowSearchDropdown(true)}
-                    placeholder="Search for services..."
+                    onFocus={() => (searchResults.categories.length > 0 || searchResults.services.length > 0) && setShowSearchDropdown(true)}
+                    placeholder={rotatingPlaceholder}
                     className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   />
                   {isSearching && (
@@ -353,28 +378,35 @@ const Navbar = () => {
                     </div>
                   )}
                 </div>
-                {showSearchDropdown && searchResults.length > 0 && (
+                {showSearchDropdown && (searchResults.categories.length > 0 || searchResults.services.length > 0) && (
                   <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 max-h-96 overflow-y-auto z-50">
-                    {searchResults.map((service) => (
-                      <Link key={service._id} to={`/service/${service.slug}`} onClick={() => { setShowSearchDropdown(false); setSearchQuery(''); }} className="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-0">
-                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                          {service.images?.[0]?.url ? (
-                            <img src={service.images[0].url} alt={service.name} className="w-full h-full object-cover" />
-                          ) : service.icon?.url ? (
-                            <img src={service.icon.url} alt={service.name} className="w-full h-full object-contain p-2" />
-                          ) : (
-                            <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-medium text-gray-800">{service.name}</p>
-                          <p className="text-xs text-gray-500">{service.category?.name || 'Service'}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-semibold text-emerald-600">₹{service.basePrice}</p>
-                        </div>
-                      </Link>
-                    ))}
+                    {searchResults.categories.length > 0 && (
+                      <>
+                        <div className="px-4 py-2 bg-gray-50 text-xs font-semibold text-gray-500 uppercase sticky top-0">Categories</div>
+                        {searchResults.categories.map(cat => (
+                          <Link key={cat._id} to={`/category/${cat.slug}`} onClick={() => { setShowSearchDropdown(false); setSearchQuery(''); }} className="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-0">
+                            <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
+                              {cat.icon?.url ? <img src={cat.icon.url} alt={cat.name} className="w-full h-full object-contain p-2" /> : <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>}
+                            </div>
+                            <div className="flex-1"><p className="font-medium text-gray-800">{cat.name}</p><p className="text-xs text-gray-500">Category</p></div>
+                          </Link>
+                        ))}
+                      </>
+                    )}
+                    {searchResults.services.length > 0 && (
+                      <>
+                        <div className="px-4 py-2 bg-gray-50 text-xs font-semibold text-gray-500 uppercase sticky top-0">Services</div>
+                        {searchResults.services.map(service => (
+                          <Link key={service._id} to={`/service/${service.slug}`} onClick={() => { setShowSearchDropdown(false); setSearchQuery(''); }} className="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-0">
+                            <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                              {service.images?.[0]?.url ? <img src={service.images[0].url} alt={service.name} className="w-full h-full object-cover" /> : service.icon?.url ? <img src={service.icon.url} alt={service.name} className="w-full h-full object-contain p-2" /> : <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>}
+                            </div>
+                            <div className="flex-1"><p className="font-medium text-gray-800">{service.name}</p><p className="text-xs text-gray-500">{service.category?.name || 'Service'}</p></div>
+                            <div className="text-right"><p className="text-sm font-semibold text-emerald-600">₹{service.basePrice}</p></div>
+                          </Link>
+                        ))}
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -403,7 +435,6 @@ const Navbar = () => {
                 </Link>
                 {user && <NotificationBell />}
                 {user ? (
-                  // Professional Dropdown
                   <div className="relative group">
                     <button className="flex items-center gap-2 bg-white hover:bg-gray-50 border border-gray-200 px-2 py-1.5 rounded-full transition-colors shadow-sm">
                       <div className="w-7 h-7 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
@@ -417,13 +448,12 @@ const Navbar = () => {
                       <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                     </button>
                     <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 overflow-hidden">
-                      <div className=" flex justify-center flex-col items-center p-3 border-b border-gray-100 bg-gray-50">
-                        
-                        <p className="   text-xs text-gray-500 flex flex-col items-center gap-2">
-                        <span className='w-20 h-20 rounded-full overflow-hidden'>
-                          <img src={user.avatar.url} alt="avatar" className='w-full h-full bg-cover ' />
-                        </span>
-                        <span> {user?.fullName}</span>
+                      <div className="flex justify-center flex-col items-center p-3 border-b border-gray-100 bg-gray-50">
+                        <p className="text-xs text-gray-500 flex flex-col items-center gap-2">
+                          <span className='w-20 h-20 rounded-full overflow-hidden'>
+                            <img src={user.avatar?.url} alt="avatar" className='w-full h-full bg-cover' />
+                          </span>
+                          <span>{user?.fullName}</span>
                           <span>{user.email}</span>
                         </p>
                         {user.role === 'provider' && (
@@ -435,44 +465,36 @@ const Navbar = () => {
                       </div>
                       <div className="py-2">
                         <Link to="/profile" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 transition">
-                          <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                          My Profile
+                          <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg> My Profile
                         </Link>
                         <Link to="/my-bookings" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 transition">
-                          <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                          My Bookings
+                          <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg> My Bookings
                         </Link>
                         {user.role === 'provider' && (
                           <>
                             <Link to="/provider" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 transition">
-                              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-                              Dashboard
+                              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg> Dashboard
                             </Link>
                             <Link to="/provider/bookings" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 transition">
-                              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                              Manage Bookings
+                              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg> Manage Bookings
                             </Link>
                             <Link to="/provider/services" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 transition">
-                              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                              My Services
+                              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg> My Services
                             </Link>
                             <button onClick={() => setShowLocationModal(true)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 transition text-left">
-                              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /></svg>
-                              Service Area
+                              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /></svg> Service Area
                             </button>
                           </>
                         )}
                         {user.role === 'admin' && (
                           <Link to="/admin" className="flex items-center gap-3 px-4 py-2.5 text-sm text-amber-700 hover:bg-amber-50 transition">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                            Admin Panel
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg> Admin Panel
                           </Link>
                         )}
                       </div>
                       <div className="border-t border-gray-100 p-2">
                         <button onClick={logout} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 rounded-xl transition font-medium">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-                          Logout
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg> Logout
                         </button>
                       </div>
                     </div>
@@ -490,7 +512,9 @@ const Navbar = () => {
           {/* ========== MOBILE VIEW ========== */}
           {isMobileView && (
             <div className="flex flex-col gap-3">
+              {/* Top Bar: Logo | Search, Location, Notification, Avatar */}
               <div className="flex items-center justify-between gap-2">
+                {/* Logo */}
                 <Link to="/" className="flex shrink-0 items-center gap-2 no-underline" onClick={handleLogoRotate}>
                   <div className="rounded-lg w-14 h-14 flex items-center justify-center overflow-hidden bg-white p-1">
                     <img 
@@ -507,47 +531,108 @@ const Navbar = () => {
                     />
                   </div>
                 </Link>
+
                 <div className="flex items-center gap-2 shrink-0">
-                  <button onClick={() => setMobileSearchOpen(!mobileSearchOpen)} className="p-2 text-gray-600 bg-gray-50 border border-gray-200 rounded-full transition-colors hover:bg-gray-100">
-                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                  {/* Search Icon */}
+                  <button 
+                    onClick={() => setMobileSearchOpen(!mobileSearchOpen)} 
+                    className="p-2 text-gray-600 bg-gray-50 border border-gray-200 rounded-full transition-colors hover:bg-gray-100"
+                  >
+                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
                   </button>
-                  <button onClick={() => setShowLocationPopup(true)} className="p-2 text-gray-600 bg-gray-50 border border-gray-200 rounded-full transition-colors hover:bg-gray-100">
-                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+
+                  {/* Location Icon */}
+                  <button 
+                    onClick={() => setShowLocationPopup(true)} 
+                    className="p-2 text-gray-600 bg-gray-50 border border-gray-200 rounded-full transition-colors hover:bg-gray-100"
+                  >
+                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
                   </button>
-                  <Link to="/cart" className="relative p-2 text-gray-600 bg-gray-50 border border-gray-200 rounded-full transition-colors hover:bg-gray-100">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M18 13l1.5 6M9 21a1 1 0 100-2 1 1 0 000 2zm9 0a1 1 0 100-2 1 1 0 000 2z" /></svg>
-                    {cartCount > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center shadow-sm">
-                        {cartCount > 99 ? '99+' : cartCount}
-                      </span>
+
+                  {/* Notification Bell (was previously cart icon) */}
+                  {user && <NotificationBell />}
+                  {!user && <div className="w-9 h-9" /> /* placeholder */}
+
+                  {/* Avatar that opens drawer (replaces hamburger) */}
+                  <button 
+                    onClick={() => setMobileMenuOpen(true)} 
+                    className="flex items-center justify-center w-9 h-9 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600 shadow-md active:scale-95 transition-all"
+                  >
+                    {user?.avatar?.url ? (
+                      <img src={user.avatar.url} alt="avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-white text-sm font-bold">{getInitials(user?.name || user?.email || 'U')}</span>
                     )}
-                  </Link>
-                  <button onClick={() => setMobileMenuOpen(true)} className="flex flex-col items-center justify-center gap-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 w-9 h-9 rounded-xl transition-all shadow-md active:scale-95">
-                    <span className="w-4 h-0.5 bg-white rounded-full"></span>
-                    <span className="w-4 h-0.5 bg-white rounded-full"></span>
-                    <span className="w-4 h-0.5 bg-white rounded-full"></span>
                   </button>
                 </div>
               </div>
+
+              {/* Mobile Search Input (collapsible) */}
               {mobileSearchOpen && (
                 <div className="relative w-full animate-fadeIn" ref={mobileSearchRef}>
                   <div className="relative">
-                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                    <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onFocus={() => searchQuery.trim() && searchResults.length > 0 && setShowSearchDropdown(true)} placeholder="Search for services..." className="w-full pl-10 pr-12 py-2.5 bg-gray-50 border border-gray-200 rounded-full text-sm outline-none focus:ring-2 focus:ring-blue-500" autoFocus />
-                    {isSearching && <div className="absolute right-12 top-1/2 -translate-y-1/2"><div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>}
-                    <button onClick={() => setMobileSearchOpen(false)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onFocus={() => (searchResults.categories.length > 0 || searchResults.services.length > 0) && setShowSearchDropdown(true)}
+                      placeholder={rotatingPlaceholder}
+                      className="w-full pl-10 pr-12 py-2.5 bg-gray-50 border border-gray-200 rounded-full text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                      autoFocus
+                    />
+                    {isSearching && (
+                      <div className="absolute right-12 top-1/2 -translate-y-1/2">
+                        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    )}
+                    <button 
+                      onClick={() => setMobileSearchOpen(false)} 
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
                   </div>
-                  {showSearchDropdown && searchResults.length > 0 && (
+                  {showSearchDropdown && (searchResults.categories.length > 0 || searchResults.services.length > 0) && (
                     <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 max-h-80 overflow-y-auto z-50">
-                      {searchResults.map((service) => (
-                        <Link key={service._id} to={`/service/${service.slug}`} onClick={() => { setShowSearchDropdown(false); setSearchQuery(''); setMobileSearchOpen(false); }} className="flex items-center gap-3 px-3 py-2 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-0">
-                          <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                            {service.images?.[0]?.url ? <img src={service.images[0].url} alt={service.name} className="w-full h-full object-cover" /> : service.icon?.url ? <img src={service.icon.url} alt={service.name} className="w-full h-full object-contain p-1.5" /> : <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>}
-                          </div>
-                          <div className="flex-1"><p className="font-medium text-gray-800 text-sm">{service.name}</p><p className="text-xs text-gray-500">{service.category?.name || 'Service'}</p></div>
-                          <div className="text-right"><p className="text-sm font-semibold text-emerald-600">₹{service.basePrice}</p></div>
-                        </Link>
-                      ))}
+                      {/* Categories section */}
+                      {searchResults.categories.length > 0 && (
+                        <>
+                          <div className="px-3 py-1.5 bg-gray-50 text-xs font-semibold text-gray-500">Categories</div>
+                          {searchResults.categories.map(cat => (
+                            <Link key={cat._id} to={`/category/${cat.slug}`} onClick={() => { setShowSearchDropdown(false); setSearchQuery(''); setMobileSearchOpen(false); }} className="flex items-center gap-3 px-3 py-2 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-0">
+                              <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
+                                {cat.icon?.url ? <img src={cat.icon.url} alt={cat.name} className="w-full h-full object-contain p-1" /> : <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>}
+                              </div>
+                              <div className="flex-1"><p className="font-medium text-gray-800 text-sm">{cat.name}</p><p className="text-xs text-gray-500">Category</p></div>
+                            </Link>
+                          ))}
+                        </>
+                      )}
+                      {/* Services section */}
+                      {searchResults.services.length > 0 && (
+                        <>
+                          <div className="px-3 py-1.5 bg-gray-50 text-xs font-semibold text-gray-500">Services</div>
+                          {searchResults.services.map(service => (
+                            <Link key={service._id} to={`/service/${service.slug}`} onClick={() => { setShowSearchDropdown(false); setSearchQuery(''); setMobileSearchOpen(false); }} className="flex items-center gap-3 px-3 py-2 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-0">
+                              <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                                {service.images?.[0]?.url ? <img src={service.images[0].url} alt={service.name} className="w-full h-full object-cover" /> : service.icon?.url ? <img src={service.icon.url} alt={service.name} className="w-full h-full object-contain p-1.5" /> : <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>}
+                              </div>
+                              <div className="flex-1"><p className="font-medium text-gray-800 text-sm">{service.name}</p><p className="text-xs text-gray-500">{service.category?.name || 'Service'}</p></div>
+                              <div className="text-right"><p className="text-sm font-semibold text-emerald-600">₹{service.basePrice}</p></div>
+                            </Link>
+                          ))}
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
@@ -555,7 +640,7 @@ const Navbar = () => {
             </div>
           )}
 
-          {/* Categories Row */}
+          {/* Categories Row (unchanged) */}
           <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
             {categoriesLoading ? (
               <div className="flex gap-2">{[...Array(6)].map((_, i) => <div key={i} className="h-8 w-20 bg-gray-200 rounded-full animate-pulse"></div>)}</div>
@@ -612,7 +697,7 @@ const Navbar = () => {
         </div>
       )}
 
-      {/* Mobile Menu Drawer - Role-based items */}
+      {/* Mobile Menu Drawer - Role‑based items, now includes Cart */}
       <div className={`fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-[1050] transition-all duration-300 ${mobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`} onClick={() => setMobileMenuOpen(false)} />
       <div className={`fixed top-0 right-0 bottom-0 w-80 bg-white shadow-2xl z-[1100] transform transition-all duration-300 ease-out flex flex-col ${mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-5 text-white">
@@ -624,7 +709,7 @@ const Navbar = () => {
                     {user.avatar?.url ? <img src={user.avatar.url} alt={user.name} className="w-full h-full object-cover" /> : <span className="text-lg font-bold text-white">{getInitials(user.name || user.email)}</span>}
                   </div>
                   <div>
-                    <h3 className="font-semibold text-white">{user.name || 'User'}</h3>
+                    <h3 className="font-semibold text-white">{user?.fullName || 'User'}</h3>
                     <p className="text-xs text-blue-100 mt-0.5">{user.email}</p>
                     {user.role === 'provider' && <span className="inline-block mt-1 text-[10px] bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded-full font-semibold">PROFESSIONAL</span>}
                     {user.role === 'admin' && <span className="inline-block mt-1 text-[10px] bg-red-400 text-red-900 px-2 py-0.5 rounded-full font-semibold">ADMIN</span>}
@@ -650,12 +735,24 @@ const Navbar = () => {
               <Link to="/" className="flex items-center gap-3 px-3 py-2.5 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>Home
               </Link>
-              <Link to="/services" className="flex items-center gap-3 px-3 py-2.5 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>
+              {/* 🛒 Cart link added here */}
+              <Link to="/cart" className="flex items-center gap-3 px-3 py-2.5 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M18 13l1.5 6M9 21a1 1 0 100-2 1 1 0 000 2zm9 0a1 1 0 100-2 1 1 0 000 2z" />
+                </svg>
+                My Cart
+                {cartCount > 0 && (
+                  <span className="ml-auto bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    {cartCount > 99 ? '99+' : cartCount}
+                  </span>
+                )}
+              </Link>
+              {/* <Link to="/services" className="flex items-center gap-3 px-3 py-2.5 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>All Services
               </Link>
               <Link to="/providers" className="flex items-center gap-3 px-3 py-2.5 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition font-medium" onClick={() => setMobileMenuOpen(false)}>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>Providers
-              </Link>
+              </Link> */}
             </div>
           </div>
           {user && (
@@ -708,8 +805,6 @@ const Navbar = () => {
       </div>
 
       {showLocationModal && user?.role === 'provider' && <ProviderLocationModal onClose={() => setShowLocationModal(false)} />}
-
-      {/* Auth Modal - now receives initialPanel prop */}
       {showAuth && <Login initialPanel={authPanel} />}
 
       <style>{`
