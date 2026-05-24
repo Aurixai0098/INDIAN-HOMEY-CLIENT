@@ -32,7 +32,7 @@ const Footer = () => {
         {/* TOP SECTION: Branding, Support, Company, Legal, Press (unchanged) */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-8 mb-16">
           <div className="col-span-1">
-            <h2 className="text-3xl font-bold flex flex-row md:flex-col items-center gap-3 md:gap-0  mb-6">
+            <h2 className="text-3xl font-bold flex flex-row  items-center gap-3  mb-6">
               <img src="https://res.cloudinary.com/dfqsa6hoc/image/upload/v1779533276/PhotoshopExtension_Image__1_-removebg-preview_fzvzvy.png" alt="logo"  className='h-14 md:h-20' />
               <img src="https://res.cloudinary.com/dfqsa6hoc/image/upload/v1779533121/PhotoshopExtension_Image-removebg-preview_pbe76a.png" alt="name logo" className='h-14' />
             </h2>
