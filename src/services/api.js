@@ -37,17 +37,25 @@ const apiFetch = async (endpoint, options = {}) => {
     } catch (networkError) {
         throw new Error('Network error. Please check your connection.');
     }
-    if (response.status === 429) throw new Error('Too many requests. Please wait.');
-    if (!response.ok) {
-        let errorMessage;
-        try {
-            const data = await response.json();
-            errorMessage = data.message || 'Request failed';
-        } catch (e) {
-            errorMessage = response.statusText || `HTTP ${response.status}`;
-        }
-        throw new Error(errorMessage);
+
+    if (response.status === 429) {
+        throw new Error('Too many requests. Please wait.');
     }
+
+    if (!response.ok) {
+        let errorData;
+        try {
+            errorData = await response.json();
+        } catch (e) {
+            errorData = { message: response.statusText || `HTTP ${response.status}` };
+        }
+
+        const err = new Error(errorData.message || 'Request failed');
+        err.data = errorData;
+        err.status = response.status;
+        throw err;
+    }
+
     return await response.json();
 };
 
@@ -147,7 +155,7 @@ export const addWalletCashback = async (userId, amount, note = '') => apiFetch(`
 export const processWalletRefund = async (userId, amount, note = '') => apiFetch(`/admin/user-wallets/${userId}/refund`, { method: 'POST', body: JSON.stringify({ amount, note }) });
 export const fetchUserTransactions = async (userId, page = 1, limit = 10) => apiFetch(`/admin/user-wallets/${userId}/transactions?page=${page}&limit=${limit}`);
 
-// ✅ NEW: Fetch all providers with their ServiceProvider details (for admin)
+// Fetch all providers (admin)
 export const fetchAllProviders = async (page = 1, limit = 20, status = '', verificationStatus = '') => {
     let url = `/admin/providers?page=${page}&limit=${limit}`;
     if (status) url += `&status=${status}`;
@@ -156,7 +164,7 @@ export const fetchAllProviders = async (page = 1, limit = 20, status = '', verif
 };
 
 // ========== Provider APIs ==========
-export const registerProvider = async (providerData) => apiFetch('/providers/register', { method: 'POST', body: JSON.stringify(providerData) });
+export const registerProvider = async (providerData) => apiFetch('/providers/register', { method: 'POST', body: providerData }); // FormData
 export const fetchProviderProfile = async () => apiFetch('/providers/profile');
 export const updateProviderProfile = async (data) => apiFetch('/providers/profile', { method: 'PUT', body: JSON.stringify(data) });
 export const addProviderService = async (serviceData) => apiFetch('/providers/services', { method: 'POST', body: JSON.stringify(serviceData) });
@@ -180,6 +188,14 @@ export const searchProviders = async (latitude, longitude, radius = 10, serviceC
     return apiFetch(url);
 };
 export const fetchFeaturedProviders = async (limit = 20) => apiFetch(`/providers/featured?limit=${limit}`);
+
+// ✅ Public: Get provider details by ID (for customer facing pages)
+export const fetchProviderDetailsById = async (providerId) => apiFetch(`/providers/${providerId}/public`);
+
+// ✅ Admin: Get provider details (for admin panel)
+export const fetchAdminProviderDetailsById = async (providerId) => apiFetch(`/admin/providers/${providerId}`);
+
+export const createCustomService = async (formData) => apiFetch('/providers/custom-service', { method: 'POST', body: formData });
 
 // ========== Payment APIs ==========
 export const createOrder = async (data) => apiFetch('/payments/create-order', { method: 'POST', body: JSON.stringify(data) });
@@ -243,6 +259,7 @@ export const searchServices = async (query) => {
 
 // ========== Reviews API ==========
 export const createReview = async (reviewData) => apiFetch('/reviews', { method: 'POST', body: JSON.stringify(reviewData) });
+export const fetchProviderReviews = async (providerId, page = 1, limit = 10) => apiFetch(`/reviews/provider/${providerId}?page=${page}&limit=${limit}`);
 
 // ========== Provider Earnings & Ratings ==========
 export const fetchProviderEarningsList = async (page = 1, limit = 20, search = '') => {
@@ -251,7 +268,6 @@ export const fetchProviderEarningsList = async (page = 1, limit = 20, search = '
     return apiFetch(url);
 };
 export const fetchProviderEarningsDetails = async (providerId) => apiFetch(`/admin/provider-earnings/${providerId}`);
-export const fetchProviderReviews = async (providerId, page = 1, limit = 10) => apiFetch(`/reviews/provider/${providerId}?page=${page}&limit=${limit}`);
 export const fetchAdminProviders = fetchProviderEarningsList;
 
 // ========== Provider Status ==========
@@ -273,7 +289,7 @@ export const updateComplaintStatus = async (complaintId, status, adminNote = '')
 export const deleteComplaint = async (complaintId) => apiFetch(`/admin/complaints/${complaintId}`, { method: 'DELETE' });
 export const fetchUserComplaintHistory = async (userId) => apiFetch(`/admin/users/${userId}/complaints`);
 export const fetchProviderComplaintHistory = async (providerId) => apiFetch(`/admin/providers/${providerId}/complaints`);
-export const fetchProviderDetailsById = async (providerId) => apiFetch(`/admin/providers/${providerId}`);
+// export const fetchAdminProviderDetailsById = fetchAdminProviderDetailsById; // (already defined, but no conflict)
 export const updateProviderStatus = async (providerId, status) => apiFetch(`/admin/providers/${providerId}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
 export const sendNotificationToProvider = async (providerId, message) => apiFetch(`/admin/providers/${providerId}/notify`, { method: 'POST', body: JSON.stringify({ message }) });
 export const fetchRescheduleRequests = async (page = 1, limit = 20, status = 'pending') => apiFetch(`/admin/reschedule-requests?page=${page}&limit=${limit}&status=${status}`);
@@ -334,5 +350,4 @@ export const toggleMaintenanceMode = async (isEnabled, message = '') => apiFetch
 export const checkForAppUpdate = async () => apiFetch('/admin/updates/check');
 export const publishAppUpdate = async (version, message, forceUpdate, downloadUrl) => apiFetch('/admin/updates/publish', { method: 'POST', body: JSON.stringify({ version, message, forceUpdate, downloadUrl }) });
 
-// ✅ Export apiFetch for direct use
 export { apiFetch };

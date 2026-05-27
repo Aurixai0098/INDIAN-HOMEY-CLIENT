@@ -1,622 +1,327 @@
+// src/pages/CategoryPage.jsx
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { fetchCategoryBySlug } from '../services/api';
+import { fetchCategoryBySlug, searchProviders } from '../services/api';
 import { useCart } from '../context/CartContext';
-
-import {
-  ShoppingCart, Check, Search, Filter, ChevronRight, Star, Clock,
-  MapPin, ArrowLeft, Sparkles, PackageOpen, TrendingUp,
-  Grid3X3, LayoutList, SlidersHorizontal, Heart, Home, BookOpen
+import { 
+  Star, MapPin, Filter, ChevronRight, CheckCircle2, 
+  ShoppingCart, X, CalendarCheck
 } from 'lucide-react';
 
-// Shimmer Loading Skeleton
-const ShimmerCard = () => (
-  <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden animate-pulse">
-    <div className="aspect-[4/3] bg-slate-200"></div>
-    <div className="p-4 space-y-3">
-      <div className="h-5 bg-slate-200 rounded-lg w-3/4"></div>
-      <div className="h-4 bg-slate-200 rounded-lg w-full"></div>
-      <div className="h-4 bg-slate-200 rounded-lg w-2/3"></div>
-      <div className="flex justify-between items-center pt-2">
-        <div className="h-7 bg-slate-200 rounded-lg w-20"></div>
-        <div className="h-9 bg-slate-200 rounded-xl w-28"></div>
-      </div>
-    </div>
-  </div>
-);
-
-const ShimmerSidebar = () => (
-  <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden animate-pulse">
-    <div className="p-4 border-b border-slate-100 bg-slate-50 h-12"></div>
-    <div className="p-4 space-y-4">
-      <div className="h-10 bg-slate-200 rounded-xl w-full"></div>
-      <div className="h-20 bg-slate-200 rounded-xl w-full"></div>
-    </div>
-  </div>
-);
-
-// Helper to get rating
-const getRating = (service) => {
-  if (!service.rating) return 0;
-  if (typeof service.rating === 'object') {
-    return service.rating.average || 0;
+const ProviderCard = ({ provider, onAddToCart, onBookNow, distance, isInCart }) => {
+  const navigate = useNavigate();
+  const avgRating = provider.rating?.average || 0;
+  const reviewCount = provider.rating?.count || 0;
+  const experience = provider.experience || 0;
+  const minPrice = provider.minPrice || 0;
+  
+  let servicesList = provider.servicesList || ['Tap Repair', 'Pipe Fixing', 'Bathroom Fitting'];
+  if (!Array.isArray(servicesList)) {
+    servicesList = typeof servicesList === 'string' 
+      ? servicesList.split(',').map(s => s.trim())
+      : ['Tap Repair', 'Pipe Fixing', 'Bathroom Fitting'];
   }
-  return Number(service.rating) || 0;
-};
+  const displayServices = servicesList.slice(0, 3).join(', ');
 
-const getRatingCount = (service) => {
-  if (!service.rating) return 0;
-  if (typeof service.rating === 'object') {
-    return service.rating.count || 0;
-  }
-  return 0;
-};
+  const defaultImages = {
+    "A1 Plumbing Services": "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=300&q=80",
+    "Quick Flow Plumbers": "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&w=300&q=80",
+    "Delhi Plumbing Experts": "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=300&q=80",
+    "Water Tank Solutions": "https://images.unsplash.com/photo-1542013936693-8848e57423e3?auto=format&fit=crop&w=300&q=80"
+  };
+  const providerImage = provider.image || defaultImages[provider.businessName] || "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=300&q=80";
 
-// Service Card Component with Book Now button
-const ServiceCard = ({ service, onAddToCart, onBookNow, viewMode }) => {
-  const [added, setAdded] = useState(false);
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
-  const [liked, setLiked] = useState(false);
-  const ratingValue = getRating(service);
-  const ratingCount = getRatingCount(service);
-
-  const handleAdd = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    onAddToCart(service);
-    setAdded(true);
-    setTimeout(() => setAdded(false), 2000);
+  const handleCardClick = () => {
+    if (provider.id) navigate(`/provider/${provider.id}`);
   };
 
-  const handleBookNow = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    onBookNow(service);
-  };
-
-  const gradients = [
-    'from-rose-400 to-orange-300', 'from-emerald-400 to-teal-300',
-    'from-blue-400 to-indigo-300', 'from-violet-400 to-purple-300',
-    'from-amber-400 to-yellow-300', 'from-cyan-400 to-blue-300',
-  ];
-  const gradientIndex = service.name?.length % gradients.length || 0;
-  const fallbackGradient = gradients[gradientIndex];
-
-  // List View
-  if (viewMode === 'list') {
-    return (
-      <div
-        className="group bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-300"
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
-        <Link to={`/service/${service.slug}`} className="flex flex-col sm:flex-row">
-          <div className="sm:w-48 md:w-56 aspect-[4/3] sm:aspect-square bg-slate-100 relative overflow-hidden flex-shrink-0">
-            {!imageLoaded && (
-              <div className={`absolute inset-0 bg-gradient-to-br ${fallbackGradient} opacity-30 animate-pulse`} />
-            )}
-            <img
-              src={service.images?.[0]?.url || `https://ui-avatars.com/api/?name=${encodeURIComponent(service.name)}&background=random&size=400`}
-              alt={service.name}
-              onLoad={() => setImageLoaded(true)}
-              className={`w-full h-full object-cover transition-all duration-700 ${imageLoaded ? 'opacity-100' : 'opacity-0'} ${isHovered ? 'scale-110' : 'scale-100'}`}
-            />
-            {service.isPopular && (
-              <div className="absolute top-3 left-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg flex items-center gap-1">
-                <TrendingUp className="w-3 h-3" />
-                Popular
-              </div>
-            )}
-          </div>
-          <div className="flex-1 p-5 flex flex-col justify-between">
-            <div>
-              <div className="flex items-start justify-between gap-2">
-                <h3 className="font-bold text-lg text-slate-800 group-hover:text-emerald-600 transition-colors">{service.name}</h3>
-                <button
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLiked(!liked); }}
-                  className={`p-1.5 rounded-lg transition-colors ${liked ? 'bg-red-50 text-red-500' : 'bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500'}`}
-                >
-                  <Heart className={`w-4 h-4 ${liked ? 'fill-red-500' : ''}`} />
-                </button>
-              </div>
-              <p className="text-slate-500 text-sm mt-2 line-clamp-2">{service.shortDescription || service.description?.substring(0, 120)}</p>
-              <div className="flex items-center gap-4 mt-3">
-                <div className="flex items-center gap-1">
-                  <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                  <span className="text-xs font-medium text-slate-600">{ratingValue.toFixed(1)}</span>
-                  <span className="text-xs text-slate-400">({ratingCount})</span>
-                </div>
-                <div className="flex items-center gap-1 text-xs text-slate-500">
-                  <Clock className="w-3.5 h-3.5" />
-                  <span>Same day</span>
-                </div>
-                {service.tags?.slice(0, 2).map((tag, idx) => (
-                  <span key={idx} className="text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-medium">{tag}</span>
-                ))}
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-3 mt-4 pt-4 border-t border-slate-50">
-              <div>
-                <span className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-                  ₹{service.basePrice}
-                </span>
-                <span className="text-slate-400 text-sm ml-1">/{service.priceUnit?.replace('_', ' ') || 'service'}</span>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleBookNow}
-                  className="px-4 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-lg bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95 flex items-center justify-center gap-1.5"
-                >
-                  <BookOpen className="w-4 h-4" />
-                  Book Now
-                </button>
-                <button
-                  onClick={handleAdd}
-                  disabled={added}
-                  className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-lg flex items-center justify-center gap-1.5 active:scale-95
-                    ${added
-                      ? 'bg-emerald-500 text-white shadow-emerald-500/30'
-                      : 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-900/20 hover:shadow-xl'
-                    }`}
-                >
-                  {added ? <Check className="w-4 h-4" /> : <ShoppingCart className="w-4 h-4" />}
-                  {added ? 'Added' : 'Add'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </Link>
-      </div>
-    );
-  }
-
-  // Grid View
   return (
-    <div
-      className="group relative"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+    <div 
+      className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col sm:flex-row gap-5 items-start relative cursor-pointer hover:shadow-md transition-shadow"
+      onClick={handleCardClick}
     >
-      <Link to={`/service/${service.slug}`} className="block">
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden transition-all duration-500 hover:shadow-2xl hover:shadow-slate-200/50 hover:-translate-y-2">
-          <div className="aspect-[4/3] bg-slate-100 relative overflow-hidden">
-            {!imageLoaded && (
-              <div className={`absolute inset-0 bg-gradient-to-br ${fallbackGradient} opacity-30 animate-pulse`} />
-            )}
-            <img
-              src={service.images?.[0]?.url || `https://ui-avatars.com/api/?name=${encodeURIComponent(service.name)}&background=random&size=400`}
-              alt={service.name}
-              onLoad={() => setImageLoaded(true)}
-              className={`w-full h-full object-cover transition-all duration-700 ${imageLoaded ? 'opacity-100' : 'opacity-0'} ${isHovered ? 'scale-110' : 'scale-100'}`}
-            />
-            <div className={`absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent transition-opacity duration-300 ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
-              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-white/90 text-xs">
-                  <Clock className="w-3.5 h-3.5" />
-                  <span>Available Now</span>
-                </div>
-              </div>
-            </div>
-            {service.isPopular && (
-              <div className="absolute top-3 left-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg flex items-center gap-1">
-                <TrendingUp className="w-3 h-3" />
-                Popular
-              </div>
-            )}
-            <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm text-slate-800 text-xs font-bold px-2.5 py-1 rounded-full shadow-lg flex items-center gap-1">
-              <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-              {ratingValue.toFixed(1)}
-            </div>
-            <button
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLiked(!liked); }}
-              className={`absolute bottom-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-lg ${liked ? 'bg-red-500 text-white' : 'bg-white/90 text-slate-400 hover:text-red-500'}`}
-            >
-              <Heart className={`w-4 h-4 ${liked ? 'fill-white' : ''}`} />
-            </button>
+      <div className="relative w-full sm:w-44 h-32 flex-shrink-0 rounded-lg overflow-hidden bg-gray-50">
+        <img src={providerImage} alt={provider.businessName} className="w-full h-full object-cover" />
+        {provider.isTopRated === true && (
+          <span className="absolute top-2 left-2 bg-[#00875a] text-white text-[10px] font-bold px-1.5 py-0.5 rounded">Top Rated</span>
+        )}
+      </div>
+      <div className="flex-1 flex flex-col md:flex-row justify-between w-full h-full min-h-[128px]">
+        <div className="space-y-1">
+          <div className="flex items-center gap-1.5">
+            <h3 className="font-bold text-lg text-gray-900">{provider.businessName}</h3>
+            <CheckCircle2 className="w-4 h-4 text-[#00b074] fill-white" />
           </div>
-          <div className="p-5">
-            <h3 className="font-bold text-lg text-slate-800 line-clamp-1 group-hover:text-emerald-600 transition-colors">{service.name}</h3>
-            <p className="text-slate-500 text-sm mt-1.5 mb-3 line-clamp-2 leading-relaxed">{service.shortDescription || service.description?.substring(0, 100)}</p>
-            {service.tags?.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mb-4">
-                {service.tags.slice(0, 3).map((tag, idx) => (
-                  <span key={idx} className="text-[11px] bg-slate-50 border border-slate-100 text-slate-600 px-2.5 py-0.5 rounded-md font-medium">{tag}</span>
-                ))}
-              </div>
-            )}
-            <div className="flex items-center justify-between pt-3 border-t border-slate-50">
-              <div>
-                <span className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">₹{service.basePrice}</span>
-                <span className="text-slate-400 text-sm ml-1">/{service.priceUnit?.replace('_', ' ') || 'service'}</span>
-              </div>
-            </div>
+          <p className="text-gray-500 text-sm">{displayServices}</p>
+          <div className="flex items-center gap-1.5 text-sm text-gray-500 pt-1">
+            <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+            <span className="font-bold text-gray-800">{avgRating.toFixed(1)}</span>
+            <span>({reviewCount})</span>
+            <span className="text-gray-300 mx-0.5">•</span>
+            <span>{experience} Years Experience</span>
+          </div>
+          <div className="flex items-center gap-4 text-sm text-gray-400 pt-3">
+            <div className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-gray-400" />{provider.location || 'New Delhi, Delhi'}</div>
+            <div className="flex items-center gap-1"><span className="text-gray-400 text-xs">⇋</span>{distance || '2.5'} km away</div>
           </div>
         </div>
-      </Link>
-      {/* Action Buttons floating overlapping the card slightly */}
-      <div className="px-5 pb-5 -mt-2 flex gap-2 relative z-10">
-        <button
-          onClick={handleBookNow}
-          className="flex-1 py-3 rounded-xl text-sm font-semibold transition-all shadow-lg bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95 flex items-center justify-center gap-1.5"
-        >
-          <BookOpen className="w-4 h-4" />
-          Book
-        </button>
-        <button
-          onClick={handleAdd}
-          disabled={added}
-          className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-all shadow-lg flex items-center justify-center gap-1.5 active:scale-95
-            ${added
-              ? 'bg-emerald-500 text-white shadow-emerald-500/30'
-              : 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-900/20 hover:shadow-xl'
-            }`}
-        >
-          {added ? <Check className="w-4 h-4" /> : <ShoppingCart className="w-4 h-4" />}
-          {added ? 'Added' : 'Add'}
-        </button>
+        <div className="flex flex-row md:flex-col justify-between md:justify-start items-end gap-2 mt-4 md:mt-0 min-w-[160px]">
+          <div className="text-right md:mb-2">
+            <div className="text-2xl font-bold text-gray-900">₹{minPrice}</div>
+            <div className="text-gray-400 text-xs mt-0.5">per service</div>
+          </div>
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            {isInCart ? (
+              <button disabled className="flex-1 md:flex-initial bg-green-100 text-green-700 text-xs font-medium px-3 py-1.5 rounded-md flex items-center justify-center gap-1 cursor-default">
+                <CheckCircle2 className="w-3.5 h-3.5" /> Added
+              </button>
+            ) : (
+              <button onClick={(e) => { e.stopPropagation(); onAddToCart(provider); }} className="flex-1 md:flex-initial bg-[#00aa6c] hover:bg-[#00915c] text-white text-xs font-medium px-3 py-1.5 rounded-md transition flex items-center justify-center gap-1">
+                <ShoppingCart className="w-3.5 h-3.5" /> Add
+              </button>
+            )}
+            <button onClick={(e) => { e.stopPropagation(); onBookNow(provider); }} className="flex-1 md:flex-initial border border-[#00aa6c] text-[#00aa6c] hover:bg-emerald-50 text-xs font-medium px-3 py-1.5 rounded-md transition flex items-center justify-center gap-1">
+              <CalendarCheck className="w-3.5 h-3.5" /> Book Now
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
 };
 
-// Main CategoryPage Component
 const CategoryPage = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const { addToCart } = useCart();
-
+  const { addToCart, cartItems, cartCount, cartTotal } = useCart();
+  
   const [category, setCategory] = useState(null);
-  const [services, setServices] = useState([]);
-  const [ratingStats, setRatingStats] = useState(null);
+  const [categoryRatingStats, setCategoryRatingStats] = useState(null);
+  const [providers, setProviders] = useState([]);
+  const [filteredProviders, setFilteredProviders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState('default');
-  const [viewMode, setViewMode] = useState('list');
-  const [priceRange, setPriceRange] = useState([0, 10000]);
+  
+  const [searchTerm, setSearchTerm] = useState('');
+  const [priceRange, setPriceRange] = useState([0, 100000]);
+  const [priceMax, setPriceMax] = useState(100000);
+  const [selectedRatings, setSelectedRatings] = useState([]);
+  const [availability, setAvailability] = useState('all');
+  
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  const [tempPriceRange, setTempPriceRange] = useState([0, 100000]);
+  const [tempSelectedRatings, setTempSelectedRatings] = useState([]);
+  const [tempAvailability, setTempAvailability] = useState('all');
+  const ratingOptions = [5,4,3,2,1];
 
-  const loadCategory = async () => {
+  const isProviderInCart = (providerId, serviceId) => {
+    return cartItems.some(
+      item => item.providerId === providerId && item.serviceId === serviceId
+    );
+  };
+
+  useEffect(() => { loadCategoryAndProviders(); }, [slug]);
+
+  const loadCategoryAndProviders = async () => {
     setLoading(true);
-    setError(null);
     try {
-      const res = await fetchCategoryBySlug(slug);
-      if (res.success) {
-        setCategory(res.data.category);
-        setServices(res.data.services || []);
-        setRatingStats(res.data.ratingStats || null);
-      } else {
-        setError('Category not found');
-      }
-    } catch (err) {
-      setError(err.message || 'Failed to load category');
-    } finally {
-      setLoading(false);
-    }
+      const catRes = await fetchCategoryBySlug(slug);
+      if (catRes.success) {
+        setCategory(catRes.data.category);
+        setCategoryRatingStats(catRes.data.ratingStats || null);
+      } else setCategory({ name: slug, description: '' });
+      
+      const providersRes = await searchProviders(null, null, 100, catRes.data.category?._id);
+      if (providersRes.success && providersRes.data.providers) {
+        let providerList = providersRes.data.providers.map(p => ({
+          ...p,
+          id: p.id || p._id,
+          servicesList: p.servicesList || [],
+          distance: (Math.random() * 10 + 0.5).toFixed(1)
+        }));
+        setProviders(providerList);
+        setFilteredProviders(providerList);
+        
+        const maxPrice = Math.max(...providerList.map(p => p.minPrice || 0), 100000);
+        setPriceMax(maxPrice);
+        setPriceRange([0, maxPrice]);
+        setTempPriceRange([0, maxPrice]);
+      } else { setProviders([]); setFilteredProviders([]); }
+    } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
   useEffect(() => {
-    loadCategory();
-    window.scrollTo(0, 0);
-  }, [slug]);
+    if (!providers.length) return;
+    let filtered = [...providers];
+    if (searchTerm) {
+      filtered = filtered.filter(p => p.businessName?.toLowerCase().includes(searchTerm.toLowerCase()) || p.ownerName?.toLowerCase().includes(searchTerm.toLowerCase()));
+    }
+    filtered = filtered.filter(p => (p.minPrice || 0) >= priceRange[0] && (p.minPrice || 0) <= priceRange[1]);
+    if (selectedRatings.length) {
+      filtered = filtered.filter(p => selectedRatings.some(rating => (p.rating?.average || 0) >= rating));
+    }
+    if (availability === 'now') filtered = filtered.filter(p => p.isOnline === true);
+    else if (availability === 'later') filtered = filtered.filter(p => p.isOnline === false);
+    setFilteredProviders(filtered);
+  }, [providers, searchTerm, priceRange, selectedRatings, availability]);
 
-  const handleAddToCart = (service) => addToCart(service);
-  const handleBookNow = (service) => {
-    addToCart(service);
-    navigate('/checkout');
+  const toggleRating = (rating) => {
+    if (selectedRatings.includes(rating)) setSelectedRatings(selectedRatings.filter(r => r !== rating));
+    else setSelectedRatings([...selectedRatings, rating]);
+  };
+  const clearFilters = () => { setSearchTerm(''); setPriceRange([0, priceMax]); setSelectedRatings([]); setAvailability('all'); };
+  const openMobileFilters = () => { setTempPriceRange([...priceRange]); setTempSelectedRatings([...selectedRatings]); setTempAvailability(availability); setMobileFilterOpen(true); };
+  const applyMobileFilters = () => { setPriceRange(tempPriceRange); setSelectedRatings(tempSelectedRatings); setAvailability(tempAvailability); setMobileFilterOpen(false); };
+
+  const getRealServiceFromProvider = (provider) => {
+    if (provider.serviceId) {
+      return {
+        _id: provider.serviceId,
+        name: (provider.servicesList && provider.servicesList.length > 0) ? provider.servicesList[0] : provider.businessName,
+        basePrice: provider.minPrice || 199,
+        priceUnit: 'service',
+        category: { _id: category?._id },
+        providerName: provider.businessName
+      };
+    }
+    console.warn('Provider has no serviceId – cannot add to cart directly', provider);
+    return null;
   };
 
-  // Filter & Sort
-  const filteredServices = services
-    .filter(s => {
-      const q = searchQuery.toLowerCase();
-      return (s.name.toLowerCase().includes(q) || s.description?.toLowerCase().includes(q)) &&
-             s.basePrice >= priceRange[0] && s.basePrice <= priceRange[1];
-    })
-    .sort((a, b) => {
-      if (sortBy === 'price-low') return a.basePrice - b.basePrice;
-      if (sortBy === 'price-high') return b.basePrice - a.basePrice;
-      if (sortBy === 'rating') return (getRating(b) || 0) - (getRating(a) || 0);
-      if (sortBy === 'popular') return (b.bookingsCount || 0) - (a.bookingsCount || 0);
-      return 0;
-    });
+  const handleAddToCart = (provider) => {
+    const realService = getRealServiceFromProvider(provider);
+    if (realService) {
+      addToCart(realService, 1, null, provider.id, realService.providerName);
+    } else {
+      alert('This provider does not have a valid service. Please view their profile and select a service.');
+    }
+  };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-50">
-        <div className="bg-gradient-to-r from-slate-800 to-slate-900 h-48 md:h-64 animate-pulse"></div>
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          <div className="flex flex-col lg:flex-row gap-8">
-            <div className="lg:w-72 flex-shrink-0"><ShimmerSidebar /></div>
-            <div className="flex-1">
-              <div className="h-8 bg-slate-200 rounded-lg w-64 mb-6 animate-pulse"></div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[1, 2, 3, 4, 5, 6].map(i => <ShimmerCard key={i} />)}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // ✅ Direct checkout without cart
+  const handleBookNow = (provider) => {
+    const realService = getRealServiceFromProvider(provider);
+    if (realService) {
+      const directBookingData = {
+        serviceId: realService._id,
+        providerId: provider.id,
+        providerName: provider.businessName,
+        serviceName: realService.name,
+        price: realService.basePrice,
+        priceUnit: realService.priceUnit,
+        categoryId: category?._id,
+        image: provider.image || null,
+      };
+      navigate('/checkout', { state: { directBooking: directBookingData } });
+    } else {
+      navigate(`/provider/${provider.id}`);
+    }
+  };
 
-  if (error || !category) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
-        <div className="text-center max-w-md">
-          <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <PackageOpen className="w-12 h-12 text-slate-400" />
-          </div>
-          <h1 className="text-3xl font-bold text-slate-800 mb-3">Category Not Found</h1>
-          <p className="text-slate-500 mb-8">{error || 'The category you are looking for does not exist or has been removed.'}</p>
-          <Link to="/" className="inline-flex items-center gap-2 bg-slate-900 text-white px-8 py-3 rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 hover:shadow-xl hover:-translate-y-0.5 font-medium">
-            <ArrowLeft className="w-4 h-4" />
-            Back to Home
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <div className="flex justify-center py-20"><div className="animate-spin rounded-full h-10 w-10 border-4 border-[#00aa6c] border-t-transparent"></div></div>;
+
+  const totalProviders = filteredProviders.length;
+  const avgCategoryRating = categoryRatingStats?.average || 0;
+  const totalReviews = categoryRatingStats?.count || 0;
+  const ratingBreakdown = categoryRatingStats || { five:0, four:0, three:0, two:0, one:0 };
+  const totalR = totalReviews || 1;
+  const ratingPercentages = { 5: (ratingBreakdown.five/totalR)*100, 4: (ratingBreakdown.four/totalR)*100, 3: (ratingBreakdown.three/totalR)*100, 2: (ratingBreakdown.two/totalR)*100, 1: (ratingBreakdown.one/totalR)*100 };
 
   return (
-    <div className="bg-slate-50 min-h-screen">
-      {/* Hero Banner */}
-      <div className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white overflow-hidden">
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-24 -right-24 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-24 -left-24 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl"></div>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-500/5 rounded-full blur-3xl"></div>
-        </div>
-
-        <div className="relative max-w-7xl mx-auto px-4 py-14 md:py-20">
-          <nav className="flex items-center gap-2 text-sm text-slate-400 mb-6">
-            <Link to="/" className="hover:text-white transition-colors flex items-center gap-1">
-              <Home className="w-3.5 h-3.5" />
-              Home
-            </Link>
-            <ChevronRight className="w-4 h-4" />
-            <span className="text-emerald-400 font-medium">{category.name}</span>
-          </nav>
-
-          <div className="flex flex-col lg:flex-row items-center lg:items-start justify-between gap-8">
-            <div className="flex flex-col md:flex-row items-center md:items-start gap-8 flex-1">
-              <div className="relative">
-                <div className="absolute inset-0 bg-emerald-500/20 blur-2xl rounded-full"></div>
-                <div className="relative w-24 h-24 md:w-32 md:h-32 bg-gradient-to-br from-emerald-500/20 to-blue-500/20 backdrop-blur-xl rounded-3xl border border-white/10 flex items-center justify-center shadow-2xl">
-                  {category.icon?.url ? (
-                    <img src={category.icon.url} alt={category.name} className="w-16 h-16 md:w-20 md:h-20 object-contain" />
-                  ) : (
-                    <Sparkles className="w-12 h-12 md:w-16 md:h-16 text-emerald-400" />
-                  )}
-                </div>
-              </div>
-              <div className="text-center md:text-left flex-1">
-                <h1 className="text-3xl md:text-5xl font-bold mb-3 tracking-tight">{category.name}</h1>
-                <p className="text-slate-300 text-lg max-w-2xl leading-relaxed">{category.description}</p>
-                <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 md:gap-6 mt-6 text-sm text-slate-400">
-                  <div className="flex items-center gap-2">
-                    <PackageOpen className="w-4 h-4 text-emerald-400" />
-                    <span>{services.length} Services</span>
-                  </div>
-                  {ratingStats && ratingStats.count > 0 && (
-                    <div className="flex items-center gap-2">
-                      <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-                      <span>{ratingStats.average.toFixed(1)} avg rating</span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-blue-400" />
-                    <span>Available in your area</span>
-                  </div>
-                </div>
-              </div>
+    <div className="bg-[#f8fafc] min-h-screen text-gray-700 font-sans antialiased pb-24">
+      {/* TOP BANNER HEADER SECTION */}
+      <div className="bg-[#111e30] text-white py-6 px-6">
+        <div className="max-w-[1240px] mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 bg-[#23cc81] rounded-xl flex items-center justify-center shadow-md">
+              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 10-2.828-2.828m2.828 2.828l-3.414-3.414m3.414 3.414a2 2 0 11-2.828 2.828m-1.414-1.414l3.414 3.414m-12-11.414h1.5a2 2 0 012 2v1.5M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
             </div>
-
-            {/* Rating Breakdown Widget Component (Right Side) */}
-            {ratingStats && ratingStats.count > 0 && (
-              <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/10 shadow-xl w-full max-w-md lg:w-[350px] flex-shrink-0 relative overflow-hidden">
-                <div className="flex items-center gap-5">
-                  {/* Left: Big Rating */}
-                  <div className="flex flex-col items-center">
-                    <span className="text-5xl font-bold text-white tracking-tighter">{ratingStats.average.toFixed(1)}</span>
-                    <div className="flex items-center gap-1 mt-1 mb-1.5">
-                      {[1, 2, 3, 4, 5].map(star => (
-                        <Star key={star} className={`w-3.5 h-3.5 ${star <= Math.round(ratingStats.average) ? 'text-amber-400 fill-amber-400' : 'text-slate-500 fill-slate-500/30'}`} />
-                      ))}
-                    </div>
-                    <span className="text-[11px] text-slate-300 whitespace-nowrap">Based on {ratingStats.count} reviews</span>
-                  </div>
-                  
-                  {/* Right: Bars */}
-                  <div className="flex-1 space-y-2 text-xs font-medium text-slate-300">
-                    {[
-                      { stars: 5, count: ratingStats.five },
-                      { stars: 4, count: ratingStats.four },
-                      { stars: 3, count: ratingStats.three },
-                      { stars: 2, count: ratingStats.two },
-                      { stars: 1, count: ratingStats.one }
-                    ].map(row => (
-                      <div key={row.stars} className="flex items-center gap-2">
-                        <span className="w-4 text-right">{row.stars}★</span>
-                        <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-amber-400 rounded-full transition-all duration-1000"
-                            style={{ width: `${(row.count / ratingStats.count) * 100}%` }}
-                          ></div>
-                        </div>
-                        <span className="w-4 text-right">{row.count}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
+            <div><h1 className="text-xl sm:text-2xl font-bold tracking-tight">{category?.name}</h1><p className="text-gray-400 text-xs sm:text-sm mt-0.5">{category?.description}</p></div>
           </div>
-        </div>
-        <div className="absolute bottom-0 left-0 right-0">
-          <svg viewBox="0 0 1440 60" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full">
-            <path d="M0 60L60 55C120 50 240 40 360 35C480 30 600 30 720 33.3C840 37 960 43 1080 45C1200 47 1320 45 1380 44L1440 43V60H1380C1320 60 1200 60 1080 60C960 60 840 60 720 60C600 60 480 60 360 60C240 60 120 60 60 60H0Z" fill="#f8fafc"/>
-          </svg>
+          <div className="bg-[#1a2b42] rounded-xl p-4 border border-gray-800 w-full sm:w-64 flex items-center justify-between gap-4">
+            <div className="text-center pl-2"><div className="text-3xl font-bold text-white">{avgCategoryRating.toFixed(1)}</div><div className="flex gap-0.5 my-1 justify-center">{[...Array(5)].map((_,s) => <Star key={s} className={`w-3 h-3 ${s+1 <= Math.round(avgCategoryRating) ? 'text-amber-400 fill-amber-400' : 'text-gray-500'}`} />)}</div><div className="text-[10px] text-gray-400">({totalReviews} Reviews)</div></div>
+            <div className="flex-1 space-y-0.5">{ [5,4,3,2,1].map(s => (<div key={s} className="flex items-center gap-1.5 text-[10px] text-gray-400"><span className="w-3 text-right">{s}★</span><div className="flex-1 h-1 bg-gray-800 rounded-full overflow-hidden"><div className="h-full bg-amber-400 rounded-full" style={{ width: `${ratingPercentages[s]}%` }}></div></div><span className="w-6 text-right text-[9px] text-gray-500">{Math.round(ratingPercentages[s])}%</span></div>)) }</div>
+          </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8 md:py-12">
-        <div className="flex flex-col lg:flex-row gap-8">
+      {/* BREADCRUMB */}
+      <div className="max-w-[1240px] mx-auto px-4 pt-4 pb-2"><div className="flex items-center gap-1.5 text-xs text-gray-400"><Link to="/" className="hover:text-gray-600 flex items-center gap-1">⌂ Home</Link><ChevronRight className="w-3 h-3" /><span className="text-[#00aa6c] font-medium">{category?.name || 'Category'}</span></div></div>
+
+      {/* MAIN GRID */}
+      <div className="max-w-[1240px] mx-auto px-4 mt-2">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
           
-          {/* Sidebar (Only Search, Price Filter, Promo) */}
-          <aside className="lg:w-72 flex-shrink-0">
-            <div className="sticky top-6 space-y-6">
-              
-              {/* Search Box */}
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
-                <h3 className="font-semibold text-slate-800 mb-3 text-sm">Find Service</h3>
-                <div className="relative">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="Search in this category..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all placeholder:text-slate-400"
-                  />
-                </div>
+          {/* DESKTOP FILTERS */}
+          <aside className="hidden lg:block bg-white border border-gray-100 rounded-xl p-4 shadow-sm space-y-5 sticky top-24">
+            <div className="flex justify-between items-center pb-2 border-b border-gray-100"><h3 className="font-bold text-gray-800 text-sm flex items-center gap-1.5"><Filter className="w-4 h-4 text-gray-500" /> Filters</h3><button onClick={clearFilters} className="text-xs text-[#00aa6c] font-medium hover:underline">Reset</button></div>
+            <div><label className="text-xs font-bold text-gray-900 block mb-1.5">Service Category</label><select className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs"><option>All {category?.name} Services</option></select></div>
+            <div className="space-y-3">
+              <div><label className="text-xs font-bold text-gray-900 block mb-1.5">Location</label><select className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs"><option>Delhi</option></select></div>
+              <div className="space-y-2"><div className="flex items-center justify-between text-xs text-gray-500"><span>State</span><select className="w-40 bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-xs"><option>Delhi</option></select></div><div className="flex items-center justify-between text-xs text-gray-500"><span>District</span><select className="w-40 bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-xs"><option>New Delhi</option></select></div><div className="flex items-center justify-between text-xs text-gray-500"><span>Locality</span><select className="w-40 bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-xs text-gray-400"><option>Select Locality</option></select></div></div>
+            </div>
+            <div><label className="text-xs font-bold text-gray-900 block mb-2">Price Range</label>
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-sm">₹{priceRange[0]}</span>
+                <input type="range" min="0" max={priceMax} step="100" value={priceRange[1]} onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])} className="flex-1 accent-emerald-500" />
+                <span className="text-sm">₹{priceRange[1]}</span>
               </div>
-
-              {/* Price Range Filter */}
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
-                <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                  <SlidersHorizontal className="w-4 h-4 text-emerald-600" />
-                  Price Filter
-                </h3>
-                <div className="space-y-4">
-                  <input
-                    type="range"
-                    min="0"
-                    max="10000"
-                    step="100"
-                    value={priceRange[1]}
-                    onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
-                    className="w-full accent-emerald-500 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"
-                  />
-                  <div className="flex items-center justify-between mt-2">
-                    <div className="bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600">₹{priceRange[0]}</div>
-                    <div className="text-slate-400 text-sm">-</div>
-                    <div className="bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600">₹{priceRange[1]}</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Promotional Banner */}
-              <div className="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl p-6 text-white shadow-lg shadow-emerald-500/20 relative overflow-hidden group">
-                <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
-                <div className="relative z-10">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
-                      <Sparkles className="w-5 h-5 text-emerald-100" />
-                    </div>
-                    <span className="font-bold tracking-wide">Special Offer</span>
-                  </div>
-                  <h4 className="text-xl font-bold mb-1">Get 20% Off</h4>
-                  <p className="text-emerald-100 text-sm mb-5 leading-relaxed">Book your first service with us and get an instant discount applied.</p>
-                  <button className="w-full bg-white text-emerald-700 font-bold py-3 rounded-xl hover:bg-emerald-50 transition-colors shadow-sm active:scale-95">
-                    Explore Services
-                  </button>
-                </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-white border border-gray-200 rounded-lg p-2 flex items-center text-xs text-gray-500"><span className="mr-1">₹</span><input type="text" readOnly value={priceRange[0]} className="w-full focus:outline-none text-gray-800" /></div>
+                <div className="bg-white border border-gray-200 rounded-lg p-2 flex items-center text-xs text-gray-500"><span className="mr-1">₹</span><input type="text" readOnly value={priceRange[1]} className="w-full focus:outline-none text-gray-800" /></div>
               </div>
             </div>
+            <div><label className="text-xs font-bold text-gray-900 block mb-2">Rating</label><div className="grid grid-cols-4 gap-1.5 text-[11px]">{ratingOptions.map(r => (<button key={r} onClick={() => toggleRating(r)} className={`py-1 px-1 rounded flex items-center justify-center gap-0.5 transition ${selectedRatings.includes(r) ? 'border border-amber-300 bg-amber-50/40 text-gray-700 font-medium' : 'border border-gray-200 text-gray-500'}`}>★ {r}+</button>))}</div></div>
+            <div className="space-y-2 pt-1"><label className="text-xs font-bold text-gray-900 block mb-1">Availability</label><label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer"><input type="checkbox" checked={availability === 'now'} onChange={() => setAvailability('now')} className="w-4 h-4 rounded text-[#00aa6c] accent-[#00aa6c]" /><span>Available Now</span></label><label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer"><input type="checkbox" checked={availability === 'later'} onChange={() => setAvailability('later')} className="w-4 h-4 rounded text-[#00aa6c] accent-[#00aa6c]" /><span>Book for Later</span></label></div>
+            <button className="w-full py-2.5 bg-[#00aa6c] hover:bg-[#00915c] text-white rounded-lg text-xs font-bold transition mt-2">Apply Filters</button>
           </aside>
-
-          {/* Main Content Area */}
-          <main className="flex-1 min-w-0">
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-bold text-slate-800">
-                  <span className="text-emerald-600 mr-2">{filteredServices.length}</span> 
-                  {filteredServices.length === 1 ? 'Service' : 'Services'} Available
-                </h2>
-                {searchQuery && (
-                  <p className="text-slate-500 text-sm mt-0.5">Showing results for "{searchQuery}"</p>
-                )}
+          
+          {/* RIGHT CONTENT */}
+          <main className="lg:col-span-3 space-y-4">
+            <div className="flex flex-wrap justify-between items-center gap-3">
+              <div className="flex items-center gap-2">
+                <button onClick={openMobileFilters} className="lg:hidden flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm"><Filter className="w-4 h-4" /> Filters</button>
+                <h2 className="font-bold text-gray-800 text-sm">{totalProviders} {totalProviders === 1 ? 'Provider' : 'Providers'} Found</h2>
               </div>
-              
-              <div className="flex items-center gap-3">
-                <div className="relative bg-slate-50 rounded-xl border border-slate-200 hover:border-emerald-300 transition-colors">
-                  <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                    className="pl-9 pr-8 py-2.5 bg-transparent text-sm font-medium text-slate-700 outline-none appearance-none cursor-pointer w-full"
-                  >
-                    <option value="default">Sort: Default</option>
-                    <option value="price-low">Price: Low to High</option>
-                    <option value="price-high">Price: High to Low</option>
-                    <option value="rating">Highest Rated</option>
-                    <option value="popular">Most Popular</option>
-                  </select>
-                  <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 rotate-90 pointer-events-none" />
-                </div>
-                
-                <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl p-1">
-                  <button
-                    onClick={() => setViewMode('grid')}
-                    className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                  >
-                    <Grid3X3 className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => setViewMode('list')}
-                    className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                  >
-                    <LayoutList className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
+              <div className="flex items-center gap-2"><span className="text-xs text-gray-400">Sort By:</span><select className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs bg-white text-gray-700"><option>Recommended</option><option>Price: Low to High</option><option>Rating: High to Low</option></select></div>
             </div>
-
-            {filteredServices.length === 0 ? (
-              <div className="bg-white rounded-2xl p-16 text-center border border-slate-100 shadow-sm flex flex-col items-center">
-                <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mb-6 border-8 border-white shadow-sm">
-                  <Search className="w-10 h-10 text-slate-300" />
-                </div>
-                <h3 className="text-xl font-bold text-slate-800 mb-2">
-                  {searchQuery ? 'No matching services found' : 'No services available yet'}
-                </h3>
-                <p className="text-slate-500 max-w-md mx-auto">
-                  {searchQuery
-                    ? `We couldn't find anything matching "${searchQuery}" under this category. Try tweaking your search or price range.`
-                    : 'We are constantly adding new services. Check back later for updates in this category!'}
-                </p>
-                {searchQuery && (
-                  <button
-                    onClick={() => {setSearchQuery(''); setPriceRange([0, 10000]);}}
-                    className="mt-6 px-6 py-2.5 bg-emerald-50 text-emerald-700 font-semibold rounded-xl hover:bg-emerald-100 transition-colors"
-                  >
-                    Clear Filters
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className={viewMode === 'grid'
-                ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6"
-                : "space-y-4"
-              }>
-                {filteredServices.map(service => (
-                  <ServiceCard
-                    key={service._id}
-                    service={service}
-                    onAddToCart={handleAddToCart}
-                    onBookNow={handleBookNow}
-                    viewMode={viewMode}
-                  />
-                ))}
-              </div>
-            )}
+            <div className="relative"><input type="text" placeholder="Search providers..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#00aa6c] focus:border-transparent" /><svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg></div>
+            <div className="space-y-4">
+              {filteredProviders.map(provider => (
+                <ProviderCard 
+                  key={provider.id}
+                  provider={provider}
+                  onAddToCart={handleAddToCart}
+                  onBookNow={handleBookNow}
+                  distance={provider.distance}
+                  isInCart={isProviderInCart(provider.id, provider.serviceId)}
+                />
+              ))}
+              {filteredProviders.length === 0 && <div className="bg-white rounded-xl p-8 text-center text-gray-500">No providers found matching your filters.</div>}
+            </div>
+            <div className="bg-white rounded-lg border border-gray-100 p-3 flex justify-center items-center mt-6 shadow-sm"><div className="flex items-center gap-1.5 text-xs"><button className="w-8 h-8 flex items-center justify-center border border-gray-200 rounded-md text-gray-400 hover:bg-gray-50">‹</button><button className="w-8 h-8 flex items-center justify-center bg-[#00aa6c] text-white font-bold rounded-md">1</button><button className="w-8 h-8 flex items-center justify-center border border-gray-200 rounded-md text-gray-600 hover:bg-gray-50">2</button><button className="w-8 h-8 flex items-center justify-center border border-gray-200 rounded-md text-gray-600 hover:bg-gray-50">3</button><span className="px-1 text-gray-400">...</span><button className="w-8 h-8 flex items-center justify-center border border-gray-200 rounded-md text-gray-600 hover:bg-gray-50">8</button><button className="w-8 h-8 flex items-center justify-center border border-gray-200 rounded-md text-gray-400 hover:bg-gray-50">›</button></div></div>
           </main>
         </div>
       </div>
+
+      {/* FLOATING CART BUTTON */}
+      <div className="fixed bottom-6 right-6 z-50"><button onClick={() => navigate('/cart')} className="bg-white border border-gray-100 pl-3 pr-5 py-2.5 rounded-2xl shadow-xl flex items-center gap-3 hover:shadow-2xl transition group"><div className="relative"><div className="w-11 h-11 bg-[#23cc81] rounded-xl flex items-center justify-center text-white"><ShoppingCart className="w-5 h-5 fill-current" /></div><span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">{cartCount || 0}</span></div><div className="text-left"><div className="text-xs font-bold text-gray-800 group-hover:text-[#00aa6c] transition">View Cart</div><div className="text-[11px] text-gray-400 font-medium">{cartCount || 0} Items | <span className="text-gray-900 font-bold">₹{cartTotal ? cartTotal.toFixed(0) : '0'}</span></div></div></button></div>
+
+      {/* MOBILE FILTER DRAWER */}
+      {mobileFilterOpen && (<div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-end lg:hidden" onClick={() => setMobileFilterOpen(false)}><div className="bg-white w-full max-h-[85vh] rounded-t-3xl overflow-y-auto animate-slideUp" onClick={e => e.stopPropagation()}><div className="sticky top-0 bg-white border-b border-gray-100 p-4 flex justify-between items-center"><h3 className="font-bold text-lg">Filters</h3><button onClick={() => setMobileFilterOpen(false)} className="p-1"><X className="w-5 h-5" /></button></div><div className="p-5 space-y-5">
+        <div><label className="text-sm font-bold text-gray-900 block mb-1">Service Category</label><select className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"><option>All {category?.name} Services</option></select></div>
+        <div><label className="text-sm font-bold text-gray-900 block mb-1">Location</label><select className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"><option>Delhi</option></select></div>
+        <div className="flex items-center justify-between text-sm"><span className="text-gray-500">State</span><select className="w-40 border border-gray-200 rounded-lg px-2 py-1.5 text-sm"><option>Delhi</option></select></div>
+        <div className="flex items-center justify-between text-sm"><span className="text-gray-500">District</span><select className="w-40 border border-gray-200 rounded-lg px-2 py-1.5 text-sm"><option>New Delhi</option></select></div>
+        <div className="flex items-center justify-between text-sm"><span className="text-gray-500">Locality</span><select className="w-40 border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-gray-400"><option>Select Locality</option></select></div>
+        <div><label className="text-sm font-bold text-gray-900 block mb-2">Price Range</label>
+          <div className="flex items-center gap-3 mb-2"><span className="text-sm">₹{tempPriceRange[0]}</span><input type="range" min="0" max={priceMax} step="100" value={tempPriceRange[1]} onChange={(e) => setTempPriceRange([tempPriceRange[0], parseInt(e.target.value)])} className="flex-1 accent-emerald-500" /><span className="text-sm">₹{tempPriceRange[1]}</span></div>
+          <div className="grid grid-cols-2 gap-3"><div className="bg-white border border-gray-200 rounded-lg p-2 flex items-center text-sm"><span className="mr-1">₹</span><input type="text" readOnly value={tempPriceRange[0]} className="w-full focus:outline-none" /></div><div className="bg-white border border-gray-200 rounded-lg p-2 flex items-center text-sm"><span className="mr-1">₹</span><input type="text" readOnly value={tempPriceRange[1]} className="w-full focus:outline-none" /></div></div>
+        </div>
+        <div><label className="text-sm font-bold text-gray-900 block mb-2">Rating</label><div className="grid grid-cols-4 gap-2 text-sm">{ratingOptions.map(r => (<button key={r} onClick={() => { if (tempSelectedRatings.includes(r)) setTempSelectedRatings(tempSelectedRatings.filter(rt => rt !== r)); else setTempSelectedRatings([...tempSelectedRatings, r]); }} className={`py-1.5 rounded flex items-center justify-center gap-1 transition ${tempSelectedRatings.includes(r) ? 'border border-amber-300 bg-amber-50 text-gray-800 font-medium' : 'border border-gray-200 text-gray-500'}`}>★ {r}+</button>))}</div></div>
+        <div className="space-y-2"><label className="text-sm font-bold text-gray-900 block">Availability</label><label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer"><input type="checkbox" checked={tempAvailability === 'now'} onChange={() => setTempAvailability('now')} className="w-4 h-4 rounded text-[#00aa6c]" /><span>Available Now</span></label><label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer"><input type="checkbox" checked={tempAvailability === 'later'} onChange={() => setTempAvailability('later')} className="w-4 h-4 rounded text-[#00aa6c]" /><span>Book for Later</span></label></div>
+        <div className="flex gap-3 pt-4 pb-6"><button onClick={() => { setMobileFilterOpen(false); clearFilters(); }} className="flex-1 py-2.5 border border-gray-300 rounded-xl text-sm font-medium">Reset</button><button onClick={applyMobileFilters} className="flex-1 py-2.5 bg-[#00aa6c] text-white rounded-xl text-sm font-medium">Apply Filters</button></div>
+      </div></div></div>)}
+      <style>{`@keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}.animate-slideUp{animation:slideUp 0.3s ease-out;}`}</style>
     </div>
   );
 };
-
 export default CategoryPage;

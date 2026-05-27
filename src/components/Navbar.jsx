@@ -561,7 +561,7 @@ const Navbar = () => {
                   {/* Menu button – Avatar when logged in, Hamburger when logged out */}
                   <button 
                     onClick={() => setMobileMenuOpen(true)} 
-                    className="flex items-center justify-center w-9 h-9 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600 shadow-md active:scale-95 transition-all"
+                    className="flex items-center justify-center w-9 h-9 rounded-full overflow-hidden  shadow-md active:scale-95 transition-all"
                   >
                     {user ? (
                       // Logged in: show avatar or initials

@@ -1,4 +1,3 @@
- 
 import { useCart } from '../context/CartContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
@@ -53,7 +52,7 @@ const EmptyCart = () => (
 );
 
 // ─── Cart Item Card ─────────────────────────────────────────────────
-const CartItem = ({ item, onUpdateQuantity, onRemove, onMoveToWishlist }) => {
+const CartItem = ({ item, onUpdateQuantity, onRemove }) => {
   const [isRemoving, setIsRemoving] = useState(false);
 
   const handleRemove = () => {
@@ -82,7 +81,8 @@ const CartItem = ({ item, onUpdateQuantity, onRemove, onMoveToWishlist }) => {
           <div className="flex items-start justify-between gap-2">
             <div>
               <h3 className="font-bold text-slate-800 text-lg">{item.name}</h3>
-              <p className="text-sm text-slate-500 mt-0.5">{item.category || 'Service'}</p>
+              {/* ✅ Show provider name instead of category */}
+              <p className="text-sm text-slate-500 mt-0.5">{item.providerName || 'Service Provider'}</p>
             </div>
             <button
               onClick={handleRemove}
@@ -102,7 +102,7 @@ const CartItem = ({ item, onUpdateQuantity, onRemove, onMoveToWishlist }) => {
 
           {/* Actions Row */}
           <div className="flex flex-wrap items-center justify-between gap-3 mt-4 pt-3 border-t border-slate-50">
-            {/* Quantity Stepper */}
+            {/* Quantity Stepper - disabled for increase beyond 1 */}
             <div className="flex items-center gap-1">
               <button
                 onClick={() => onUpdateQuantity(item.serviceId, Math.max(1, item.quantity - 1), item.variant)}
@@ -112,9 +112,11 @@ const CartItem = ({ item, onUpdateQuantity, onRemove, onMoveToWishlist }) => {
                 <Minus className="w-4 h-4" />
               </button>
               <span className="w-10 text-center font-semibold text-slate-800">{item.quantity}</span>
+              {/* ✅ Plus button disabled because quantity cannot exceed 1 */}
               <button
                 onClick={() => onUpdateQuantity(item.serviceId, item.quantity + 1, item.variant)}
-                className="w-9 h-9 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center hover:bg-slate-200 transition-colors"
+                disabled={item.quantity >= 1}
+                className="w-9 h-9 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center hover:bg-slate-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Plus className="w-4 h-4" />
               </button>
@@ -363,4 +365,3 @@ const CartPage = () => {
 };
 
 export default CartPage;
- 

@@ -216,10 +216,12 @@ const AdminKycVerification = () => {
     return matchesSearch;
   });
 
-  // Get document images
+  // Get document images with fallback
   const getDocumentImage = (documents, type) => {
     const doc = documents?.find(d => d.type === type);
-    return doc?.frontImage?.url || null;
+    if (doc?.frontImage?.url) return doc.frontImage.url;
+    if (doc?.imageUrl) return doc.imageUrl; // fallback for older data
+    return null;
   };
 
   const getDocumentBackImage = (documents, type) => {
@@ -486,105 +488,111 @@ const AdminKycVerification = () => {
                   </td>
                 </tr>
               ) : (
-                filteredVerifications.map((provider) => (
-                  <tr key={provider._id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <UserAvatar user={provider.user} size="md" />
-                        <div>
-                          <p className="font-semibold text-gray-800">{provider.businessName || 'Individual Provider'}</p>
-                          <p className="text-xs text-gray-500">{provider.user?.firstName} {provider.user?.lastName}</p>
+                filteredVerifications.map((provider) => {
+                  // Business name fallback – remove undefined
+                  const displayBusinessName = provider.businessName && !provider.businessName.includes('undefined')
+                    ? provider.businessName
+                    : `${provider.user?.firstName || ''} ${provider.user?.lastName || ''}`.trim() || 'Provider';
+                  return (
+                    <tr key={provider._id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <UserAvatar user={provider.user} size="md" />
+                          <div>
+                            <p className="font-semibold text-gray-800">{displayBusinessName}</p>
+                            <p className="text-xs text-gray-500">{provider.user?.firstName} {provider.user?.lastName}</p>
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Mail size={14} className="text-gray-400" />
-                          <span className="truncate max-w-[180px]">{provider.user?.email}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Mail size={14} className="text-gray-400" />
+                            <span className="truncate max-w-[180px]">{provider.user?.email}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Phone size={14} className="text-gray-400" />
+                            <span>{provider.user?.phone}</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Phone size={14} className="text-gray-400" />
-                          <span>{provider.user?.phone}</span>
+                       </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col gap-1">
+                          <div className="flex gap-2">
+                            {provider.documents?.map((doc, idx) => (
+                              <span key={idx} className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                doc.isVerified ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                              }`}>
+                                {doc.type === 'aadhar' ? 'Aadhaar' : doc.type === 'pan' ? 'PAN' : doc.type}
+                                {doc.isVerified && ' ✓'}
+                              </span>
+                            ))}
+                            {(!provider.documents || provider.documents.length === 0) && (
+                              <span className="text-xs text-gray-400">No documents</span>
+                            )}
+                          </div>
+                          <div>
+                            {getDocumentStatusBadge(provider.documents)}
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex gap-2">
-                          {provider.documents?.map((doc, idx) => (
-                            <span key={idx} className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              doc.isVerified ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                            }`}>
-                              {doc.type === 'aadhar' ? 'Aadhaar' : doc.type === 'pan' ? 'PAN' : doc.type}
-                              {doc.isVerified && ' ✓'}
-                            </span>
-                          ))}
-                          {(!provider.documents || provider.documents.length === 0) && (
-                            <span className="text-xs text-gray-400">No documents</span>
-                          )}
-                        </div>
-                        <div>
-                          {getDocumentStatusBadge(provider.documents)}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      {getVerificationStatusBadge(provider.verificationStatus, provider._id)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        provider.user?.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                      }`}>
-                        {provider.user?.status === 'active' ? 'Active' : 'Suspended'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {formatDate(provider.createdAt)}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => viewProviderDetails(provider)}
-                          className="p-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
-                          title="View Details"
-                        >
-                          <Eye size={16} />
-                        </button>
-                        <div className="relative">
+                       </td>
+                      <td className="px-6 py-4">
+                        {getVerificationStatusBadge(provider.verificationStatus, provider._id)}
+                       </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          provider.user?.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                        }`}>
+                          {provider.user?.status === 'active' ? 'Active' : 'Suspended'}
+                        </span>
+                       </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {formatDate(provider.createdAt)}
+                       </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
                           <button
-                            onClick={() => setActionMenuOpen(actionMenuOpen === provider._id ? null : provider._id)}
-                            className="p-2 rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+                            onClick={() => viewProviderDetails(provider)}
+                            className="p-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                            title="View Details"
                           >
-                            <MoreHorizontal size={16} />
+                            <Eye size={16} />
                           </button>
-                          {actionMenuOpen === provider._id && (
-                            <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-50">
-                              {provider.user?.status === 'active' ? (
-                                <button
-                                  onClick={() => { handleSuspend(provider.user?._id); setActionMenuOpen(null); }}
-                                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-orange-600 hover:bg-orange-50"
-                                >
-                                  <UserX size={14} /> Suspend Account
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => { handleActivate(provider.user?._id); setActionMenuOpen(null); }}
-                                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-emerald-600 hover:bg-emerald-50"
-                                >
-                                  <UserCheck size={14} /> Activate Account
-                                </button>
-                              )}
-                            </div>
-                          )}
+                          <div className="relative">
+                            <button
+                              onClick={() => setActionMenuOpen(actionMenuOpen === provider._id ? null : provider._id)}
+                              className="p-2 rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+                            >
+                              <MoreHorizontal size={16} />
+                            </button>
+                            {actionMenuOpen === provider._id && (
+                              <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-50">
+                                {provider.user?.status === 'active' ? (
+                                  <button
+                                    onClick={() => { handleSuspend(provider.user?._id); setActionMenuOpen(null); }}
+                                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-orange-600 hover:bg-orange-50"
+                                  >
+                                    <UserX size={14} /> Suspend Account
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => { handleActivate(provider.user?._id); setActionMenuOpen(null); }}
+                                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-emerald-600 hover:bg-emerald-50"
+                                  >
+                                    <UserCheck size={14} /> Activate Account
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                       </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
-          </table>
+           </table>
         </div>
 
         {/* Pagination */}
@@ -635,7 +643,11 @@ const AdminKycVerification = () => {
               <div className="flex items-start gap-4">
                 <UserAvatar user={selectedProvider.user} size="xl" />
                 <div className="flex-1">
-                  <h3 className="text-xl font-bold text-gray-800">{selectedProvider.businessName || 'Individual Provider'}</h3>
+                  <h3 className="text-xl font-bold text-gray-800">
+                    {selectedProvider.businessName && !selectedProvider.businessName.includes('undefined')
+                      ? selectedProvider.businessName
+                      : `${selectedProvider.user?.firstName || ''} ${selectedProvider.user?.lastName || ''}`.trim() || 'Individual Provider'}
+                  </h3>
                   <p className="text-gray-500">{selectedProvider.user?.firstName} {selectedProvider.user?.lastName}</p>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {getVerificationStatusBadge(selectedProvider.verificationStatus, selectedProvider._id)}

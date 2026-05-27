@@ -9,6 +9,7 @@ import ServiceDetailPage from "./pages/ServiceDetailPage";
 import CartPage from "./pages/CartPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import MyBookingsPage from "./pages/MyBookingsPage";
+import OrderSuccessPage from "./pages/OrderSuccessPage"; // ✅ new import
 import RegisterProvider from "./components/auth/RegisterProvider";
 import Navbar from "./components/Navbar";
 import Login from "./components/auth/Login";
@@ -23,6 +24,8 @@ import ProviderBookings from "./pages/provider/ProviderBookings";
 import ProviderServices from "./pages/provider/ProviderServices";
 import ProviderProfile from "./pages/provider/ProviderProfile";
 import ProviderWallet from "./pages/provider/ProviderWallet";
+
+import ProviderDetailPage from "./pages/ProviderDetailPage";
 
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -57,8 +60,8 @@ const AppContent = () => {
   const { showAuth } = useAuth();
   
   const isAdminRoute = location.pathname.startsWith('/admin');
-  const isProviderRoute = location.pathname.startsWith('/provider');
-  const hideNavFooter = isAdminRoute || isProviderRoute;
+  const isProviderDashboardRoute = location.pathname.startsWith('/provider') && !location.pathname.match(/^\/provider\/[a-f0-9]{24}$/);
+  const hideNavFooter = isAdminRoute || isProviderDashboardRoute;
   
   return (
     <>
@@ -73,9 +76,13 @@ const AppContent = () => {
         <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
         <Route path="/cart" element={<PrivateRoute><CartPage /></PrivateRoute>} />
         <Route path="/checkout" element={<PrivateRoute><CheckoutPage /></PrivateRoute>} />
+        <Route path="/order-success" element={<PrivateRoute><OrderSuccessPage /></PrivateRoute>} /> {/* ✅ new route */}
         <Route path="/my-bookings" element={<PrivateRoute><MyBookingsPage /></PrivateRoute>} />
-        <Route path="/register-provider" element={<PrivateRoute><RegisterProvider /></PrivateRoute>} />
+        <Route path="/register-provider" element={<RegisterProvider />} />
 
+        <Route path="/provider/:id" element={<ProviderDetailPage />} />
+
+        {/* Provider dashboard */}
         <Route path="/provider" element={<PrivateRoute><ProviderLayout /></PrivateRoute>}>
           <Route index element={<ProviderDashboard />} />
           <Route path="bookings" element={<ProviderBookings />} />
@@ -86,6 +93,7 @@ const AppContent = () => {
           <Route path="wallet" element={<ProviderWallet />} />
         </Route>
 
+        {/* Admin routes */}
         <Route path="/admin" element={<PrivateRoute><AdminLayout /></PrivateRoute>}>
           <Route index element={<AdminDashboard />} />
           <Route path="users" element={<AdminUsers />} />

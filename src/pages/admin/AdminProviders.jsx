@@ -29,7 +29,7 @@ import {
   XCircle
 } from 'lucide-react';
 
-// ─── Avatar Component ────────────────────────────
+// ─── Avatar Component with better fallback ────────────────────────────
 const UserAvatar = ({ user, size = 'md' }) => {
   const avatarUrl = user?.avatar?.url;
   const name = user?.fullName || user?.firstName || '?';
@@ -45,6 +45,7 @@ const UserAvatar = ({ user, size = 'md' }) => {
     sm: 'w-8 h-8 text-xs', md: 'w-10 h-10 text-sm',
     lg: 'w-16 h-16 text-xl', xl: 'w-24 h-24 text-3xl'
   };
+
   if (avatarUrl) {
     return (
       <img
@@ -142,14 +143,11 @@ const AdminProviders = () => {
   };
 
   const viewProviderDetails = async (providerId) => {
-    // providerId is the ServiceProvider _id, not user id
-    // We already have full provider object from fetchAllProviders, so just use it
     const provider = providers.find(p => p._id === providerId);
     if (provider && provider.user) {
       setSelectedProvider(provider);
       setShowModal(true);
     } else {
-      // Fallback: fetch user details if needed
       try {
         const res = await fetchAdminUserDetails(provider.user?._id);
         if (res.success) {
@@ -166,7 +164,7 @@ const AdminProviders = () => {
     setStatusUpdating(true);
     try {
       await updateAdminUserStatus(userId, newStatus);
-      await loadProviders(); // refresh list
+      await loadProviders();
       showToast(`Provider ${newStatus === 'active' ? 'activated' : 'suspended'} successfully`);
     } catch (err) {
       showToast(err.message || 'Failed to update status', 'error');
@@ -250,7 +248,6 @@ const AdminProviders = () => {
       {/* Filters Toolbar */}
       <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
         <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-          {/* Search */}
           <div className="relative w-full sm:w-72">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
@@ -261,7 +258,6 @@ const AdminProviders = () => {
               className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 transition-all"
             />
           </div>
-          {/* Account Status Filter */}
           <div className="relative">
             <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <select
@@ -275,7 +271,6 @@ const AdminProviders = () => {
             </select>
             <ChevronLeft className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 rotate-[-90deg] pointer-events-none" />
           </div>
-          {/* Verification Filter */}
           <div className="relative">
             <Verified className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <select
@@ -315,6 +310,9 @@ const AdminProviders = () => {
               {paginatedProviders.map((provider) => {
                 const user = provider.user;
                 const fullName = user ? `${user.firstName} ${user.lastName}` : provider.businessName;
+                const businessDisplay = provider.businessName && !provider.businessName.includes('undefined')
+                  ? provider.businessName
+                  : fullName;
                 const verificationStatus = provider.verificationStatus || 'pending';
                 let verificationBadge;
                 if (verificationStatus === 'verified') verificationBadge = <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700"><Verified className="w-3 h-3" />Verified</span>;
@@ -328,8 +326,8 @@ const AdminProviders = () => {
                       <div className="flex items-center gap-3">
                         <UserAvatar user={user} size="md" />
                         <div>
-                          <p className="font-semibold text-slate-800">{fullName}</p>
-                          <p className="text-xs text-slate-500">{provider.businessName || 'Business name not set'}</p>
+                          <p className="font-semibold text-slate-800">{businessDisplay}</p>
+                          <p className="text-xs text-slate-500">{provider.businessName && !provider.businessName.includes('undefined') ? provider.businessName : 'Business name not set'}</p>
                           <p className="text-xs text-slate-400">ID: {provider._id?.slice(-8)}</p>
                         </div>
                       </div>
@@ -361,13 +359,13 @@ const AdminProviders = () => {
                       <span className={`ml-2 text-xs font-medium ${user?.status === 'active' ? 'text-emerald-600' : 'text-slate-500'}`}>
                         {user?.status || 'inactive'}
                       </span>
-                     </td>
+                    </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2 text-sm text-slate-500">
                         <Calendar className="w-3.5 h-3.5" />
                         {new Date(provider.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </div>
-                     </td>
+                    </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
                         <button
@@ -473,7 +471,7 @@ const AdminProviders = () => {
         )}
       </div>
 
-      {/* Provider Details Modal */}
+      {/* Provider Details Modal – same avatar logic with business name fallback */}
       {showModal && selectedProvider && (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fadeIn">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] overflow-y-auto animate-scaleIn">
@@ -488,7 +486,13 @@ const AdminProviders = () => {
               </button>
               <div className="relative flex flex-col items-center text-center">
                 <UserAvatar user={selectedProvider.user} size="xl" />
-                <h2 className="text-2xl font-bold mt-4">{selectedProvider.user ? `${selectedProvider.user.firstName} ${selectedProvider.user.lastName}` : selectedProvider.businessName}</h2>
+                <h2 className="text-2xl font-bold mt-4">
+                  {selectedProvider.user 
+                    ? `${selectedProvider.user.firstName} ${selectedProvider.user.lastName}`
+                    : (selectedProvider.businessName && !selectedProvider.businessName.includes('undefined') 
+                        ? selectedProvider.businessName 
+                        : 'Service Provider')}
+                </h2>
                 <p className="text-slate-400 text-sm mt-1">{selectedProvider.user?.email}</p>
                 <div className="flex flex-wrap items-center justify-center gap-2 mt-3">
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-300">
@@ -531,7 +535,11 @@ const AdminProviders = () => {
                     <Briefcase className="w-3.5 h-3.5" />
                     Business Name
                   </div>
-                  <p className="text-sm font-medium text-slate-800">{selectedProvider.businessName || 'N/A'}</p>
+                  <p className="text-sm font-medium text-slate-800">
+                    {selectedProvider.businessName && !selectedProvider.businessName.includes('undefined')
+                      ? selectedProvider.businessName
+                      : 'Not set'}
+                  </p>
                 </div>
                 <div className="bg-slate-50 rounded-xl p-4">
                   <div className="flex items-center gap-2 text-slate-500 text-xs font-medium uppercase tracking-wider mb-2">
