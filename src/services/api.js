@@ -20,7 +20,8 @@ console.log('🔧 API BASE_URL:', BASE_URL);
 
 let categoriesCache = { data: null, timestamp: null, promise: null };
 
-const apiFetch = async (endpoint, options = {}) => {
+// ✅ Single export of apiFetch – no duplicate later
+export const apiFetch = async (endpoint, options = {}) => {
     let response;
     try {
         const headers = { ...options.headers };
@@ -362,7 +363,7 @@ export const toggleMaintenanceMode = async (isEnabled, message = '') => apiFetch
 export const checkForAppUpdate = async () => apiFetch('/admin/updates/check');
 export const publishAppUpdate = async (version, message, forceUpdate, downloadUrl) => apiFetch('/admin/updates/publish', { method: 'POST', body: JSON.stringify({ version, message, forceUpdate, downloadUrl }) });
 
-// ========== ALIAS for backward compatibility (NotificationBell.jsx & ProviderNotificationBell.jsx) ==========
+// ========== ALIAS for backward compatibility ==========
 export const marahJ91ZuNL8Y2px8iYciYeHN8sfSh5eXH8 = mar9yMnTm4NSzvG9rrwjM2ec8xZgh1cafXH8;
 
-export { apiFetch };
+// No duplicate export of apiFetch – it's already exported above.

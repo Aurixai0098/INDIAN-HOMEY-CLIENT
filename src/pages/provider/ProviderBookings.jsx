@@ -12,7 +12,7 @@ import {
   fetchMyBookings, confirmBooking, startBooking, 
   completeBooking, generateBookingOTP, fetchProviderVerificationStatus,
   fetchProviderProfile, acceptBooking, updateServiceArea,
-  providerOffer
+  providerOffer, apiFetch
 } from '../../services/api';
 import { useSocket } from '../../context/SocketContext';
 import { useAuth } from '../../context/AuthContext';
@@ -68,7 +68,7 @@ const geocodeCity = async (cityName) => {
   return null;
 };
 
-// Service Area Modal (unchanged)
+// Service Area Modal (keep your existing implementation)
 const ServiceAreaModal = ({ isOpen, onClose, currentArea, onUpdate }) => {
   const [formData, setFormData] = useState({
     cities: currentArea?.cities || [],
@@ -226,6 +226,11 @@ const ProviderBookings = () => {
   const [viewProblemBooking, setViewProblemBooking] = useState(null);
   const [offerAmount, setOfferAmount] = useState('');
   const [offerNote, setOfferNote] = useState('');
+
+  // NEW: cash payment modal
+  const [cashPaymentBooking, setCashPaymentBooking] = useState(null);
+  const [platformFee, setPlatformFee] = useState(0);
+  const [cashProcessing, setCashProcessing] = useState(false);
 
   useEffect(() => {
     bookingsRef.current = bookings;
@@ -410,6 +415,37 @@ const ProviderBookings = () => {
     }
   };
 
+  const handleCashPayment = (booking) => {
+    const commissionPercentage = 20; // or fetch from settings
+    const fee = Math.round((booking.pricing.total * commissionPercentage) / 100);
+    setPlatformFee(fee);
+    setCashPaymentBooking(booking);
+  };
+
+  const processCashPayment = async () => {
+    setCashProcessing(true);
+    try {
+      const res = await apiFetch(`/bookings/${cashPaymentBooking._id}/cash-payment`, {
+        method: 'POST',
+        body: JSON.stringify({ 
+          amountPaidByCustomer: cashPaymentBooking.pricing.total, 
+          platformFee 
+        })
+      });
+      if (res.success) {
+        alert('Cash payment recorded. Platform fee deducted from your wallet.');
+        setCashPaymentBooking(null);
+        loadBookings(true);
+      } else {
+        alert(res.message || 'Failed to process cash payment');
+      }
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setCashProcessing(false);
+    }
+  };
+
   const getStatusConfig = (status) => {
     const configs = {
       pending: { label: 'Pending', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: AlertCircle },
@@ -480,6 +516,7 @@ const ProviderBookings = () => {
 
   return (
     <div className="max-w-6xl mx-auto">
+      {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Manage Bookings</h1>
         <div className="flex gap-2">
@@ -561,6 +598,7 @@ const ProviderBookings = () => {
             const statusConfig = getStatusConfig(booking.status);
             const StatusIcon = statusConfig.icon;
             const isActive = booking.status === 'confirmed' || booking.status === 'in_progress';
+            const isCompletedUnpaid = booking.status === 'completed' && booking.payment?.status !== 'paid';
             return (
               <div key={booking._id} className="bg-white rounded-2xl border p-5">
                 <div className="flex justify-between items-start">
@@ -582,6 +620,24 @@ const ProviderBookings = () => {
                   </div>
                   <div>{getActions(booking)}</div>
                 </div>
+
+                {/* Payment options for completed but unpaid bookings */}
+                {isCompletedUnpaid && (
+                  <div className="mt-3 flex flex-wrap gap-3 pt-3 border-t border-gray-100">
+                    <button
+                      onClick={() => alert('Ask customer to pay online from My Bookings page')}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium"
+                    >
+                      Online Payment
+                    </button>
+                    <button
+                      onClick={() => handleCashPayment(booking)}
+                      className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium"
+                    >
+                      Cash Received
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })
@@ -639,6 +695,32 @@ const ProviderBookings = () => {
         </div>
       )}
 
+      {/* Cash Payment Modal */}
+      {cashPaymentBooking && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold">Cash Payment & Platform Fee</h3>
+              <button onClick={() => setCashPaymentBooking(null)}><X /></button>
+            </div>
+            <div className="space-y-3">
+              <p><strong>Booking:</strong> {cashPaymentBooking.bookingId}</p>
+              <p><strong>Total amount:</strong> ₹{cashPaymentBooking.pricing.total}</p>
+              <p><strong>Platform fee (20%):</strong> ₹{platformFee}</p>
+              <p className="text-sm text-amber-600">This fee will be deducted from your wallet.</p>
+              <button
+                onClick={processCashPayment}
+                disabled={cashProcessing}
+                className="w-full bg-emerald-600 text-white py-2 rounded-xl font-medium flex justify-center items-center gap-2"
+              >
+                {cashProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
+                {cashProcessing ? 'Processing...' : 'Confirm Cash Payment'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {chatBooking && (
         <ChatBox
           bookingId={chatBooking._id}
@@ -647,7 +729,6 @@ const ProviderBookings = () => {
           onClose={closeChat}
         />
       )}
-
       {showLocationMap && (
         <LocationMapModal
           currentLocation={providerData?.currentLocation}
@@ -656,7 +737,6 @@ const ProviderBookings = () => {
           onClose={() => setShowLocationMap(false)}
         />
       )}
-
       {showServiceAreaModal && (
         <ServiceAreaModal
           isOpen={showServiceAreaModal}
