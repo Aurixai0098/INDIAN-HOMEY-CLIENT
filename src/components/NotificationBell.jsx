@@ -5,7 +5,7 @@ import {
   fetchNotifications, 
   markNotificationRead, 
   fetchProviderNotifications, 
-  marahJ91ZuNL8Y2px8iYciYeHN8sfSh5eXH8,
+  mar9yMnTm4NSzvG9rrwjM2ec8xZgh1cafXH8,
   markAllNotificationsRead,
   markAllProviderNotificationsRead
 } from '../services/api';
@@ -16,11 +16,10 @@ const NotificationBell = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [showDropdown, setShowDropdown] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'unread'
+  const [activeFilter, setActiveFilter] = useState('all');
   const dropdownRef = useRef(null);
   const bellButtonRef = useRef(null);
 
-  // Close dropdown on Escape key
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === 'Escape') setShowDropdown(false);
@@ -29,7 +28,6 @@ const NotificationBell = () => {
     return () => document.removeEventListener('keydown', handleEscape);
   }, []);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (
@@ -45,7 +43,6 @@ const NotificationBell = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Load notifications
   const loadNotifications = useCallback(async () => {
     if (!user) return;
     setIsLoading(true);
@@ -67,7 +64,6 @@ const NotificationBell = () => {
     }
   }, [user]);
 
-  // Polling for new notifications
   useEffect(() => {
     if (!user) return;
     loadNotifications();
@@ -75,28 +71,24 @@ const NotificationBell = () => {
     return () => clearInterval(interval);
   }, [user, loadNotifications]);
 
-  // Mark single notification as read
   const handleMarkRead = async (id, e) => {
     e?.stopPropagation();
     try {
       if (user?.role === 'provider') {
-        await marahJ91ZuNL8Y2px8iYciYeHN8sfSh5eXH8(id);
+        await mar9yMnTm4NSzvG9rrwjM2ec8xZgh1cafXH8(id);
       } else {
         await markNotificationRead(id);
       }
-      // Optimistic update
       setNotifications(prev => 
         prev.map(n => n._id === id ? { ...n, isRead: true } : n)
       );
       setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (err) {
       console.error('Failed to mark as read:', err);
-      // Revert on error
       loadNotifications();
     }
   };
 
-  // Mark all as read
   const handleMarkAllRead = async () => {
     try {
       if (user?.role === 'provider') {
@@ -111,7 +103,6 @@ const NotificationBell = () => {
     }
   };
 
-  // Get notification icon based on type
   const getNotificationIcon = (type) => {
     switch (type) {
       case 'booking':
@@ -157,12 +148,10 @@ const NotificationBell = () => {
     }
   };
 
-  // Format relative time
   const getRelativeTime = (dateString) => {
     const date = new Date(dateString);
     const now = new Date();
     const diffInSeconds = Math.floor((now - date) / 1000);
-    
     if (diffInSeconds < 60) return 'Just now';
     if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
     if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
@@ -170,7 +159,6 @@ const NotificationBell = () => {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
-  // Filtered notifications
   const filteredNotifications = notifications.filter(n => {
     if (activeFilter === 'unread') return !n.isRead;
     return true;
@@ -180,7 +168,6 @@ const NotificationBell = () => {
 
   return (
     <div className="relative" ref={dropdownRef}>
-      {/* Bell Button */}
       <button
         ref={bellButtonRef}
         onClick={() => setShowDropdown(!showDropdown)}
@@ -195,31 +182,16 @@ const NotificationBell = () => {
         aria-label="Notifications"
         aria-expanded={showDropdown}
       >
-        <svg 
-          className={`w-5 h-5 transition-transform duration-300 ${showDropdown ? 'scale-110' : ''}`} 
-          fill="none" 
-          stroke="currentColor" 
-          viewBox="0 0 24 24"
-        >
-          <path 
-            strokeLinecap="round" 
-            strokeLinejoin="round" 
-            strokeWidth="2" 
-            d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" 
-          />
+        <svg className={`w-5 h-5 transition-transform duration-300 ${showDropdown ? 'scale-110' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
         </svg>
-        
-        {/* Unread Badge */}
         {unreadCount > 0 && (
-          <span 
-            className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm border-2 border-white animate-pulse"
-          >
+          <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm border-2 border-white animate-pulse">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
       </button>
 
-      {/* Dropdown – fixed positioning for mobile */}
       {showDropdown && (
         <div 
           className="
@@ -240,27 +212,20 @@ const NotificationBell = () => {
           aria-label="Notifications panel"
           style={{ maxHeight: 'calc(100vh - 100px)' }}
         >
-          {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
             <div>
               <h3 className="text-sm font-semibold text-slate-800">Notifications</h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up!'}
-              </p>
+              <p className="text-xs text-slate-400 mt-0.5">{unreadCount > 0 ? `${unreadCount} unread` : 'All caught up!'}</p>
             </div>
             <div className="flex items-center gap-1.5">
               {unreadCount > 0 && (
-                <button
-                  onClick={handleMarkAllRead}
-                  className="text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-colors"
-                >
+                <button onClick={handleMarkAllRead} className="text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-colors">
                   Mark all read
                 </button>
               )}
             </div>
           </div>
 
-          {/* Filter Tabs */}
           <div className="flex border-b border-slate-100">
             {['all', 'unread'].map((filter) => (
               <button
@@ -284,7 +249,6 @@ const NotificationBell = () => {
             ))}
           </div>
 
-          {/* Notifications List */}
           <div className="max-h-[380px] overflow-y-auto scrollbar-thin">
             {isLoading && notifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10">
@@ -322,10 +286,7 @@ const NotificationBell = () => {
                     ${index !== filteredNotifications.length - 1 ? 'border-b border-slate-50' : ''}
                   `}
                 >
-                  {/* Icon */}
                   {getNotificationIcon(notif.type)}
-
-                  {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <p className={`text-sm leading-snug ${!notif.isRead ? 'font-semibold text-slate-800' : 'font-medium text-slate-600'}`}>

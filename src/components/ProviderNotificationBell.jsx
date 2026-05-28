@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { fetchProviderNotifications, markAllProviderNotificationsRead, marahJ91ZuNL8Y2px8iYciYeHN8sfSh5eXH8 } from '../services/api';
+import { fetchProviderNotifications, markAllProviderNotificationsRead, mar9yMnTm4NSzvG9rrwjM2ec8xZgh1cafXH8 } from '../services/api';
 import { Bell, CheckCheck, Clock, Loader2, BellRing, MessageCircle, CalendarCheck, DollarSign } from 'lucide-react';
 
 const playNotificationSound = () => {
@@ -118,7 +118,7 @@ const ProviderNotificationBell = () => {
   const handleMarkRead = async (id, e) => {
     e?.stopPropagation();
     try {
-      await marahJ91ZuNL8Y2px8iYciYeHN8sfSh5eXH8(id);
+      await mar9yMnTm4NSzvG9rrwjM2ec8xZgh1cafXH8(id);
       setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
       setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (err) {
@@ -144,7 +144,6 @@ const ProviderNotificationBell = () => {
   const handleNotificationClick = (notif) => {
     if (!notif.isRead) handleMarkRead(notif._id);
     setShowDropdown(false);
-    // For message notifications, open chat directly
     if (notif.type === 'message' && notif.reference?.id) {
       navigate(`/provider/bookings?openChat=${notif.reference.id}`);
     } else if (notif.reference?.id) {

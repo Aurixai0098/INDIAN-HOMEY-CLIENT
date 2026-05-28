@@ -11,7 +11,8 @@ import {
 import { 
   fetchMyBookings, confirmBooking, startBooking, 
   completeBooking, generateBookingOTP, fetchProviderVerificationStatus,
-  fetchProviderProfile, acceptBooking, updateServiceArea
+  fetchProviderProfile, acceptBooking, updateServiceArea,
+  providerOffer
 } from '../../services/api';
 import { useSocket } from '../../context/SocketContext';
 import { useAuth } from '../../context/AuthContext';
@@ -38,7 +39,7 @@ const ExpirationTimer = ({ expiry, onExpire }) => {
   return <span className="text-xs text-amber-600 font-mono ml-2">Expires in {timeLeft}</span>;
 };
 
-// Audio setup (for local sound)
+// Audio setup
 let audioCtx = null;
 const playNotybell = async () => {
   try {
@@ -67,16 +68,13 @@ const geocodeCity = async (cityName) => {
   return null;
 };
 
-// ======================== Service Area Modal (Proper Form) ========================
+// Service Area Modal (unchanged)
 const ServiceAreaModal = ({ isOpen, onClose, currentArea, onUpdate }) => {
   const [formData, setFormData] = useState({
     cities: currentArea?.cities || [],
     pincodes: currentArea?.pincodes || [],
     radius: currentArea?.radius || 10,
-    coordinates: currentArea?.coordinates || {
-      type: 'Point',
-      coordinates: [0, 0]
-    }
+    coordinates: currentArea?.coordinates || { type: 'Point', coordinates: [0, 0] }
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -143,13 +141,11 @@ const ServiceAreaModal = ({ isOpen, onClose, currentArea, onUpdate }) => {
   };
 
   if (!isOpen) return null;
-
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
         <h3 className="text-xl font-bold mb-4">Set Service Area</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Cities */}
           <div>
             <label className="block text-sm font-medium mb-1">Cities you serve</label>
             <div className="flex gap-2">
@@ -165,7 +161,6 @@ const ServiceAreaModal = ({ isOpen, onClose, currentArea, onUpdate }) => {
               ))}
             </div>
           </div>
-          {/* Pincodes */}
           <div>
             <label className="block text-sm font-medium mb-1">Pincodes you serve</label>
             <div className="flex gap-2">
@@ -181,27 +176,21 @@ const ServiceAreaModal = ({ isOpen, onClose, currentArea, onUpdate }) => {
               ))}
             </div>
           </div>
-          {/* Radius */}
           <div>
             <label className="block text-sm font-medium mb-1">Radius (km) – optional</label>
             <input type="number" min="1" max="100" value={formData.radius} onChange={(e) => setFormData(prev => ({ ...prev, radius: parseInt(e.target.value) }))} className="w-full border rounded-lg px-3 py-2 text-sm" />
-            <p className="text-xs text-gray-500 mt-1">If set, providers within this radius will be matched.</p>
           </div>
-          {/* Coordinates */}
           <div>
             <label className="block text-sm font-medium mb-1">Service Area Center (Latitude, Longitude)</label>
             <div className="flex gap-2">
               <input type="number" step="any" placeholder="Latitude" value={latInput} onChange={(e) => setLatInput(e.target.value)} className="flex-1 border rounded-lg px-3 py-2 text-sm" />
               <input type="number" step="any" placeholder="Longitude" value={lngInput} onChange={(e) => setLngInput(e.target.value)} className="flex-1 border rounded-lg px-3 py-2 text-sm" />
             </div>
-            <p className="text-xs text-gray-500 mt-1">Used for distance-based matching.</p>
           </div>
           {error && <p className="text-red-500 text-sm">{error}</p>}
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="flex-1 px-4 py-2 bg-gray-200 rounded-lg">Cancel</button>
-            <button type="submit" disabled={loading} className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg disabled:opacity-50">
-              {loading ? 'Saving...' : 'Save Service Area'}
-            </button>
+            <button type="submit" disabled={loading} className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg disabled:opacity-50">Save Service Area</button>
           </div>
         </form>
       </div>
@@ -209,16 +198,16 @@ const ServiceAreaModal = ({ isOpen, onClose, currentArea, onUpdate }) => {
   );
 };
 
-// ======================== MAIN ProviderBookings Component ========================
+// Main Component
 const ProviderBookings = () => {
   const { user } = useAuth();
   const { socket } = useSocket();
-  const { incomingRequests, acceptRequest } = useBookingRequests(); // ✅ global state
+  const { incomingRequests, acceptRequest } = useBookingRequests();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('active');
+  const [filter, setFilter] = useState('all');
   const [actionLoading, setActionLoading] = useState(null);
   const [otpModal, setOtpModal] = useState({ show: false, bookingId: null, otp: '', generating: false });
   const [completing, setCompleting] = useState(false);
@@ -232,21 +221,21 @@ const ProviderBookings = () => {
   const [socketStatus, setSocketStatus] = useState('checking');
   const [testMessage, setTestMessage] = useState('');
   const locationInterval = useRef(null);
+  const bookingsRef = useRef(bookings);
+  
+  const [viewProblemBooking, setViewProblemBooking] = useState(null);
+  const [offerAmount, setOfferAmount] = useState('');
+  const [offerNote, setOfferNote] = useState('');
 
-  // Manual open chat function
-  const openChatForBooking = (booking) => {
-    setChatBooking(booking);
-  };
-  const closeChat = () => {
-    setChatBooking(null);
-  };
-
-  // Socket status monitoring
   useEffect(() => {
-    if (!socket) {
-      setSocketStatus('disconnected');
-      return;
-    }
+    bookingsRef.current = bookings;
+  }, [bookings]);
+
+  const openChatForBooking = (booking) => setChatBooking(booking);
+  const closeChat = () => setChatBooking(null);
+
+  useEffect(() => {
+    if (!socket) { setSocketStatus('disconnected'); return; }
     setSocketStatus(socket.connected ? 'connected' : 'disconnected');
     const onConnect = () => setSocketStatus('connected');
     const onDisconnect = () => setSocketStatus('disconnected');
@@ -266,7 +255,6 @@ const ProviderBookings = () => {
     }
   };
 
-  // ✅ FIXED updateLiveLocation – uses absolute URL
   const updateLiveLocation = () => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
@@ -288,9 +276,15 @@ const ProviderBookings = () => {
           } else {
             setLocationWarning({ show: false, message: '' });
           }
-        } catch (err) {
-          console.error('Location update failed:', err);
-        }
+          const activeBooking = bookingsRef.current.find(b => b.status === 'confirmed' || b.status === 'in_progress');
+          if (activeBooking && socket && socket.connected) {
+            socket.emit('update-location', {
+              bookingId: activeBooking._id,
+              lat: latitude,
+              lng: longitude
+            });
+          }
+        } catch (err) { console.error('Location update failed:', err); }
       },
       (err) => {
         console.error('Geolocation error:', err);
@@ -332,9 +326,7 @@ const ProviderBookings = () => {
   useEffect(() => {
     checkVerification();
     loadProviderData();
-    return () => {
-      if (pollingRef.current) clearInterval(pollingRef.current);
-    };
+    return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
   }, []);
 
   const loadProviderData = async () => {
@@ -378,22 +370,14 @@ const ProviderBookings = () => {
 
   const handleConfirm = async (bookingId) => {
     setActionLoading(bookingId);
-    try {
-      await confirmBooking(bookingId);
-      loadBookings(false);
-    } catch (err) { alert(err.message); }
+    try { await confirmBooking(bookingId); loadBookings(false); } catch (err) { alert(err.message); }
     finally { setActionLoading(null); }
   };
-
   const handleStart = async (bookingId) => {
     setActionLoading(bookingId);
-    try {
-      await startBooking(bookingId);
-      loadBookings(false);
-    } catch (err) { alert(err.message); }
+    try { await startBooking(bookingId); loadBookings(false); } catch (err) { alert(err.message); }
     finally { setActionLoading(null); }
   };
-
   const handleGenerateOTP = async (bookingId) => {
     setOtpModal({ show: true, bookingId, otp: '', generating: true });
     try {
@@ -402,7 +386,6 @@ const ProviderBookings = () => {
       else { alert(res.message || 'Failed to generate OTP'); setOtpModal({ show: false, bookingId: null, otp: '', generating: false }); }
     } catch (err) { alert(err.message); setOtpModal({ show: false, bookingId: null, otp: '', generating: false }); }
   };
-
   const handleComplete = async (bookingId, otp) => {
     if (!otp) { alert('Please enter the OTP'); return; }
     setCompleting(true);
@@ -414,9 +397,23 @@ const ProviderBookings = () => {
     finally { setCompleting(false); }
   };
 
+  const handleViewProblem = (booking) => setViewProblemBooking(booking);
+  const handleSubmitOffer = async () => {
+    if (!offerAmount || offerAmount <= 0) return alert('Enter valid amount');
+    try {
+      await providerOffer(viewProblemBooking._id, parseFloat(offerAmount), offerNote);
+      alert('Offer sent to customer');
+      setViewProblemBooking(null);
+      loadBookings(true);
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   const getStatusConfig = (status) => {
     const configs = {
       pending: { label: 'Pending', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: AlertCircle },
+      offer_pending: { label: 'Offer Sent', color: 'bg-purple-100 text-purple-700 border-purple-200', icon: AlertCircle },
       confirmed: { label: 'Confirmed', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: CheckCircle },
       in_progress: { label: 'In Progress', color: 'bg-purple-100 text-purple-700 border-purple-200', icon: Clock },
       completed: { label: 'Completed', color: 'bg-green-100 text-green-700 border-green-200', icon: CheckCircle },
@@ -437,12 +434,12 @@ const ProviderBookings = () => {
     switch (booking.status) {
       case 'pending':
         return (
-          <button onClick={() => handleConfirm(booking._id)} disabled={isLoading}
-            className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-50">
-            {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
-            {isLoading ? 'Confirming...' : 'Confirm Booking'}
+          <button onClick={() => handleViewProblem(booking)} className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700">
+            View Problem & Offer
           </button>
         );
+      case 'offer_pending':
+        return <span className="text-sm text-purple-600">Waiting for customer response</span>;
       case 'confirmed':
         return (
           <button onClick={() => handleStart(booking._id)} disabled={isLoading}
@@ -453,8 +450,7 @@ const ProviderBookings = () => {
         );
       case 'in_progress':
         return (
-          <button onClick={() => handleGenerateOTP(booking._id)}
-            className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700">
+          <button onClick={() => handleGenerateOTP(booking._id)} className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700">
             <KeyRound className="w-3.5 h-3.5" /> Generate OTP & Complete
           </button>
         );
@@ -480,6 +476,7 @@ const ProviderBookings = () => {
   const activeCount = bookings.filter(b => b.status === 'confirmed' || b.status === 'in_progress').length;
   const completedCount = bookings.filter(b => b.status === 'completed').length;
   const cancelledCount = bookings.filter(b => b.status === 'cancelled').length;
+  const pendingCount = bookings.filter(b => b.status === 'pending').length;
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -501,8 +498,7 @@ const ProviderBookings = () => {
 
       {locationWarning.show && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl flex items-center gap-2">
-          <AlertCircle className="w-5 h-5" />
-          {locationWarning.message}
+          <AlertCircle className="w-5 h-5" /> {locationWarning.message}
         </div>
       )}
 
@@ -524,7 +520,6 @@ const ProviderBookings = () => {
         </ul>
       </div>
 
-      {/* Incoming Requests Section – uses global state */}
       {incomingRequests.length > 0 && (
         <div className="mb-6 space-y-3">
           <div className="flex items-center gap-2 text-amber-600 font-semibold"><Bell className="w-5 h-5" /> New Booking Requests ({incomingRequests.length})</div>
@@ -543,10 +538,11 @@ const ProviderBookings = () => {
       )}
 
       <div className="flex gap-2 mb-6">
-        {['active', 'all', 'completed', 'cancelled'].map(tab => {
+        {['active', 'all', 'pending', 'completed', 'cancelled'].map(tab => {
           let label = '', count = 0;
           if (tab === 'active') { label = 'Active'; count = activeCount; }
           else if (tab === 'all') { label = 'All'; count = bookings.length; }
+          else if (tab === 'pending') { label = 'Pending'; count = pendingCount; }
           else if (tab === 'completed') { label = 'Completed'; count = completedCount; }
           else if (tab === 'cancelled') { label = 'Cancelled'; count = cancelledCount; }
           return (
@@ -592,6 +588,7 @@ const ProviderBookings = () => {
         )}
       </div>
 
+      {/* OTP Modal */}
       {otpModal.show && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6">
@@ -605,6 +602,39 @@ const ProviderBookings = () => {
                 <button onClick={() => { const otp = document.getElementById('otp-input').value; handleComplete(otpModal.bookingId, otp); }} disabled={completing} className="w-full bg-emerald-600 text-white py-2 rounded-xl">Verify & Complete</button>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Problem View & Offer Modal */}
+      {viewProblemBooking && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-5">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold">Customer Problem Details</h3>
+              <button onClick={() => setViewProblemBooking(null)}><X /></button>
+            </div>
+            <p className="text-gray-700 mb-3"><strong>Description:</strong> {viewProblemBooking.customerProblem?.description || 'No description'}</p>
+            {viewProblemBooking.customerProblem?.images?.length > 0 && (
+              <div className="mb-4">
+                <p className="font-medium mb-2">Photos:</p>
+                <div className="flex gap-2 flex-wrap">
+                  {viewProblemBooking.customerProblem.images.map((img, idx) => (
+                    <img key={idx} src={img.url} alt="problem" className="w-24 h-24 object-cover rounded border" />
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="border-t pt-4 mt-2">
+              <label className="block font-medium mb-1">Your quoted price (₹)</label>
+              <input type="number" value={offerAmount} onChange={e => setOfferAmount(e.target.value)} className="w-full border rounded p-2 mb-3" placeholder="Enter amount" />
+              <label className="block font-medium mb-1">Note (optional)</label>
+              <textarea value={offerNote} onChange={e => setOfferNote(e.target.value)} className="w-full border rounded p-2 mb-3" rows="2" placeholder="Any remarks for the customer" />
+              <div className="flex gap-3">
+                <button onClick={handleSubmitOffer} className="flex-1 bg-emerald-600 text-white py-2 rounded">Send Offer</button>
+                <button onClick={() => setViewProblemBooking(null)} className="flex-1 border py-2 rounded">Cancel</button>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -164,7 +164,7 @@ export const fetchAllProviders = async (page = 1, limit = 20, status = '', verif
 };
 
 // ========== Provider APIs ==========
-export const registerProvider = async (providerData) => apiFetch('/providers/register', { method: 'POST', body: providerData }); // FormData
+export const registerProvider = async (providerData) => apiFetch('/providers/register', { method: 'POST', body: providerData });
 export const fetchProviderProfile = async () => apiFetch('/providers/profile');
 export const updateProviderProfile = async (data) => apiFetch('/providers/profile', { method: 'PUT', body: JSON.stringify(data) });
 export const addProviderService = async (serviceData) => apiFetch('/providers/services', { method: 'POST', body: JSON.stringify(serviceData) });
@@ -177,7 +177,7 @@ export const uploadProviderKYCDocuments = async (formData) => apiFetch('/provide
 export const fetchProviderVerificationStatus = async () => apiFetch('/providers/verification-status');
 export const fetchProviderNotifications = async () => apiFetch('/providers/notifications');
 export const updateHeartbeat = async () => apiFetch('/providers/heartbeat', { method: 'POST' });
-export const marahJ91ZuNL8Y2px8iYciYeHN8sfSh5eXH8 = async (notificationId) => apiFetch(`/providers/notifications/${notificationId}/read`, { method: 'PATCH' });
+export const mar9yMnTm4NSzvG9rrwjM2ec8xZgh1cafXH8 = async (notificationId) => apiFetch(`/providers/notifications/${notificationId}/read`, { method: 'PATCH' });
 export const markAllProviderNotificationsRead = async () => apiFetch('/providers/notifications/read-all', { method: 'PATCH' });
 export const searchProviders = async (latitude, longitude, radius = 10, serviceCategoryId, pincode = null, city = null) => {
     let url = `/providers/search?radius=${radius}`;
@@ -191,10 +191,7 @@ export const fetchFeaturedProviders = async (limit = 20) => apiFetch(`/providers
 
 // ✅ Public: Get provider details by ID (for customer facing pages)
 export const fetchProviderDetailsById = async (providerId) => apiFetch(`/providers/${providerId}/public`);
-
-// ✅ Admin: Get provider details (for admin panel)
 export const fetchAdminProviderDetailsById = async (providerId) => apiFetch(`/admin/providers/${providerId}`);
-
 export const createCustomService = async (formData) => apiFetch('/providers/custom-service', { method: 'POST', body: formData });
 
 // ========== Payment APIs ==========
@@ -222,7 +219,18 @@ export const getAllProviderWallets = async () => apiFetch('/admin/provider-walle
 export const fetchProviderWithdrawals = async (providerId, page = 1, limit = 50) => apiFetch(`/admin/providers/${providerId}/withdrawals?page=${page}&limit=${limit}`);
 
 // ========== Booking APIs ==========
-export const createBooking = async (bookingData) => apiFetch('/bookings', { method: 'POST', body: JSON.stringify(bookingData) });
+export const createBooking = async (bookingData) => {
+    const options = {
+        method: 'POST',
+        body: bookingData
+    };
+    if (!(bookingData instanceof FormData)) {
+        options.headers = { 'Content-Type': 'application/json' };
+        options.body = JSON.stringify(bookingData);
+    }
+    return apiFetch('/bookings', options);
+};
+
 export const fetchMyBookings = async (page = 1, limit = 10, status = '') => {
     let url = `/bookings/my-bookings?page=${page}&limit=${limit}`;
     if (status) url += `&status=${status}`;
@@ -237,6 +245,11 @@ export const generateBookingOTP = async (bookingId) => apiFetch(`/bookings/${boo
 export const completeBooking = async (bookingId, otp) => apiFetch(`/bookings/${bookingId}/complete`, { method: 'PATCH', body: JSON.stringify({ completionOTP: otp }) });
 export const acceptBooking = async (bookingId) => apiFetch(`/bookings/${bookingId}/accept`, { method: 'POST' });
 export const fetchChatHistory = async (bookingId) => apiFetch(`/chat/${bookingId}`);
+
+// New endpoints for offer flow
+export const providerOffer = async (bookingId, amount, note) => apiFetch(`/bookings/${bookingId}/provider-offer`, { method: 'POST', body: JSON.stringify({ amount, note }) });
+export const confirmOffer = async (bookingId) => apiFetch(`/bookings/${bookingId}/confirm-offer`, { method: 'POST' });
+export const rejectOffer = async (bookingId) => apiFetch(`/bookings/${bookingId}/reject-offer`, { method: 'POST' });
 
 // ========== Public APIs ==========
 export const fetchCategoryBySlug = async (slug) => apiFetch(`/services/categories/${slug}`);
@@ -289,7 +302,6 @@ export const updateComplaintStatus = async (complaintId, status, adminNote = '')
 export const deleteComplaint = async (complaintId) => apiFetch(`/admin/complaints/${complaintId}`, { method: 'DELETE' });
 export const fetchUserComplaintHistory = async (userId) => apiFetch(`/admin/users/${userId}/complaints`);
 export const fetchProviderComplaintHistory = async (providerId) => apiFetch(`/admin/providers/${providerId}/complaints`);
-// export const fetchAdminProviderDetailsById = fetchAdminProviderDetailsById; // (already defined, but no conflict)
 export const updateProviderStatus = async (providerId, status) => apiFetch(`/admin/providers/${providerId}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
 export const sendNotificationToProvider = async (providerId, message) => apiFetch(`/admin/providers/${providerId}/notify`, { method: 'POST', body: JSON.stringify({ message }) });
 export const fetchRescheduleRequests = async (page = 1, limit = 20, status = 'pending') => apiFetch(`/admin/reschedule-requests?page=${page}&limit=${limit}&status=${status}`);
@@ -349,5 +361,8 @@ export const updateAppSettings = async (settings) => apiFetch('/admin/settings/a
 export const toggleMaintenanceMode = async (isEnabled, message = '') => apiFetch('/admin/settings/maintenance', { method: 'POST', body: JSON.stringify({ isEnabled, message }) });
 export const checkForAppUpdate = async () => apiFetch('/admin/updates/check');
 export const publishAppUpdate = async (version, message, forceUpdate, downloadUrl) => apiFetch('/admin/updates/publish', { method: 'POST', body: JSON.stringify({ version, message, forceUpdate, downloadUrl }) });
+
+// ========== ALIAS for backward compatibility (NotificationBell.jsx & ProviderNotificationBell.jsx) ==========
+export const marahJ91ZuNL8Y2px8iYciYeHN8sfSh5eXH8 = mar9yMnTm4NSzvG9rrwjM2ec8xZgh1cafXH8;
 
 export { apiFetch };

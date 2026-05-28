@@ -9,7 +9,7 @@ import {
   Award, Users, Heart, Share2
 } from 'lucide-react';
 
-// Service Card Component (modern)
+// Service Card Component
 const ServiceCard = ({ service, providerId, onAddToCart }) => {
   const [added, setAdded] = useState(false);
 
@@ -174,7 +174,6 @@ const ProviderDetailPage = () => {
       <div className="bg-gradient-to-r from-emerald-700 to-teal-700 text-white">
         <div className="max-w-6xl mx-auto px-4 py-8 md:py-12">
           <div className="flex flex-col md:flex-row gap-8 items-start">
-            {/* Avatar */}
             <div className="relative">
               <img
                 src={provider.user?.avatar?.url || `https://ui-avatars.com/api/?name=${encodeURIComponent(provider.businessName)}&background=ffffff&color=10b981&size=120&length=2`}
@@ -185,8 +184,6 @@ const ProviderDetailPage = () => {
                 <span className="absolute bottom-1 right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></span>
               )}
             </div>
-
-            {/* Info */}
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-3 mb-2">
                 <h1 className="text-2xl md:text-3xl font-bold">{provider.businessName}</h1>
@@ -210,8 +207,6 @@ const ProviderDetailPage = () => {
               <p className="text-white/90 text-sm md:text-base max-w-2xl leading-relaxed">{provider.bio}</p>
             </div>
           </div>
-
-          {/* Stats Row */}
           <div className="grid grid-cols-3 gap-4 mt-8 pt-4 border-t border-white/20">
             <div className="text-center md:text-left">
               <div className="flex items-center justify-center md:justify-start gap-2 text-emerald-300">
@@ -240,7 +235,6 @@ const ProviderDetailPage = () => {
 
       {/* Main Content */}
       <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* Tabs */}
         <div className="flex gap-1 bg-white rounded-xl p-1 shadow-sm mb-6 w-fit">
           <button
             onClick={() => setActiveTab('services')}
@@ -274,7 +268,6 @@ const ProviderDetailPage = () => {
           </button>
         </div>
 
-        {/* Tab Content */}
         {activeTab === 'services' && (
           <div className="space-y-4">
             {services.length === 0 ? (
@@ -345,41 +338,23 @@ const ProviderDetailPage = () => {
                 ))}
               </div>
             </div>
-
             <div>
               <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
                 <MapPin className="w-5 h-5 text-emerald-600" /> Service Area
               </h3>
-              <p className="text-gray-600">
-                <strong>Cities:</strong> {provider.serviceArea?.cities?.join(', ') || 'None'}
-              </p>
-              <p className="text-gray-600 mt-1">
-                <strong>Pincodes:</strong> {provider.serviceArea?.pincodes?.join(', ') || 'None'}
-              </p>
-              {provider.serviceArea?.radius && (
-                <p className="text-gray-600 mt-1">
-                  <strong>Radius:</strong> {provider.serviceArea.radius} km
-                </p>
-              )}
+              <p className="text-gray-600"><strong>Cities:</strong> {provider.serviceArea?.cities?.join(', ') || 'None'}</p>
+              <p className="text-gray-600 mt-1"><strong>Pincodes:</strong> {provider.serviceArea?.pincodes?.join(', ') || 'None'}</p>
+              {provider.serviceArea?.radius && <p className="text-gray-600 mt-1"><strong>Radius:</strong> {provider.serviceArea.radius} km</p>}
             </div>
-
             <div>
               <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
                 <Phone className="w-5 h-5 text-emerald-600" /> Contact
               </h3>
               <div className="flex flex-wrap items-center gap-4">
-                <a
-                  href={`tel:${provider.user?.phone}`}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-xl text-gray-700 hover:bg-gray-200 transition"
-                >
+                <a href={`tel:${provider.user?.phone}`} className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-xl text-gray-700 hover:bg-gray-200 transition">
                   <Phone className="w-4 h-4" /> Call Provider
                 </a>
-                <a
-                  href={`https://wa.me/${provider.user?.phone}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-xl hover:bg-green-100 transition"
-                >
+                <a href={`https://wa.me/${provider.user?.phone}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-xl hover:bg-green-100 transition">
                   <MessageCircle className="w-4 h-4" /> WhatsApp
                 </a>
               </div>
@@ -389,19 +364,13 @@ const ProviderDetailPage = () => {
         )}
       </div>
 
-      {/* Floating Cart Button (optional, consistent with category page) */}
       <div className="fixed bottom-6 right-6 z-40">
-        <button
-          onClick={() => navigate('/cart')}
-          className="bg-white border border-gray-200 pl-3 pr-5 py-2.5 rounded-2xl shadow-xl flex items-center gap-3 hover:shadow-2xl transition group"
-        >
+        <button onClick={() => navigate('/cart')} className="bg-white border border-gray-200 pl-3 pr-5 py-2.5 rounded-2xl shadow-xl flex items-center gap-3 hover:shadow-2xl transition group">
           <div className="relative">
             <div className="w-11 h-11 bg-emerald-600 rounded-xl flex items-center justify-center text-white">
               <ShoppingCart className="w-5 h-5" />
             </div>
-            <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">
-              {0}
-            </span>
+            <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">0</span>
           </div>
           <div className="text-left">
             <div className="text-xs font-bold text-gray-800 group-hover:text-emerald-600 transition">View Cart</div>
