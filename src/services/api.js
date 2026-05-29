@@ -3,7 +3,7 @@
 const getBaseUrl = () => {
     if (import.meta.env.PROD) {
         let customUrl = import.meta.env.VITE_API_URL;
-        if (!customUrl) customUrl = 'https://ghar-seva-server-1.onrender.com';
+        if (!customUrl) customUrl = 'https://ghar-seva-server-5o5v.onrender.com';
         customUrl = customUrl.replace(/\/$/, '');
         if (customUrl.endsWith('/api/v1')) return customUrl;
         return `${customUrl}/api/v1`;
