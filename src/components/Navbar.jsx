@@ -353,9 +353,9 @@ const Navbar = () => {
                 <div className="rounded-lg w-20 h-20 flex items-center justify-center overflow-hidden bg-white p-1">
                   <img src="https://res.cloudinary.com/djtvxmttf/image/upload/v1792054212/5b371f1e-88c7-4d4f-aa47-9d3cf264ee2d.png" alt="PUCHHUU Logo" className="w-full h-full object-contain" />
                 </div>
-                <div className="w-32 h-16">
+                {/* <div className="w-32 h-16">
                   <img src="https://res.cloudinary.com/djtvxmttf/image/upload/v1778752596/3b3dd98d-e461-4412-ba36-b5086a6e6331.png" alt="INDIAN HOMEY" className="w-full h-full object-contain" />
-                </div>
+                </div> */}
               </Link>
 
               {/* Search Bar with rotating placeholder */}
